@@ -1,34 +1,48 @@
-FROM ubuntu:16.04
+FROM ubuntu:14.04
 
 MAINTAINER "Daniel Jacob" daniel.jacob@u-bordeaux.fr
+
+RUN apt-get update && apt-get -y upgrade
+
+# Install apache, PHP, and supplimentary programs. curl and lynx-cur are for debugging the container.
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 libapache2-mod-php5 php5-gd
+# php-pear php-apc php5-curl php5-ldap curl lynx-cur
+
+# Enable apache mods.
+RUN php5enmod openssl
+RUN a2enmod php5
+RUN a2enmod rewrite
+
+# Update the PHP.ini file, enable <? ?> tags and quieten logging.
+RUN sed -i "s/short_open_tag = Off/short_open_tag = On/" /etc/php5/apache2/php.ini
+RUN sed -i "s/error_reporting = .*$/error_reporting = E_ERROR | E_WARNING | E_PARSE/" /etc/php5/apache2/php.ini
 
 # Install modules
 RUN apt-get update && apt-get install -y \
     sudo ca-certificates wget curl git vim ed p7zip \
     libfreetype6-dev libmcrypt-dev libpng12-dev libcurl4-gnutls-dev libcairo2-dev \
     libxt-dev libxml2-dev libv8-dev gnuplot \
-    gdebi-core \
-    libssl-dev openssl software-properties-common \
-    libgsl0-dev gsl-bin libnlopt-dev
+    gdebi-core pandoc pandoc-citeproc \
+    software-properties-common \
+    libgsl0-dev libgsl0ldbl gsl-bin libnlopt-dev
 
-# See https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-16-04-2
-RUN sh -c 'echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list' && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+
+# See https://www.digitalocean.com/community/tutorials/how-to-set-up-r-on-ubuntu-14-04
+RUN sh -c 'echo "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/" >> /etc/apt/sources.list' && \
+    gpg --keyserver keyserver.ubuntu.com --recv-key E084DAB9 && \
+    gpg -a --export E084DAB9 | sudo apt-key add -
 
 # Install R / ...
 RUN apt-get update && apt-get install -y \
     r-recommended \
-    r-base-dev \
     r-cran-rcurl \
     r-cran-foreach \
     r-cran-multicore \
     r-cran-base64enc \
     r-cran-xml \
-    r-cran-rcpp
-
-# Install Apache+PHP
-RUN apt-get update && apt-get -y upgrade && apt-get install -y \
-      apache2 apache2-dev php libapache2-mod-php php-gd
+    r-base-dev \
+    apache2-mpm-prefork \
+    apache2-prefork-dev
 
 # See https://github.com/jeffreyhorner/rapache
 RUN cd /usr/src \
@@ -38,7 +52,6 @@ RUN cd /usr/src \
  && make && make install \
  && cd /usr/src && rm -rf ./rapache
 
-# locale setting
 RUN apt-get update && apt-get install -y locales \
     && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
     && locale-gen en_US.utf8 \
@@ -54,8 +67,11 @@ RUN wget --no-verbose http://download3.rstudio.org/ubuntu-12.04/x86_64/VERSION -
     gdebi -n ss-latest.deb && \
     rm -f version.txt ss-latest.deb
 
+# Install dependencies (r-cran-rcpp seems too old!)
+RUN R -e "install.packages(c('Rcpp','rjson', 'V8'), repos='http://cran.rstudio.com')"
+RUN R -e "install.packages(c('gsl','RcppGSL','inline'), repos='http://cran.rstudio.com')"
+
 # Install Shiny and some extensions and some other dependencies
-RUN R -e "install.packages(c('gsl','RcppGSL','inline','rjson'), repos='http://cran.rstudio.com')"
 RUN R -e "install.packages( c( 'httpuv', 'mime', 'jsonlite', 'xtable', 'htmltools', 'R6', 'shiny'), repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages(c('shinyBS', 'shinyjs', 'stringi', 'docopt','doParallel','signal','ptw', 'openxlsx'), repos='http://cran.rstudio.com')"
 RUN R -e "source('http://bioconductor.org/biocLite.R'); biocLite('MassSpecWavelet'); biocLite('impute'); install.packages('speaq', repos='http://cran.rstudio.com')"
@@ -77,9 +93,9 @@ COPY ./nmrspec/conf/my-site.conf /etc/apache2/sites-enabled/001-my-site.conf
 COPY ./nmrspec/conf/launch-server.sh /usr/bin/launch-server.sh
 
 # NMRVIEW
-COPY ./nmrviewer/src /usr/src/
+COPY ./nmrviewer/src /opt/
 
-RUN cd /usr/src/ && make && rm -f /usr/src/*
+RUN cd /opt/ && make
 
 ADD ./nmrviewer/www /var/www/html/nv
 

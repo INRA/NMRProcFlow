@@ -1053,8 +1053,9 @@ RWarp1D <- function(specMat, zone, idxSref=0, warpcrit=c("WCC","RMS"), Selected=
 #------------------------------
 RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LOGFILE=NULL, ProgressFile=NULL)
 {
-   BUC.filename <- 'SpecBuckets.txt'
    BUCKET_LIST  <- 'bucket_list.in'
+   BUC.filename <- 'SpecBuckets.txt'
+   BUC.cmd <- 'SpecBucCmd.lst'
 
    # Limit size of buckets
    MAXBUCKETS<-2000
@@ -1084,11 +1085,14 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
    bdata$BUCMIN <- 0.003
    bdata$VREF <- 1
 
+   Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="wt")
+
    # For each PPM range
    buckets_zones <- NULL
    N <- dim(zones)[1]
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, N)
    buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
+       Write.LOG(BUC.cmd,paste(min(zones[i,]), max(zones[i,])), mode="at")
        i2<-which(specMat$ppm<=min(zones[i,]))[1]
        i1<-length(which(specMat$ppm>max(zones[i,])))
        if (Algo=='aibin') {
@@ -1108,8 +1112,9 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
        # buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,mean)>snr), ]
        buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>snr), ]
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
-
    }
+   Write.LOG(BUC.cmd,"EOL", mode="at")
+
    if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Total Buckets =",dim(buckets_zones)[1],"\n"))
 
    if( buckets_zones[1,1]>buckets_zones[1,2] )  {  colnames(buckets_zones) <- c('max','min') }
@@ -1118,7 +1123,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
 
    # The bucket zones files
    write.table(buckets_zones, file=BUC.filename, append=f_append, sep="\t", row.names=F, col.names=!f_append, quote=F)
-   buclist <- cbind( 0.5*(buckets_zones[,1]+buckets_zones[,2]), buckets_zones[,2]-buckets_zones[,1] )
+   buclist <- cbind( 0.5*(buckets_zones[,1]+buckets_zones[,2]), abs(buckets_zones[,2]-buckets_zones[,1]) )
    write.table(buclist, file=BUCKET_LIST, append=F, sep="\t", row.names=F, col.names=F, quote=F)
    gc()
 }
@@ -1421,8 +1426,8 @@ get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA
    if ( file.exists(bucketfile) ) {
       # Read the buckets
       buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
-      buckets$min <- buckets[,1]-0.5*buckets[,2]
-      buckets$max <- buckets[,1]+0.5*buckets[,2]
+      buckets$min <- buckets[,1]-0.5*abs(buckets[,2])
+      buckets$max <- buckets[,1]+0.5*abs(buckets[,2])
       # get index of buckets' ranges
       buckets_m <- t(simplify2array(lapply( c( 1:(dim(buckets)[1]) ), 
                      function(x) { c( length(which(specMat$ppm>buckets[x,]$max)), length(which(specMat$ppm>buckets[x,]$min)) ) }

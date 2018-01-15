@@ -1,9 +1,9 @@
 ![logo](nmrpf_logo_full.png)
-## NMRProcFlow
+# NMRProcFlow
 
 An efficient GUI tool for spectra processing from 1D NMR metabolomics data
 
-### Description
+## Description
 
 * The NMRProcFlow open source software provides an efficient GUI tool for spectra processing from 1D NMR metabolomics data, based on an interactive interface for the spectra visualization, that greatly helps spectra processing. 
 * The 'NMR spectra viewer' is the central tool of NMRProcFlow and the core of the application. It allows the user to visually explore the spectra overlaid or stacked, to zoom on intensity scale, to group set of spectra by color based on their factor level.
@@ -11,17 +11,17 @@ An efficient GUI tool for spectra processing from 1D NMR metabolomics data
 * the spectra processing includes: the calibration of the ppm scale, the base line correction (locally or  fully), the realignment of a set of ppm areas, and the binning (Intelligent, variable size or fixed width)
 
 
-### Installation
+## Installation
 
 Requirements:
 
 * a recent Linux OS that support Docker (see https://www.docker.com/)
 
 
-From GitHub, clone the repository
+From bitbucket.org, clone the repository
 
 ```
-    $ git clone https://github.com/INRA/NMRProcFlow.git
+    $ git clone https://bitbucket.org/nmrprocflow/nmrproc.git
 ```
 
 Then `cd` to your clone path
@@ -30,23 +30,25 @@ Then `cd` to your clone path
     $ cd nmrproc
 ```
 
-You need to have the docker image 'npflow' into your local docker library. For that, two ways are possible:
+You need to have the docker images 'nmrview' & 'nmrspec' into your local docker library. For that, two ways are possible:
 
-* You have to create the docker image:
+* You have to create the docker images:
 
 		$ sh ./npflow build
 
 
-* You can simply pull the docker image from docker hub:
+* You can simply pull the docker images from docker hub:
 
-		$ docker pull docker.io/nmrprocflow/npflow
+		$ docker pull docker.io/nmrprocflow/nmrview
+		$ docker pull docker.io/nmrprocflow/nmrspec
 
 Then, you should have something like below:
 
-	$ docker image
+	$ docker images
 ```
-REPOSITORY           TAG                 IMAGE ID            CREATED             SIZE
-nmrprocflow/npflow   latest              0cda738b9a36        48 minutes ago      1.54 GB
+REPOSITORY            TAG                 IMAGE ID            CREATED             SIZE
+nmrprocflow/nmrspec   latest              e911e6595580        About an hour ago   1.31 GB
+nmrprocflow/nmrview   latest              bbcfb1e23f31        About an hour ago   455 MB
 ```
 
 Then edit **./etc/npflow.conf**, and pay attention to these lines :
@@ -83,52 +85,32 @@ USRCONMGR=0
 #
 ```
 
+## Usage
 
-### Usage
-
-#### Run the application
+### Run the application
 
 ```
     $ sh ./npflow start
 ```
 
-#### Stop the application
+### Stop the application
 
 ```
     $ sh ./npflow stop
 ```
 
 
-#### View the status of the application
+### View the status of the application
 
 ```
     $ sh ./npflow ps
 ```
 
 
-#### check on http://<your_local_host>:<port>/npflow/
+### check on http://<your_local_host>:<port>/npflow/
 
 
-See more information in http://nmrprocflow.org/c_download
-
----
-
-
-### Main contributors:
-
-* Daniel Jacob, Catherine Deborde, Marie Lefebvre, Michaël Maucourt
-* Special thanks to Alain Girard (INRA Bordeaux) for designing the logo.
-
-### Publication:
-
-Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcFlow: A graphical and interactive tool dedicated to 1D spectra processing for NMR-based metabolomics, Metabolomics 13:36. [doi:10.1007/s11306-017-1178-y](http://link.springer.com/article/10.1007%2Fs11306-017-1178-y)
-
-### Funded by:
-
-* INRA UMR 1332 BFP, Bordeaux Metabolomics Facility
-* the ANR-11-INBS-0010 grant (MetaboHUB)
-
-### License
+## License
 
 Copyright (C) 2017  Daniel Jacob - INRA 
 

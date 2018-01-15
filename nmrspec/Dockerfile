@@ -1,46 +1,46 @@
-FROM ubuntu:16.04
+FROM ubuntu:14.04
 
 MAINTAINER "Daniel Jacob" daniel.jacob@u-bordeaux.fr
 
-# Install modules
-RUN apt-get update && apt-get install -y \
-    sudo ca-certificates wget curl git vim ed p7zip \
-    libfreetype6-dev libmcrypt-dev libpng12-dev libcurl4-gnutls-dev libcairo2-dev \
-    libxt-dev libxml2-dev libv8-dev gnuplot \
+RUN apt-get update -qq \
+    && apt-get install -y \
+    ca-certificates \
+    sudo \
+    wget \
+    curl \
+    ed \
+    p7zip \
+    libcurl4-gnutls-dev \
+    libcairo2-dev \
+    libxt-dev \
+    libxml2-dev \
+    libv8-dev \
     gdebi-core \
-    libssl-dev openssl software-properties-common \
-    libgsl0-dev gsl-bin libnlopt-dev
+    pandoc \
+    pandoc-citeproc \
+    software-properties-common \
+    libgsl0-dev libgsl0ldbl  gsl-bin
 
-# See https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-16-04-2
-RUN sh -c 'echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list' && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+# See https://www.digitalocean.com/community/tutorials/how-to-set-up-r-on-ubuntu-14-04
+RUN sh -c 'echo "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/" >> /etc/apt/sources.list' && \
+    gpg --keyserver keyserver.ubuntu.com --recv-key E084DAB9 && \
+    gpg -a --export E084DAB9 | sudo apt-key add -
 
 # Install R / ...
-RUN apt-get update && apt-get install -y \
-    r-recommended \
-    r-base-dev \
+RUN apt-get update \
+    && apt-get install -y r-recommended \
     r-cran-rcurl \
     r-cran-foreach \
     r-cran-multicore \
     r-cran-base64enc \
-    r-cran-xml \
-    r-cran-rcpp
+    r-cran-xml
 
-# Install Apache+PHP
-RUN apt-get update && apt-get -y upgrade && apt-get install -y \
-      apache2 apache2-dev php libapache2-mod-php php-gd
+# Install Rapache 
+RUN add-apt-repository ppa:opencpu/rapache \
+    && apt-get update \
+    && apt-get install -y libapache2-mod-r-base
 
-# See https://github.com/jeffreyhorner/rapache
-RUN cd /usr/src \
- && git clone https://github.com/jeffreyhorner/rapache.git \
- && cd rapache \
- && ./configure \
- && make && make install \
- && cd /usr/src && rm -rf ./rapache
-
-# locale setting
-RUN apt-get update && apt-get install -y locales \
-    && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
     && locale-gen en_US.utf8 \
     && /usr/sbin/update-locale LANG=en_US.UTF-8
 
@@ -54,11 +54,14 @@ RUN wget --no-verbose http://download3.rstudio.org/ubuntu-12.04/x86_64/VERSION -
     gdebi -n ss-latest.deb && \
     rm -f version.txt ss-latest.deb
 
+# Install dependencies (r-cran-rcpp seems too old!)
+RUN R -e "install.packages(c('Rcpp','rjson', 'V8'), repos='http://cran.rstudio.com')"
+RUN R -e "install.packages(c('gsl','RcppGSL','inline'), repos='http://cran.rstudio.com')"
+
 # Install Shiny and some extensions and some other dependencies
-RUN R -e "install.packages(c('gsl','RcppGSL','inline','rjson'), repos='http://cran.rstudio.com')"
 RUN R -e "install.packages( c( 'httpuv', 'mime', 'jsonlite', 'xtable', 'htmltools', 'R6', 'shiny'), repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages(c('shinyBS', 'shinyjs', 'stringi', 'docopt','doParallel','signal','ptw', 'openxlsx'), repos='http://cran.rstudio.com')"
-RUN R -e "source('http://bioconductor.org/biocLite.R'); biocLite('MassSpecWavelet'); biocLite('impute'); install.packages('speaq', repos='http://cran.rstudio.com')"
+RUN R -e "source('http://bioconductor.org/biocLite.R'); biocLite('MassSpecWavelet'); install.packages('speaq', repos='http://cran.rstudio.com')"
 
 ENV APACHE_RUN_USER www-data
 ENV APACHE_RUN_GROUP www-data
@@ -69,33 +72,21 @@ ENV APACHE_LOCK_DIR /var/lock/apache2
 ENV APACHE_SERVERADMIN admin@localhost
 ENV APACHE_SERVERNAME localhost
 ENV APACHE_SERVERALIAS docker.localhost
-ENV APACHE_DOCUMENTROOT /var/www/html
+ENV APACHE_DOCUMENTROOT /var/www
 
-COPY ./etc/apache2.conf /etc/apache2/apache2.conf
-COPY ./nmrspec/conf/shiny-server.conf /etc/shiny-server/shiny-server.conf
-COPY ./nmrspec/conf/my-site.conf /etc/apache2/sites-enabled/001-my-site.conf
-COPY ./nmrspec/conf/launch-server.sh /usr/bin/launch-server.sh
+COPY conf/shiny-server.conf /etc/shiny-server/shiny-server.conf
+COPY conf/apache2.conf /etc/apache2/apache2.conf
+COPY conf/my-site.conf /etc/apache2/sites-enabled/001-my-site.conf
+COPY conf/launch-server.sh /usr/bin/launch-server.sh
 
-# NMRVIEW
-COPY ./nmrviewer/src /usr/src/
-
-RUN cd /usr/src/ && make && rm -f /usr/src/*
-
-ADD ./nmrviewer/www /var/www/html/nv
-
-RUN mkdir -p /opt/data \
-    && rm -f /etc/apache2/sites-enabled/000-default.conf \
-    && chmod 755 /usr/bin/launch-server.sh
-#    && mkdir -p /var/www/html/nv/tmp \
-#    && chown -R www-data.www-data /var/www/html/nv \
-#    && chmod 777 /var/www/html/nv/tmp
+RUN chmod 755 /usr/bin/launch-server.sh
 
 # Volume as the root directory that will contain the output data
 # the data will be stored within the directory /opt/data/<DATAID>
+RUN mkdir -p /opt/data
 VOLUME /opt/data
 
-# NMRSPEC
-ADD ./nmrspec /srv/shiny-server
+ADD ./ /srv/shiny-server
 
 RUN chown -R shiny.shiny /srv/shiny-server \
     && adduser www-data shiny
@@ -109,10 +100,7 @@ RUN cd /home && \
     echo 'install.packages("Rnmr1D", lib=c("/usr/local/lib/R/site-library/"), repos = NULL, type = "source");' | /usr/bin/R BATCH --vanilla && \
     [ -d "./Rnmr1D" ] && rm -rf ./Rnmr1D && rm -rf /srv/shiny-server/exec/libspec
 
-WORKDIR /var/www/html
-
-#EXPOSE 3838
+EXPOSE 3838
 EXPOSE 80
 
 CMD ["/usr/bin/launch-server.sh"]
-
