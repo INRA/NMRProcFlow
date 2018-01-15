@@ -23,7 +23,7 @@ HTTP_PORT=$(cat $INI_FILE | grep HTTP_PORT | cut -d'=' -f2 | tr -d "\n")
 
 # nmrspec Container
 SPEC_PORT=$HTTP_PORT
-SPEC_IMAGE=nmrprocflow/npflow:latest
+SPEC_IMAGE=nmrprocflow/nmrprocflow:latest
 SPEC_CONTAINER=npflow
 SPEC_PAR="--env-file $MYDIR/etc/npflow.conf"
 SPEC_SRC=''
