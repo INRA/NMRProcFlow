@@ -1,59 +1,146 @@
--rw-rw-r--. 1 shiny    shiny       20850 Jan 15 15:52 bucket_list.in
--rw-rw-r--. 1 shiny    shiny        2973 Jan 15 15:52 clupa.out
--rw-rw-r--. 1 shiny    shiny         205 Jan 15 15:51 error.log
--rw-rw-r--. 1 shiny    shiny          13 Jan 15 15:51 factors
--rw-rw-r--. 1 shiny    shiny           4 Jan 15 15:51 job.pid
--rw-rw-r--. 1 shiny    shiny          23 Jan 15 15:52 list_1r.txt
--rw-rw-r--. 1 shiny    shiny        3949 Jan 15 15:52 list_pars.csv
--rw-r--r--. 1 www-data www-data        5 Jan 15 15:54 listspec
--rw-rw-r--. 1 shiny    shiny           3 Jan 15 15:52 nuc.txt
--rw-rw-r--. 1 shiny    shiny          11 Jan 15 15:52 origin.txt
-drwxrwxr-x. 2 shiny    shiny          32 Jan 15 15:52 .out/
--rw-rw-r--. 1 shiny    shiny          46 Jan 15 15:51 pcmdfile
--rw-rw-r--. 1 shiny    shiny        1052 Jan 15 15:52 proc.log
--rw-rw-r--. 1 shiny    shiny           2 Jan 15 15:52 progress.log
--rw-rw-r--. 1 shiny    shiny        2395 Jan 15 15:51 rawids.csv
--rw-rw-r--. 1 shiny    shiny        1142 Jan 15 15:51 samples.csv
--rw-rw-r--. 1 shiny    shiny           2 Jan 15 15:51 semapIn
--rw-rw-r--. 1 shiny    shiny           2 Jan 15 15:52 semapOut
--rw-rw-r--. 1 shiny    shiny       18861 Jan 15 15:52 SpecBuckets.txt
--rw-rw-r--. 1 shiny    shiny          96 Jan 15 15:51 SpecPreProcCmd.lst
--rw-rw-r--. 1 shiny    shiny         893 Jan 15 15:51 SpecProcCmd.lst
--rw-rw-r--. 1 shiny    shiny         334 Jan 15 15:51 SpecProcpar.ini
--rw-rw-r--. 1 shiny    shiny    13095704 Jan 15 15:52 specs.pack
--rw-rw-r--. 1 shiny    shiny        9390 Jan 15 15:52 upload.log
--rw-rw-r--. 1 shiny    shiny          10 Jan 15 15:51 user
--rw-rw-r--. 1 shiny    shiny          50 Jan 15 15:51 userfiles
+![logo](nmrpf_logo_full.png)
+## NMRProcFlow
+
+An efficient GUI tool for spectra processing from 1D NMR metabolomics data
+
+### Description
+
+* The NMRProcFlow open source software provides an efficient GUI tool for spectra processing from 1D NMR metabolomics data, based on an interactive interface for the spectra visualization, that greatly helps spectra processing. 
+* The 'NMR spectra viewer' is the central tool of NMRProcFlow and the core of the application. It allows the user to visually explore the spectra overlaid or stacked, to zoom on intensity scale, to group set of spectra by color based on their factor level.
+* NMRProcFlow was built by involving NMR spectroscopists eager to have a quick and easy tool to use.
+* the spectra processing includes: the calibration of the ppm scale, the base line correction (locally or  fully), the realignment of a set of ppm areas, and the binning (Intelligent, variable size or fixed width)
 
 
--rw-rw-r--. 1 shiny    shiny       38967 Jan 15 15:57 bucket_list.in
--rw-rw-r--. 1 shiny    shiny       20850 Jan 15 15:57 bucket_list.in.001
--rw-rw-r--. 1 shiny    shiny         493 Jan 15 15:57 bucket.log
--rw-rw-r--. 1 shiny    shiny        2973 Jan 15 15:52 clupa.out
--rw-rw-r--. 1 shiny    shiny         251 Jan 15 15:57 error.log
--rw-rw-r--. 1 shiny    shiny          13 Jan 15 15:51 factors
--rw-rw-r--. 1 shiny    shiny           4 Jan 15 15:57 job.pid
--rw-rw-r--. 1 shiny    shiny          23 Jan 15 15:52 list_1r.txt
--rw-rw-r--. 1 shiny    shiny        3949 Jan 15 15:52 list_pars.csv
--rw-r--r--. 1 www-data www-data        5 Jan 15 15:57 listspec
--rw-rw-r--. 1 shiny    shiny           3 Jan 15 15:52 nuc.txt
--rw-rw-r--. 1 shiny    shiny          11 Jan 15 15:52 origin.txt
-drwxrwxr-x. 2 shiny    shiny          32 Jan 15 15:57 .out/
--rw-rw-r--. 1 shiny    shiny          46 Jan 15 15:51 pcmdfile
--rw-rw-r--. 1 shiny    shiny        1052 Jan 15 15:52 proc.log
--rw-rw-r--. 1 shiny    shiny           2 Jan 15 15:57 progress.log
--rw-rw-r--. 1 shiny    shiny        2395 Jan 15 15:51 rawids.csv
--rw-rw-r--. 1 shiny    shiny        1142 Jan 15 15:51 samples.csv
--rw-rw-r--. 1 shiny    shiny           2 Jan 15 15:57 semapIn
--rw-rw-r--. 1 shiny    shiny           2 Jan 15 15:57 semapOut
--rw-rw-r--. 1 shiny    shiny           0 Jan 15 15:57 SpecBucCmd.lst
--rw-rw-r--. 1 shiny    shiny           0 Jan 15 15:57 SpecBucCmd.lst.001
--rw-rw-r--. 1 shiny    shiny       18861 Jan 15 15:52 SpecBuckets.txt
--rw-rw-r--. 1 shiny    shiny          96 Jan 15 15:51 SpecPreProcCmd.lst
--rw-rw-r--. 1 shiny    shiny         893 Jan 15 15:51 SpecProcCmd.lst
--rw-rw-r--. 1 shiny    shiny         532 Jan 15 15:57 SpecProcpar.ini
--rw-rw-r--. 1 shiny    shiny    13095704 Jan 15 15:57 specs.pack
--rw-rw-r--. 1 shiny    shiny        9390 Jan 15 15:52 upload.log
--rw-rw-r--. 1 shiny    shiny          10 Jan 15 15:51 user
--rw-rw-r--. 1 shiny    shiny          50 Jan 15 15:51 userfiles
--rw-rw-r--. 1 shiny    shiny          26 Jan 15 15:57 zones4_list.in.001
+### Installation
+
+Requirements:
+
+* a recent Linux OS that support Docker (see https://www.docker.com/)
+
+
+From GitHub, clone the repository
+
+```
+    $ git clone https://github.com/INRA/NMRProcFlow.git
+```
+
+Then `cd` to your clone path
+
+```
+    $ cd nmrproc
+```
+
+You need to have the docker image 'npflow' into your local docker library. For that, two ways are possible:
+
+* You have to create the docker image:
+
+		$ sh ./npflow build
+
+
+* You can simply pull the docker image from docker hub:
+
+		$ docker pull docker.io/nmrprocflow/npflow
+
+Then, you should have something like below:
+
+	$ docker image
+```
+REPOSITORY           TAG                 IMAGE ID            CREATED             SIZE
+nmrprocflow/npflow   latest              0cda738b9a36        48 minutes ago      1.54 GB
+```
+
+Then edit **./etc/npflow.conf**, and pay attention to these lines :
+
+```
+# The URL root of the PROXY if applicable
+PROXY_URL_ROOT=
+
+# HTTP port number of the web application
+HTTP_PORT=8080
+
+# the root of the directory where data will be stored within a subdirectory and used by all modules
+# The default path is /opt/data. If you choose to define a different location of the working space, 
+# the corresponding directory will be created if it does not exist.
+DATASETS=/opt/data
+
+# Duration (in days) of validity of a session 
+# before its destruction (counted from the last change)
+PURGESESSIONS=2
+
+# Max ZIP size (Mo)
+MAXZIPSIZE=400
+
+# NB CORES (0 means Auto)
+CORES=0
+
+# User connexion management
+# 0 : no connexion management
+# 1 : connexion management based on the /opt/data/conf/userlist file
+#     Its structure is one user per line and each line following the format:
+#        login;LastName;FirstName;Country;Institution;Email;Password
+#     a minimal set of this 'userlist' file could be: npflow;;;;;;nppass
+USRCONMGR=0
+#
+```
+
+
+### Usage
+
+#### Run the application
+
+```
+    $ sh ./npflow start
+```
+
+#### Stop the application
+
+```
+    $ sh ./npflow stop
+```
+
+
+#### View the status of the application
+
+```
+    $ sh ./npflow ps
+```
+
+
+#### check on http://<your_local_host>:<port>/npflow/
+
+
+See more information in http://nmrprocflow.org/c_download
+
+---
+
+
+### Main contributors:
+
+* Daniel Jacob, Catherine Deborde, Marie Lefebvre, Michaël Maucourt
+* Special thanks to Alain Girard (INRA Bordeaux) for designing the logo.
+
+### Publication:
+
+Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcFlow: A graphical and interactive tool dedicated to 1D spectra processing for NMR-based metabolomics, Metabolomics 13:36. [doi:10.1007/s11306-017-1178-y](http://link.springer.com/article/10.1007%2Fs11306-017-1178-y)
+
+### Funded by:
+
+* INRA UMR 1332 BFP, Bordeaux Metabolomics Facility
+* the ANR-11-INBS-0010 grant (MetaboHUB)
+
+### License
+
+Copyright (C) 2017  Daniel Jacob - INRA 
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
