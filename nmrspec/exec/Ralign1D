@@ -1,0 +1,198 @@
+#!/usr/bin/Rscript
+
+"Ralign1D
+
+Usage:
+  Ralign1D [options]
+
+Options:
+  -h, --help           Show this screen.
+  -p, --path <path>    Input/output path [default: /data].
+  -d, --debug          Show more information.
+" -> doc
+
+# dependencies
+library(docopt)
+library(doParallel)
+library(Rnmr1D)
+source("exec/RnmrTools.R")
+
+conffile <- "conf/global.ini"
+conf <- Parse.INI(conffile, section="GLOBAL")
+conf <- Parse.INI(conffile, INI.list=conf, section="NMRSPEC")
+
+###############
+# Main
+###############
+
+# retrieve the command-line arguments
+opts <- docopt(doc)
+
+# the output data directory
+DATADIR <- "/opt/data/"
+if(file.exists(dirname(opts$path))) DATADIR <- opts$path
+
+#  argument: the INI parameter file
+INI.filename <- paste0(DATADIR,'/',conf$Rnmr1D_INI)
+if (!is.null(opts$params) && file.exists(opts$params)) INI.filename <- opts$params
+
+# the Supevisor Log file
+LOGFILE <- paste0(DATADIR,'/', conf$LOGFILE)
+
+# The progess status filename
+ProgressFile <- paste0(DATADIR,'/', conf$ProgressFile)
+
+Write.LOG(LOGFILE, "Ralign1D:  --- ALIGNMENT MODULE ---", mode="wt")
+
+## During the Rnmr1D package development in the exec subdirectory, (i.e. outside the container),
+## Uncomment the two following lines  and, put in comment the Rnmr1D library loading line
+#Write.LOG(LOGFILE, "Ralign1D:  Compilation ...", mode="wt")
+#source("/srv/shiny-server/exec/libspec.R")
+
+# Read the parameters in the INI file
+Write.LOG(LOGFILE, paste0('Ralign1D:  Read the ',conf$Rnmr1D_INI,' file ...'))
+procParams <- Parse.INI(INI.filename, INI.list=list(), section="PROCPARAMS")
+env.list <- Parse.INI(INI.filename, INI.list=list(), section="ENV")
+
+# specParams
+Write.LOG(LOGFILE, paste0('Ralign1D:  Read the spectra processing parameters file (list_pars.csv) ...'))
+specParamFile <- file.path(DATADIR,"list_pars.csv")
+specParamsDF <- read.table(specParamFile, header=T, sep=";", stringsAsFactors=FALSE)
+
+# Read the specs.pack
+Write.LOG(LOGFILE,"Ralign1D:  Read the specs.pack...")
+specPackFile <- file.path(DATADIR,conf$SPEC_PACKED)
+specMat <- readSpecMatrix(specPackFile)
+specMat$dppm <- (specMat$ppm_max - specMat$ppm_min)/(specMat$size - 1)
+specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
+
+# Read the samples List file
+samples <- read.table( file.path(DATADIR,'/samples.csv'), header=F, sep=";", stringsAsFactors=FALSE)
+
+# Rnmr1D macrocommand file
+CMD.filename <- paste0(DATADIR,'/',conf$Rnmr1D_PCMD)
+CMDINFO <- ''
+
+Write.LOG(LOGFILE,"Ralign1D: ")
+fWriteSpec <- FALSE
+
+tryCatch({
+
+#------------------------------
+# Zeroing the selected PPM ranges
+#------------------------------
+repeat {
+   # exit if Zeroing is not invoked
+   if (! procParams$TPROC == 'ppmzero' ) break
+
+   # exit if not PPM ranges file
+   zonesfile <- file.path(DATADIR,'zones2_list.in')
+   if (! file.exists(zonesfile)) break
+
+   Write.LOG(LOGFILE,"Ralign1D:  Zeroing the selected PPM ranges ...")
+
+   # get the PPM ranges list
+   zones <- read.table(zonesfile, header=F, sep="\t")
+   zones$min <- zones[,1]-0.5*zones[,2]
+   zones$max <- zones[,1]+0.5*zones[,2]
+
+   CMDINFO <- paste0(CMDINFO,paste("#\n# Zeroing the selected zones ...\n#\n"))
+   CMDINFO <- paste0(CMDINFO,"zero\n",paste(zones$min, zones$max, collapse="\n"),"\nEOL\n")
+
+   # Zeroing each PPM range
+   specMat <- RZero1D(specMat, cbind(zones$min,zones$max), LOGFILE=LOGFILE, ProgressFile=NULL)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   # remove the PPM ranges file
+   unlink(zonesfile)
+
+   Write.LOG(LOGFILE,"Ralign1D: ")
+   break
+}
+
+#------------------------------
+# Alignment of the selected PPM ranges
+#------------------------------
+repeat {
+   # exit if Alignment is not invoked
+   if (! procParams$TPROC == 'ppmalign' ) break
+
+   # get the PPM range
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPM_RANGE, " ")))
+
+   # exit if not PPM ranges file
+   if (is.na(zone)) break
+   zoneref <- c(min(zone), max(zone))
+
+   Selected <- NULL
+   repeat {
+       selected.file <- paste0(DATADIR,'/',conf$SPEC_SELECTED)
+       if (! conf$ALIGN_SELECTED_ONLY==1 || ! file.exists(selected.file)) break
+       selpar <- read.table( selected.file, header=F, sep=";", stringsAsFactors=FALSE)
+       if (selpar[1,1]<2 || selpar[1,2]==0) break
+       level <- unique(samples[ order(samples[, selpar[1,1]+1]), selpar[1,1]+1 ])[selpar[1,2]]
+       Selected <- .N(rownames(samples[ samples[, selpar[1,1]+1]==level, ]))
+       break
+   }
+
+   Write.LOG(LOGFILE,paste("Ralign1D:  Alignment of the selected zone = (",min(zoneref),",",max(zoneref),")"));
+   CMDINFO <- paste0(CMDINFO,paste("#\n# Alignment of the selected zones (",min(zoneref),",",max(zoneref),")\n#\n"))
+   # Alignment of each PPM range
+   if (procParams$ALIGNMETH==1) {
+       Write.LOG(LOGFILE,paste0("Ralign1D:  Least-Square Method"))
+       CMDINFO <- paste0(CMDINFO,paste("align",min(zoneref),max(zoneref),procParams$RELDECAL,procParams$IDXSREF))
+       registerDoParallel(cores=env.list$CORES)
+       specMat <- RAlign1D(specMat, zoneref, procParams$RELDECAL, procParams$IDXSREF, Selected=Selected, ProgressFile=ProgressFile)
+   }
+   if (procParams$ALIGNMETH==2) {
+       Write.LOG(LOGFILE,paste0("Ralign1D:  Parametric Time Warping Method"));
+       CMDINFO <- paste0(CMDINFO,paste("warp",min(zoneref),max(zoneref), procParams$IDXSREF, procParams$PTWCRIT))
+       specMat <- RWarp1D(specMat, zoneref, idxSref=procParams$IDXSREF, warpcrit=.C(procParams$PTWCRIT), Selected=Selected)
+   }
+   if (procParams$ALIGNMETH==3) {
+       Write.LOG(LOGFILE,paste0("Ralign1D:  CluPa Method"));
+       Write.LOG(LOGFILE,paste("Ralign1D:  SNR threshold = ",procParams$SNRBUCLEVEL));
+       Write.LOG(LOGFILE,paste("Ralign1D:  Resolution = ",procParams$RESPPM));
+       zone <- as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " ")))
+       if (is.na(zone)) {
+           PPM_NOISE_AREA <- c(10.2, 10.5)
+       } else {
+           PPM_NOISE_AREA <- c(min(zone), max(zone))
+       }
+       CMDINFO <- paste0(CMDINFO,paste("clupa", PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], zoneref[1], zoneref[2], 
+                           procParams$RESPPM, procParams$SNRBUCLEVEL, procParams$IDXSREF))
+       registerDoParallel(cores=env.list$CORES)
+       specMat <- RCluPA1D(specMat, PPM_NOISE_AREA, zoneref, resolution=procParams$RESPPM, 
+                           SNR=procParams$SNRBUCLEVEL, idxSref=procParams$IDXSREF, Selected=Selected, ProgressFile=ProgressFile)
+   }
+   if (length(Selected)>0) CMDINFO <- paste0(CMDINFO," ",paste(selpar[1,1], selpar[1,2]))
+   CMDINFO <- paste0(CMDINFO,"\n")
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   Write.LOG(LOGFILE,"Ralign1D: ")
+   break
+}
+
+# tryCatch
+}, error=function(e) {
+   fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+   writeLines(paste0("Oops!: ",e) , fh)
+   close(fh)
+})
+
+if (fWriteSpec) {
+ # Write the new spectra matrix if needed
+   Write.LOG(LOGFILE,"Ralign1D:  Write the specs.pack...")
+   writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
+ # Append in the macro-command file
+   dfcmd <- file(CMD.filename, "at")
+   writeLines(CMDINFO,dfcmd)
+   close(dfcmd)
+} else {
+ # Retrieve the previous saved files
+   pop_STACK(DATADIR, c(conf$SPEC_PACKED, conf$LOGFILE, conf$Rnmr1D_PCMD), get_maxSTACKID(DATADIR,conf$SPEC_PACKED))
+}

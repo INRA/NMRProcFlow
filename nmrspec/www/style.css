@@ -1,0 +1,52 @@
+div.login { 
+  text-align: left;
+  position:relative;
+} 
+
+div#pass {
+  text-align: left;
+  font-weight:bold;
+  padding-left:2px;
+}
+
+input#Password {
+  -webkit-text-security: disc;
+}
+
+.shiny-output-error {
+  visibility: hidden;
+}
+
+.cprght {
+  font-size:8pt;font-style:italic;font-family:'Arial';text-decoration:none;font-weight:normal;
+}
+
+.btn-default {
+  color: #fff; background-color: #337ab7; border-color: #2e6da4;
+}
+
+.textlabs {
+  font-size:10pt;font-family:'Arial';text-decoration:none;font-weight:bold;
+}
+
+.passerr {
+  color: red;
+}
+
+#loadmessage { 
+  width:400px;height:50px;line-height:50px;padding:5px 0px 5px 0px;z-index: 105; background-image:url(images/loading.gif); background-repeat:no-repeat;background-size: 60px 30px;
+}
+#jobstatus {
+  display: none;
+}
+#outZones1 {
+  background-color: rgba(204,229,255,0.20);
+}
+#outZones2 {
+  background-color: rgba(255,204,255,0.20);
+}
+
+textarea {
+    border-color: #A933B7;
+}
+

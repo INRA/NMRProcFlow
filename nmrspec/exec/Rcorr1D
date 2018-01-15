@@ -1,0 +1,325 @@
+#!/usr/bin/Rscript
+
+"Rcorr1D
+
+Usage:
+  Rcorr1D [options]
+
+Options:
+  -h, --help           Show this screen.
+  -p, --path <path>    Input/output path [default: /data].
+  -d, --debug          Show more information.
+" -> doc
+
+options(warn=-1)
+
+# dependencies
+library(docopt)
+library(doParallel)
+library(Rnmr1D)
+source("exec/RnmrTools.R")
+
+conffile <- "conf/global.ini"
+conf <- Parse.INI(conffile, section="GLOBAL")
+conf <- Parse.INI(conffile, INI.list=conf, section="NMRSPEC")
+
+###############
+# Main
+###############
+
+# retrieve the command-line arguments
+opts <- docopt(doc)
+
+# the output data directory
+DATADIR <- "/opt/data/"
+if(file.exists(dirname(opts$path))) DATADIR <- opts$path
+
+#  argument: the INI parameter file
+INI.filename <- paste0(DATADIR,'/',conf$Rnmr1D_INI)
+if (!is.null(opts$params) && file.exists(opts$params)) INI.filename <- opts$params
+
+# the Supevisor Log file
+LOGFILE <- paste0(DATADIR,'/', conf$LOGFILE)
+
+# The progess status filename
+ProgressFile <- paste0(DATADIR,'/', conf$ProgressFile)
+
+Write.LOG(LOGFILE, "Rcorr1D:  --- PREPROCESSING MODULE ---", mode="wt")
+
+## During the Rnmr1D package development in the exec subdirectory, (i.e. outside the container),
+## Uncomment the two following lines  and, put in comment the Rnmr1D library loading line
+#Write.LOG(LOGFILE, "Rcorr1D:  Compilation ...", mode="wt")
+#source("/srv/shiny-server/exec/libspec.R")
+
+# Read the parameters in the INI file
+Write.LOG(LOGFILE, paste0('Rcorr1D:  Read the ',conf$Rnmr1D_INI,' file ...'))
+procParams <- Parse.INI(INI.filename, INI.list=list(), section="PROCPARAMS")
+env.list <- Parse.INI(INI.filename, INI.list=list(), section="ENV")
+
+# specParams
+Write.LOG(LOGFILE, paste0('Rcorr1D:  Read the spectra processing parameters file (list_pars.csv) ...'))
+specParamFile <- file.path(DATADIR,"list_pars.csv")
+specParamsDF <- read.table(specParamFile, header=T, sep=";", stringsAsFactors=FALSE)
+SI <- (as.list(specParamsDF[1,]))$SI
+
+# Read the specs.pack
+Write.LOG(LOGFILE,"Rcorr1D:  Read the specs.pack...")
+specPackFile <- file.path(DATADIR,conf$SPEC_PACKED)
+specMat <- readSpecMatrix(specPackFile)
+specMat$dppm <- (specMat$ppm_max - specMat$ppm_min)/(specMat$size - 1)
+specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
+
+# Rnmr1D macrocommand file
+CMD.filename <- file.path(DATADIR,conf$Rnmr1D_PCMD)
+
+Write.LOG(LOGFILE,"Rcorr1D: ")
+fWriteSpec <- FALSE
+
+tryCatch({
+
+#------------------------------
+# Calibration ot the PPM Scale
+#------------------------------
+repeat {
+   # exit if PPM calibration is not invoked
+   if (! procParams$PPM_CALIBRATION ) break
+
+   Write.LOG(LOGFILE,"Rcorr1D:  Calibration of the PPM Scale ...");
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " ")))
+   if (is.na(zone)) {
+       PPM_NOISE_AREA <- c(10.2, 10.5)
+   } else {
+       PPM_NOISE_AREA <- c(min(zone), max(zone))
+   }
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"));
+
+   # get the PPM range
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPM_RANGE, " ")))
+
+   # exit if not PPM ranges file
+   if (is.na(zone)) break
+   zoneref <- c(min(zone), max(zone))
+
+   ppmref <- procParams$PPM_REF
+   Write.LOG(LOGFILE,paste("Rcorr1D:  PPM REF =",ppmref,", Zone Ref = (",min(zoneref),",",max(zoneref),")"));
+   Write.LOG(LOGFILE,"Rcorr1D: ")
+
+   CMDINFO <- paste("#\n# Calibration: PPM REF =",ppmref,", Zone Ref = ( ",min(zoneref)," , ",max(zoneref)," )\n#\n")
+   CMDINFO <- paste0(CMDINFO,paste("calibration",min(zoneref),max(zoneref),ppmref,min(PPM_NOISE_AREA),max(PPM_NOISE_AREA) ),"\n")
+
+   specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+   Write.LOG(LOGFILE,"Rcorr1D: ")
+
+   break
+}
+
+#------------------------------
+# Normalisation of the Intensities
+#------------------------------
+repeat {
+   # exit if Normalisation is not invoked
+   if (! procParams$PPM_NORMALISATION ) break
+
+   # exit if not PPM ranges file
+   zonesfile <- file.path(DATADIR,'zones1_list.in')
+   if (! file.exists(zonesfile)) break
+
+   # get the PPM ranges list
+   zones <- read.table(zonesfile, header=F, sep="\t")
+   zones$min <- zones[,1]-0.5*zones[,2]
+   zones$max <- zones[,1]+0.5*zones[,2]
+
+   NORM_METH <- procParams$NORM_METH
+
+   Write.LOG(LOGFILE,"Rcorr1D:  Normalisation of the Intensities based on the selected PPM ranges...");
+   Write.LOG(LOGFILE,paste("Rcorr1D: 		Method =",NORM_METH))
+
+   CMDINFO <- paste("#\n# Normalisation (",NORM_METH,") of the Intensities based on the selected PPM ranges...\n#\n")
+   CMDINFO <- paste0(CMDINFO,"normalisation ",NORM_METH,"\n",paste(zones$min, zones$max, collapse="\n"),"\nEOL\n")
+
+   specMat <- RNorm1D(specMat, NORM_METH, zones)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+   Write.LOG(LOGFILE,"Rcorr1D: ")
+
+   break
+}
+
+#------------------------------
+# Global Baseline Correction
+#------------------------------
+repeat {
+   # exit if 'Baseline' is not invoked
+   if (! procParams$BASELINECOR ) break
+   if (! procParams$BCTYPE==1) break
+
+   Write.LOG(LOGFILE,paste0('Rcorr1D:  Global Correction of the Baseline ...'));
+
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " ")))
+   if (is.na(zone)) {
+       PPM_NOISE_AREA <- c(10.2, 10.5)
+   } else {
+       PPM_NOISE_AREA <- c(min(zone), max(zone))
+   }
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"));
+
+   #zone <- as.numeric(simplify2array(strsplit(procParams$PPMBCRANGE, " ")))
+   #if (is.na(zone)) {
+   #    zone <- c(specMat$ppm_min,specMat$ppm_max)
+   #}
+   zone <- c(specMat$ppm_min,specMat$ppm_max)
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  PPM Range = ( ",min(zone)," , ",max(zone)," )"));
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  Points Size = ",specMat$size));
+
+   L <- list ( c(100,70), c(50,35), c(25,15), c(10,5), c(5,2.5) )
+   SIFAC <- min( max( round(log2(SI)), 15), 18) - 14
+   IDX <- max( min( procParams$GBCLEV, length(L)), 1)
+   if( round(log2(SI))>15 ) IDX <- IDX + 1
+   if( round(log2(SI))>16 ) SIFAC <- SIFAC/2
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  SI Fac = ",SIFAC));
+   GBCWS <- (L[[IDX]]*SIFAC)[1]
+   NEIGH <- (L[[IDX]]*SIFAC)[2]
+
+   CMDINFO <- paste("#\n# Global Baseline Correction: PPM Range = ( ",min(zone)," , ",max(zone)," )\n#\n")
+   CMDINFO <- paste0(CMDINFO,paste("gbaseline",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),min(zone),max(zone), GBCWS, NEIGH, "\n"))
+
+   registerDoParallel(cores=env.list$CORES)
+   specMat <- RGbaseline1D(specMat,PPM_NOISE_AREA, zone, GBCWS, NEIGH, ProgressFile=NULL)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+   Write.LOG(LOGFILE,"Rcorr1D: ")
+
+   break
+}
+
+#------------------------------
+# Local Baseline Correction
+#------------------------------
+repeat {
+   # exit if 'Baseline' is not invoked
+   if (! procParams$BASELINECOR ) break
+   if (procParams$BCTYPE==1) break
+
+   if (procParams$BCTYPE==2)
+      Write.LOG(LOGFILE,paste0('Rcorr1D:  Local Correction of the Baseline (',procParams$BCMETH,')...'))
+   if (procParams$BCTYPE==3)
+      Write.LOG(LOGFILE,paste0('Rcorr1D:  q-NMR - Baseline Correction ...'))
+   if (procParams$BCTYPE==4)
+      Write.LOG(LOGFILE,paste0('Rcorr1D:  airPLS - Baseline Correction ...'))
+
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " ")))
+   if (is.na(zone)) {
+       PPM_NOISE_AREA <- c(10.2, 10.5)
+   } else {
+       PPM_NOISE_AREA <- c(min(zone), max(zone))
+   }
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"));
+
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPMBCRANGE, " ")))
+   if (is.na(zone)) {
+       zone <- c(specMat$ppm_min,specMat$ppm_max)
+   }
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  PPM Range = ( ",min(zone)," , ",max(zone)," )"));
+
+   # Local Baseline Correction
+   if (procParams$BCTYPE==2) {
+
+      if (procParams$BCMETH>0) {
+          # to be compliant with a previous version (<=1.1.0)
+          WSFAC <- (7-procParams$WSFAC)/4
+          WINDOWSIZE <- round(WSFAC*SI/(procParams$BCMETH*64))
+      } else {
+          WINDOWSIZE <- round(( 1/2^(procParams$WSFAC-2) )*(SI/64))
+      }
+      Write.LOG(LOGFILE,paste0("Rcorr1D:  Window Size = ",WINDOWSIZE));
+
+      CMDINFO <- paste("#\n# Baseline Correction: PPM Range = ( ",min(zone)," , ",max(zone)," )\n#\n")
+      CMDINFO <- paste0(CMDINFO,paste("baseline",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),min(zone),max(zone), procParams$BCMETH, procParams$WSFAC, "\n"))
+      
+      registerDoParallel(cores=env.list$CORES)
+      specMat <- RBaseline1D(specMat,PPM_NOISE_AREA, zone, WINDOWSIZE, ProgressFile=ProgressFile)
+
+   }
+
+   # q-NMR Baseline Correction
+   if (procParams$BCTYPE==3) {
+
+      CMDINFO <- paste("#\n# Baseline Correction: PPM Range = ( ",min(zone)," , ",max(zone)," )\n#\n")
+      CMDINFO <- paste0(CMDINFO,paste("qnmrbline",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),min(zone),max(zone), "\n"))
+      
+      registerDoParallel(cores=env.list$CORES)
+      specMat <- Rqnmrbc1D(specMat,PPM_NOISE_AREA, zone, ProgressFile=ProgressFile)
+
+   }
+
+   # airPLS Baseline Correction
+   if (procParams$BCTYPE==4) {
+      Write.LOG(LOGFILE,paste0("Rcorr1D:  airPLS - lambda = ",procParams$LAMBDA));
+
+      CMDINFO <- paste("#\n# Baseline Correction: PPM Range = ( ",min(zone)," , ",max(zone)," )\n#\n")
+      CMDINFO <- paste0(CMDINFO,paste("airpls",min(zone),max(zone), procParams$LAMBDA, "\n"))
+      
+      registerDoParallel(cores=env.list$CORES)
+      specMat <- RairPLSbc1D(specMat, zone, procParams$LAMBDA, ProgressFile=ProgressFile)
+
+   }
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+   Write.LOG(LOGFILE,"Rcorr1D: ")
+
+   break
+}
+
+#------------------------------
+# DENOISING
+#------------------------------
+repeat {
+   # exit if 'Denoising' is not invoked
+   if (! procParams$DENOISING ) break
+
+   Write.LOG(LOGFILE,paste0('Rcorr1D:  Denoising - Filter Order=',procParams$FILTORD,' - Filter Length=',procParams$FILTLEN));
+
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPMFILT, " ")))
+   if (is.na(zone)) {
+       zone <- c(specMat$ppm_min,specMat$ppm_max)
+   }
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  PPM Range = ( ",min(zone)," , ",max(zone)," )"));
+
+   CMDINFO <- paste("#\n# Denoising: PPM Range = ( ",min(zone)," , ",max(zone),") - Filter Order=",procParams$FILTORD,", Length=",procParams$FILTLEN," \n#\n")
+   CMDINFO <- paste0(CMDINFO,paste("denoising",min(zone),max(zone), procParams$FILTORD, procParams$FILTLEN),"\n")
+
+   #registerDoParallel(cores=env.list$CORES)
+   specMat <- RFilter1D(specMat,zone, procParams$FILTORD, procParams$FILTLEN, ProgressFile=NULL)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+   Write.LOG(LOGFILE,"Rcorr1D: ")
+
+   break
+}
+
+# tryCatch
+}, error=function(e) {
+   fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+   writeLines(paste0("ERROR: ",e) , fh)
+   close(fh)
+})
+
+if (fWriteSpec) {
+ # Write the new spectra matrix if needed
+   Write.LOG(LOGFILE,"Rcorr1D:  Write the specs.pack...")
+   writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
+ # Append in the macro-command file
+   dfcmd <- file(CMD.filename, "at")
+   writeLines(CMDINFO,dfcmd)
+   close(dfcmd)
+} else {
+ # Retrieve the previous saved files
+#   pop_STACK(DATADIR, c(conf$SPEC_PACKED, conf$LOGFILE, conf$Rnmr1D_PCMD), get_maxSTACKID(DATADIR,conf$SPEC_PACKED))
+}

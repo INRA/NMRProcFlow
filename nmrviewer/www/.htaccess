@@ -1,0 +1,91 @@
+Options FollowSymLinks Includes MultiViews SymLinksIfOwnerMatch
+
+<IfModule mod_php5.c>
+   AddType application/x-httpd-php .php
+</IfModule>
+
+
+<Files *>
+Order allow,deny
+Deny from all
+</Files>
+
+# Index
+<Files ~ "^$">
+Order allow,deny
+allow from all
+AcceptPathInfo On
+</Files>
+
+# Scripts
+<Files ~ "\.(php|htm|html|css|js)$">
+Order allow,deny
+allow from all
+</Files>
+
+# Images
+<Files ~ "\.(gif|jpg|png|svg)$">
+Order allow,deny
+allow from all
+</Files>
+
+# Documents
+<Files ~ "\.(pdf|txt|csv)$">
+Order allow,deny
+allow from all
+</Files>
+
+# Index
+<Files ~ "^view">
+  Order allow,deny
+  allow from all
+  AcceptPathInfo On
+  ForceType application/x-httpd-php
+  SetOutputFilter PHP
+  SetInputFilter PHP
+</Files>
+
+AddDefaultCharset ISO-8859-1
+
+AddOutputFilterByType DEFLATE text/plain
+AddOutputFilterByType DEFLATE text/html
+AddOutputFilterByType DEFLATE text/xml
+AddOutputFilterByType DEFLATE text/css
+AddOutputFilterByType DEFLATE application/xml
+AddOutputFilterByType DEFLATE application/xhtml+xml
+AddOutputFilterByType DEFLATE application/rss+xml
+AddOutputFilterByType DEFLATE application/javascript
+AddOutputFilterByType DEFLATE application/x-javascript
+AddOutputFilterByType DEFLATE application/x-httpd-php
+
+<IfModule mod_expires.c>
+
+# Enable Expirations
+ExpiresActive On
+
+# Default Expiration Time
+ExpiresDefault "access plus 1 month"
+
+# Expiration for Images
+ExpiresByType image/gif "access plus 1 month"
+ExpiresByType image/png "access plus 1 month"
+ExpiresByType image/jpg "access plus 1 month"
+ExpiresByType image/jpeg "access plus 1 month"
+
+# Expiration for CSS
+ExpiresByType text/css "access plus 1 month”
+
+# Expiration for JavaScript
+ExpiresByType application/javascript "access plus 1 month"
+
+</IfModule>
+
+php_flag display_errors off
+php_flag display_startup_errors off
+php_flag log_errors off
+php_flag register_globals on
+
+php_value memory_limit 50M
+php_value upload_max_filesize 100M
+php_value post_max_size 100M
+php_value session.gc_maxlifetime 18000

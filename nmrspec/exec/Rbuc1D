@@ -1,0 +1,399 @@
+#!/usr/bin/Rscript
+
+"Rbuc1D
+
+Usage:
+  Rbuc1D [options]
+
+Options:
+  -h, --help           Show this screen.
+  -p, --path <path>    Input/output path [default: /data].
+  -d, --debug          Show more information.
+" -> doc
+
+#options(warn=-1)
+
+# dependencies
+library(docopt)
+library(doParallel)
+library(Rnmr1D)
+source("exec/RnmrTools.R")
+
+conffile <- "conf/global.ini"
+conf <- Parse.INI(conffile, section="GLOBAL")
+conf <- Parse.INI(conffile, INI.list=conf, section="NMRSPEC")
+
+###############
+# Main
+###############
+
+# retrieve the command-line arguments
+opts <- docopt(doc)
+
+# the output data directory
+DATADIR <- "/data/"
+if(file.exists(dirname(opts$path))) DATADIR <- opts$path
+
+#  argument: the INI parameter file
+INI.filename <- paste0(DATADIR,'/',conf$Rnmr1D_INI)
+if (!is.null(opts$params) && file.exists(opts$params)) INI.filename <- opts$params
+
+# the Supevisor Log file
+LOGFILE <- paste0(DATADIR,'/', conf$LOGFILE2)
+
+# The progess status filename
+ProgressFile <- paste0(DATADIR,'/', conf$ProgressFile)
+
+# The bucket zones file
+BUCKET_LIST <- paste0(DATADIR,'/', conf$BUCKET_LIST)
+
+# The semaphor for signaling that an error occurs
+semapErr <- paste0(DATADIR,'/', conf$semapFileErr)
+
+Write.LOG(LOGFILE, "Rbuc1D:  --- BUCKETING MODULE ---", mode="wt")
+
+## During the Rnmr1D package development in the exec subdirectory, (i.e. outside the container),
+## Uncomment the two following lines  and, put in comment the Rnmr1D library loading line
+#Write.LOG(LOGFILE, "Rbuc1D:  Compilation ...", mode="wt")
+#source("/srv/shiny-server/exec/libspec.R")
+
+# Read the parameters in the INI file
+Write.LOG(LOGFILE, paste0('Rbuc1D:  Read the ',conf$Rnmr1D_INI,' file ...'))
+procParams <- Parse.INI(INI.filename, INI.list=list(), section="PROCPARAMS")
+env.list <- Parse.INI(INI.filename, INI.list=list(), section="ENV")
+
+# specParams
+Write.LOG(LOGFILE, paste0('Rbuc1D:  Read the spectra processing parameters file (list_pars.csv) ...'))
+specParamFile <- file.path(DATADIR,"list_pars.csv")
+specParamsDF <- read.table(specParamFile, header=T, sep=";", stringsAsFactors=FALSE)
+SI <- (as.list(specParamsDF[1,]))$SI
+
+# Read the specs.pack
+Write.LOG(LOGFILE,"Rbuc1D:  Read the specs.pack...")
+specPackFile <- file.path(DATADIR,conf$SPEC_PACKED)
+specMat <- readSpecMatrix(specPackFile)
+specMat$dppm <- (specMat$ppm_max - specMat$ppm_min)/(specMat$size - 1)
+specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
+
+Write.LOG(LOGFILE,"Rbuc1D: ")
+fWriteSpec <- FALSE
+
+# the buckets' file
+bucketfile <- file.path(DATADIR,conf$BUCKET_LIST)
+
+Write.LOG(LOGFILE,paste0("Rbuc1D:  Bucketing method = ",procParams$BUCMETH));
+
+# Limit size of buckets
+MAXBUCKETS<-2000
+DECAL <- 0
+NOISE_FAC <- 3
+
+#------------------------------
+# Uniforme Buckets
+#------------------------------
+repeat {
+   if (procParams$BUCMETH != 'uniforme') break
+
+   # exit if not PPM ranges file
+   zonesfile <- file.path(DATADIR,'zones4_list.in')
+   if (! file.exists(zonesfile)) break
+
+   # get the PPM ranges list
+   zones <- read.table(zonesfile, header=F, sep="\t",stringsAsFactors=FALSE)
+   zones$min <- zones[,1]-0.5*zones[,2]
+   zones$max <- zones[,1]+0.5*zones[,2]
+
+   # Noise estimation
+   zone <- suppressWarnings(as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " "))))
+   if (is.na(zone)) {
+       PPM_NOISE_AREA <- c(10, 10.5)
+   } else {
+       PPM_NOISE_AREA <- c(min(zone), max(zone))
+   }
+   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+
+   Vref <- spec_ref(specMat$int)
+   ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
+   Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
+
+   bucsize <- procParams$UNIF_R
+   Write.LOG(LOGFILE,paste("Rbuc1D:  PPM Resolution = ",bucsize))
+
+   buckets_zones <- NULL
+   registerDoParallel(cores=env.list$CORES)
+
+   # For each PPM range
+   N <- dim(zones)[1]
+   buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
+      i2<-which(specMat$ppm<=zones$min[i])[1]
+      i1<-length(which(specMat$ppm>zones$max[i]))
+      seq_buc <- seq(i1, i2, round(bucsize/specMat$dppm))
+      n_bucs <- length(seq_buc) - 1
+      buckets_m <- cbind ( seq_buc[1:n_bucs], seq_buc[2:(n_bucs+1)])
+      MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
+      buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>procParams$SNRBUCLEVEL), ]
+      Write.LOG(LOGFILE,paste("Rbuc1D:  Zone",i,"= (",zones$min[i],",",zones$max[i],"), Nb Buckets =",dim(buckets_m)[1]))
+      cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
+   }
+   M <- cbind( (buckets_zones[,1] + buckets_zones[,2])/2, abs(buckets_zones[,1] - buckets_zones[,2]) - 2*DECAL*specMat$dppm)
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(M)[1]))
+
+   f_append <- ifelse (file.exists(bucketfile) && procParams$BUCAPPEND==TRUE, TRUE, FALSE )
+   write.table(M, file=bucketfile, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
+
+   # remove the PPM ranges file
+   unlink(zonesfile)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   Write.LOG(LOGFILE,"Rbuc1D: ")
+   break
+}
+
+#------------------------------
+# Variable Size Buckets
+#------------------------------
+repeat {
+   if (procParams$BUCMETH != 'VSB') break
+
+   # exit if not PPM ranges file
+   vsbfile <- file.path(DATADIR,'vsb_list.in')
+   if (! file.exists(vsbfile)) break
+
+   if (! file.exists(bucketfile) || procParams$BUCAPPEND==FALSE) {
+       file.rename(vsbfile, bucketfile)
+   } else {
+       vsblist <- read.table(vsbfile, header=F, sep="\t",stringsAsFactors=FALSE)
+       write.table(cbind(vsblist[,1], vsblist[,2]-2*DECAL*specMat$dppm), file=bucketfile, append=T, sep="\t", row.names=F, col.names=F, quote=F)
+   }
+
+   # remove the PPM ranges file
+   unlink(vsbfile)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   Write.LOG(LOGFILE,"Rbuc1D: ")
+   break
+}
+
+#------------------------------
+# AIBIN - Adaptative & Intelligent Binning
+#------------------------------
+repeat {
+   if (procParams$BUCMETH != 'AIBIN') break
+
+   # exit if not PPM ranges file
+   zonesfile <- file.path(DATADIR,'zones4_list.in')
+   if (! file.exists(zonesfile)) break
+
+   # get the PPM ranges list
+   zones <- read.table(zonesfile, header=F, sep="\t",stringsAsFactors=FALSE)
+   zones$min <- zones[,1]-0.5*zones[,2]
+   zones$max <- zones[,1]+0.5*zones[,2]
+
+   # Noise estimation
+   zone <- suppressWarnings(as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " "))))
+   if (is.na(zone)) {
+       PPM_NOISE_AREA <- c(10, 10.5)
+   } else {
+       PPM_NOISE_AREA <- c(min(zone), max(zone))
+   }
+   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+
+   Vref <- spec_ref(specMat$int)
+   ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
+   Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
+
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Noise Zone= (",PPM_NOISE_AREA[2],",",PPM_NOISE_AREA[1],"), (",idx_Noise[1]," - ",idx_Noise[2],")"))
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Factor Resolution = ",procParams$AIBIN_R))
+
+   bdata <- list()
+   bdata$ynoise <- ynoise
+   bdata$vnoise <- NULL
+   bdata$inoise_start <- idx_Noise[1]
+   bdata$inoise_end <- idx_Noise[2]
+   bdata$R <- procParams$AIBIN_R
+   bdata$dppm <- specMat$dppm
+   bdata$noise_fac <- NOISE_FAC
+   bdata$bin_fac <- 0.5
+   bdata$peaknoise_rate <- 15
+   bdata$BUCMIN <- 0.003
+   bdata$VREF <- 1
+
+   registerDoParallel(cores=env.list$CORES)
+
+   buckets_zones <- NULL
+   N <- dim(zones)[1]
+   init_counter(ProgressFile, N)
+   buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
+       i2<-which(specMat$ppm<=zones$min[i])[1]
+       i1<-length(which(specMat$ppm>zones$max[i]))
+       Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
+       Mbuc[] <- 0
+       buckets_m <- C_aibin_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
+       Write.LOG(LOGFILE,paste("Rbuc1D:  Zone",i,"= (",zones$min[i],",",zones$max[i],"), Nb Buckets =",dim(buckets_m)[1]))
+       inc_counter(ProgressFile, i)
+       # Keep only the buckets for which the SNR average is greater than SNRBUCLEVEL
+       MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
+       buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,mean)>procParams$SNRBUCLEVEL), ]
+       cbind( specMat$ppm[buckets_m[,1]+DECAL], specMat$ppm[buckets_m[,2]-DECAL] )
+   }
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(buckets_zones)[1]))
+
+   M <- cbind( (buckets_zones[,1] + buckets_zones[,2])/2, abs(buckets_zones[,1] - buckets_zones[,2]))
+   f_append <- ifelse (file.exists(bucketfile) && procParams$BUCAPPEND==TRUE, TRUE, FALSE )
+   write.table(M, file=bucketfile, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
+
+   # remove the PPM ranges file
+   unlink(zonesfile)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   Write.LOG(LOGFILE,"Rbuc1D: ")
+   break
+}
+
+#------------------------------
+# Fusion / Reset
+#------------------------------
+repeat {
+   if (procParams$BUCMETH != 'bucreset') break
+
+   # exit if not buckets' file
+   if (! file.exists(bucketfile)) break
+
+   # get the Buckets PPM ranges list
+   buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
+   buckets$min <- buckets[,1]-0.5*buckets[,2]
+   buckets$max <- buckets[,1]+0.5*buckets[,2]
+   buckets <- buckets[ order(buckets$max, decreasing = TRUE), ]
+   nb_before <- dim(buckets)[1]
+
+   Write.LOG(LOGFILE,paste0("Rbuc1D:  Nb Buckets before any processing = ",nb_before))
+
+   nb_after <- nb_before
+
+   # if PPM ranges file for fusioning
+   zonesfile <- file.path(DATADIR,'zones5_list.in')
+   if (file.exists(zonesfile)) {
+
+       Write.LOG(LOGFILE,"Rbuc1D:  Fusioning buckets within the selected PPM ranges ...")
+
+       # get the PPM ranges list to fusion
+       zones <- read.table(zonesfile, header=F, sep="\t",stringsAsFactors=FALSE)
+       zones$min <- zones[,1]-0.5*zones[,2]
+       zones$max <- zones[,1]+0.5*zones[,2]
+
+       # For each PPM range
+       N <- dim(zones)[1]
+       for ( i in 1:N ) {
+          tryCatch({
+             if ( sum(buckets$max<zones$max[i])>0 && sum(buckets$min>zones$min[i])>0 ) {
+                b1 <- min(which(buckets$max<zones$max[i]))
+                b2 <- max(which(buckets$min>zones$min[i]))
+                if (buckets[b1, ]$min>zones$min[i] && buckets[b2, ]$max<zones$max[i] ) {
+                    V <- c(buckets[b2,]$min, buckets[b1,]$max)
+                    buckets <- buckets[ -c(b1:b2), ]
+                    buckets <- rbind( buckets, c( (V[1]+V[2])/2, (V[2]-V[1]), V[1], V[2] ) )
+                    Write.LOG(LOGFILE,paste0("Rbuc1D:  ZONE[",i,"]: ", zones$min[i],", ",zones$max[i], 
+                                             " Fusion of ",length(b1:b2)," buckets: ",V[1],', ',V[2]))
+                    buckets <- buckets[ order(buckets$max, decreasing = TRUE), ]
+                }
+             }
+          }, error=function(e) {})
+       }
+       nb_after <- dim(buckets)[1]
+       Write.LOG(LOGFILE,paste0("Rbuc1D:  Nb Buckets after fusioning = ",nb_after))
+
+       # remove the PPM ranges file
+       unlink(zonesfile)
+   }
+
+   # if PPM ranges file for resetting
+   zonesfile <- file.path(DATADIR,'zones3_list.in')
+   if (file.exists(zonesfile)) {
+
+       Write.LOG(LOGFILE,"Rbuc1D:  Resetting buckets within the selected PPM ranges ...")
+       
+       # get the PPM ranges list to reset
+       zones <- read.table(zonesfile, header=F, sep="\t",stringsAsFactors=FALSE)
+       zones$min <- zones[,1]-0.5*zones[,2]
+       zones$max <- zones[,1]+0.5*zones[,2]
+       
+       # For each PPM range
+       N <- dim(zones)[1]
+       for ( i in 1:N ) {
+          tryCatch({
+             if ( sum(buckets$max<zones$max[i])>0 && sum(buckets$min>zones$min[i])>0 ) {
+                b1 <- min(which(buckets$max<zones$max[i]))
+                b2 <- max(which(buckets$min>zones$min[i]))
+                if (buckets[b1, ]$min>zones$min[i] && buckets[b2, ]$max<zones$max[i] ) {
+                   buckets <- buckets[ -c(b1:b2), ]
+                }
+             }
+          }, error=function(e) {})
+       }
+       nb_after <- dim(buckets)[1]
+       Write.LOG(LOGFILE,paste0("Rbuc1D:  Nb Buckets after resetting = ",nb_after))
+
+       # remove the PPM ranges file
+       unlink(zonesfile)
+   }
+
+   if (nb_after > 0 && nb_after < nb_before) {
+       write.table(buckets[, c(1:2)], file=bucketfile, append=F, sep="\t", row.names=F, col.names=F, quote=F)
+   }
+
+   # Indicate that it will be needed to save the new spectra matrix
+   if (nb_after>=0 && nb_after < nb_before) fWriteSpec <- TRUE
+
+   # remove the PPM ranges file
+   if (nb_after==0) unlink(bucketfile)
+
+   Write.LOG(LOGFILE,"Rbuc1D: ")
+   break
+}
+
+#------------------------------
+# Import Buckets
+#------------------------------
+repeat {
+   if (procParams$BUCMETH != 'bucimport') break
+
+   # exit if not PPM ranges file
+   zonesfile <- file.path(DATADIR,'importBuckets')
+   if (! file.exists(zonesfile)) break
+
+   sep <- switch(procParams$importBuc_sep,  "csv" = ",", "ssv" = ";",  "tsv" = "\t")
+   fheader <- procParams$importBuc_head
+   mincol <- procParams$importBuc_min
+   maxcol <- procParams$importBuc_max
+
+   buckets <- read.table(zonesfile, header=fheader, sep=sep,stringsAsFactors=FALSE)
+   if (dim(buckets)[2]==1) {
+      Write.LOG(semapErr, paste0("Import Buckets - ERROR: The separator '",sep,"' seems to be not the right one"), mode="wt")
+      break
+   }
+
+   buclist <- cbind( 0.5*(buckets[,maxcol]+buckets[,mincol]), buckets[,maxcol]-buckets[,mincol] )
+   write.table(buclist, file=bucketfile, append=procParams$BUCAPPEND, sep="\t", row.names=F, col.names=F, quote=F)
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Total Imported Buckets =",dim(buckets)[1]))
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   Write.LOG(LOGFILE,"Rbuc1D: ")
+   break
+}
+
+if (fWriteSpec) {
+ # Write the new spectra matrix if needed
+   Write.LOG(LOGFILE,"Rbuc1D:  Write the specs.pack...")
+   writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
+} else {
+ # Retrieve the previous saved files
+   pop_STACK(DATADIR, c(conf$BUCKET_LIST, conf$LOGFILE2), get_maxSTACKID(DATADIR,conf$BUCKET_LIST))
+}

@@ -1,0 +1,273 @@
+#!/usr/bin/Rscript
+
+"Rnmr1D.
+
+Usage:
+  Rnmr1D [options]
+
+Options:
+  -h, --help           Show this screen.
+  -i, --input <path>   Input path [default: /srv].
+  -p, --params <file>  Parameter file [default: SpecPropar.ini].
+  -o, --output <path>  Output path [default: /data].
+  -d, --debug          Show more information.
+" -> doc
+
+options(warn=-1)
+
+# dependencies
+library(docopt)
+library(doParallel)
+require(XML)
+require(base64enc)
+library(Rnmr1D)
+source("exec/RnmrTools.R")
+
+conffile <- "conf/global.ini"
+conf <- Parse.INI(conffile, section="GLOBAL")
+conf <- Parse.INI(conffile, INI.list=conf, section="NMRSPEC")
+
+###############
+# Main
+###############
+
+# retrieve the command-line arguments
+opts <- docopt(doc)
+
+# Input Raw directory
+RAWDIR <- "/srv"
+if (!is.null(opts$input) && file.exists(opts$input)) RAWDIR <- opts$input
+
+# the output data directory
+DATADIR <- "/data/"
+if(file.exists(dirname(opts$output))) DATADIR <- opts$output
+if( ! file.exists(DATADIR)) dir.create(DATADIR)
+
+#  argument: the INI parameter file
+INI.filename <- paste0(DATADIR,'/',conf$Rnmr1D_INI)
+if (!is.null(opts$params) && file.exists(opts$params)) INI.filename <- opts$params
+
+# the Supevisor Log file
+LOGFILE <- paste0(DATADIR,'/', conf$LOGFILE0)
+
+# The progess status filename
+ProgressFile <- paste0(DATADIR,'/', conf$ProgressFile)
+
+Write.LOG(LOGFILE, "Rnmr1D:  --- READING and CONVERTING ---\n", mode="at")
+
+## During the Rnmr1D package development in the exec subdirectory, (i.e. outside the container),
+## Uncomment the two following lines  and, put in comment the Rnmr1D library loading line
+#fileLog<-file(LOGFILE,"at"); writeLines("Rnmr1D: Compilation ...", fileLog); close(fileLog)
+#source("/srv/shiny-server/exec/libspec/libspec.R")
+
+# Read the parameters in the INI file
+procParams <- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
+env.list <- Parse.INI(INI.filename, INI.list=list(), section="ENV")
+
+Write.LOG(LOGFILE, paste0("Rnmr1D:  Instrument/Vendor/Format = ", procParams$VENDOR, "\n"))
+Write.LOG(LOGFILE, paste0("Rnmr1D:  Spectra type = ", procParams$INPUT_SIGNAL, "\n"))
+
+# Rnmr1D preprocessing macrocommand file 
+CMD.filename <- file.path(DATADIR, conf$Rnmr1D_PPCMD)
+if (file.exists(CMD.filename)) {
+   CMDTEXT <- gsub("\t", "", readLines(CMD.filename))
+   if ( length(grep("#%%", CMDTEXT[1]))==1 ) {
+        procpar <- unlist(strsplit(gsub("#%% ", "", CMDTEXT[1]), "; "))
+        Write.LOG(LOGFILE, paste0( "Rnmr1D:  ", paste(procpar,collapse=", "), "\n"))
+   }
+}
+
+PPM_MIN <- env.list$PPM_MIN
+PPM_MAX <- env.list$PPM_MAX
+PPM_MIN_13C <- env.list$PPM_MIN_13C
+PPM_MAX_13C <- env.list$PPM_MAX_13C
+
+# Get the list of all Raw directories
+LIST <- read.table(file.path(DATADIR,'rawids.csv'), sep=';', stringsAsFactors=F)
+
+# Get the list of samples
+samples <- read.table(file.path(DATADIR,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
+
+registerDoParallel(cores=env.list$CORES)
+Sys.sleep(1)
+
+n <- 0
+init_counter(ProgressFile, dim(LIST)[1])
+tryCatch({
+    specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind) %dopar% {
+         ACQDIR <- LIST[x,1]
+         NAMEDIR <- ifelse( procParams$VENDOR=='bruker', basename(dirname(ACQDIR)), basename(ACQDIR) )
+         # Init the log filename
+         procParams$LOGFILE <- paste0(RAWDIR,'/',NAMEDIR,'.log')
+         procParams$PDATA_DIR <- file.path('pdata',LIST[x,3])
+         if (file.exists(procParams$LOGFILE)) unlink(procParams$LOGFILE)
+         spec <- Spec1r.doProc(Input=ACQDIR,param=procParams)
+         if (procParams$INPUT_SIGNAL=='1r') Sys.sleep(0.3)
+
+         n <- n + 1
+         inc_counter(ProgressFile, x)
+
+         # Add to the Supevisor Log file
+         fileLog<-file(LOGFILE,"at")
+         writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3],"\n-----\n"), fileLog)
+         if (file.exists(procParams$LOGFILE) && opts$debug) {
+            infoLines <- readLines(procParams$LOGFILE)
+            writeLines( paste0( paste(as.list(infoLines), collapse="\n"),"\n\n" ), fileLog)
+         }
+         if (! file.exists(procParams$LOGFILE)) {
+            writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," !!! FAILED !!!\n-----\n"), fileLog)
+         }
+         close(fileLog)
+
+         if (dim(LIST)[1]>1) {
+             list( x, spec )
+         } else {
+             spec
+         }
+    }
+    gc()
+
+    c <- get_counter(ProgressFile)
+    if (c$value < c$size) Write.LOG(LOGFILE, "Rnmr1D:  ERROR! \n")
+    unlink(ProgressFile)
+
+    if (dim(LIST)[1]>1) {
+       # Ensure that the specList array is in the same order than both  samples and IDS arrays
+       L <- simplify2array(sapply( order(simplify2array(specList[1,])), function(x) { specList[2,x] } ) )
+       specList <- L
+    }
+
+    Write.LOG(LOGFILE, "Rnmr1D:  Generate the final matrix of spectra...\n")
+
+    M <- NULL
+    N <- dim(LIST)[1]
+    vpmin<-0; vpmax<-0
+    n <- 0
+    init_counter(ProgressFile, N)
+
+    for(i in 1:N) {
+        if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
+        if (spec$acq$NUC == "13C") { PPM_MIN <- PPM_MIN_13C; PPM_MAX <- PPM_MAX_13C; }
+        P <- spec$ppm>PPM_MIN & spec$ppm<=PPM_MAX
+        V <- spec$int[P]
+        vppm <- spec$ppm[P]
+        if (PPM_MIN<spec$pmin) {
+            nbzeros <- round((spec$pmin - PPM_MIN)/spec$dppm)
+            vpmin <- vpmin + spec$pmin - nbzeros*spec$dppm
+            V <- c( rep(0,nbzeros), V )
+        } else {
+            vpmin <- vpmin + vppm[1]
+        }
+        if (PPM_MAX>spec$pmax) {
+            nbzeros <- round((PPM_MAX - spec$pmax)/spec$dppm)
+            vpmax <- vpmax + spec$pmax + nbzeros*spec$dppm
+            V <- c( V, rep(0,nbzeros) )
+        } else {
+            vpmax <- vpmax + vppm[length(vppm)]
+        }
+        M <- rbind(M, rev(V))
+
+        n <- n + 1
+        inc_counter(ProgressFile, n)
+    }
+
+    cur_dir <- getwd()
+    setwd(DATADIR)
+
+    speclstname <- ifelse( N>1, basename(dirname(sapply(c(1:N), function(x) {specList[,x]$path}))), basename(dirname(spec$path)) )
+    write.table(speclstname, file='list_1r.txt', sep="", row.names=F, col.names=F, quote=F)
+
+    Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
+
+    specs.pack <- conf$SPEC_PACKED
+    if (file.exists(specs.pack)) unlink(specs.pack)
+    writeSpecMatrix(M, (vpmin/N), (vpmax/N), specs.pack)
+
+    Write.LOG(LOGFILE, "Rnmr1D:  Write the list_pars.csv file ...\n")
+
+    # Raw IDs : expno & procno 
+    IDS <- cbind(basename(dirname(as.vector(LIST[,1]))), LIST[, c(2:3)])
+    if (N>1) {
+       if (specList[,1]$acq$INSTRUMENT=="Bruker") {
+          PARS <- t(sapply(c(1:N), function(x) { c( samples[x, 1], samples[x, 2], IDS[x,c(2:3)],
+                    specList[,x]$acq$PULSE, specList[,x]$acq$NUC, specList[,x]$acq$SOLVENT, specList[,x]$acq$GRPDLY, 
+                    specList[,x]$proc$phc0, specList[,x]$proc$phc1,
+                    specList[,x]$acq$SFO1, specList[,x]$proc$SI, specList[,x]$acq$SW, specList[,x]$acq$SWH, 
+                    specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
+          }))
+         colnames(PARS) <- c("Spectrum", "Samplecode", "EXPNO", "PROCNO", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
+       } else {
+          PARS <- t(sapply(c(1:N), function(x) { c( samples[x, 1], samples[x, 2], 
+                    specList[,x]$acq$PULSE, specList[,x]$acq$NUC, specList[,x]$acq$SOLVENT,
+                    specList[,x]$proc$phc0, specList[,x]$proc$phc1,
+                    specList[,x]$acq$SFO1, specList[,x]$proc$SI, specList[,x]$acq$SW, specList[,x]$acq$SWH, 
+                    specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
+          }))
+         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
+       }
+       Write.LOG('nuc.txt',specList[,1]$acq$NUC)
+    } else {
+       if (spec$acq$INSTRUMENT=="Bruker") {
+          PARS <- t( c( samples[1, 1], samples[1, 2], IDS[1,c(2:3)],
+                    spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$acq$GRPDLY, spec$proc$phc0, spec$proc$phc1,
+                    spec$acq$SFO1, spec$proc$SI, specList$acq$SW, spec$acq$SWH, spec$acq$RELAXDELAY, spec$acq$O1))
+         colnames(PARS) <- c("Spectrum", "Samplecode", "EXPNO", "PROCNO", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
+       } else {
+          PARS <- t( c( samples[1, 1], samples[1, 2],
+                    spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$proc$phc0, spec$proc$phc1,
+                    spec$acq$SFO1, spec$proc$SI, specList$acq$SW, spec$acq$SWH, spec$acq$RELAXDELAY, spec$acq$O1))
+         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
+       }
+       Write.LOG('nuc.txt',spec$acq$NUC)
+    }
+    write.table(PARS, file='list_pars.csv', sep=";", row.names=F, col.names=T, quote=F)
+
+    Write.LOG('origin.txt',paste(procParams$VENDOR, procParams$INPUT_SIGNAL, sep="\n"))
+
+    setwd(cur_dir)
+
+  # Rnmr1D processing macrocommand file
+    CMD.filename <- file.path(DATADIR, conf$Rnmr1D_PCMD)
+    if (file.exists(CMD.filename)) {
+
+        Write.LOG(LOGFILE,"Rnmr1D: ------------------------------------")
+        Write.LOG(LOGFILE,"Rnmr1D: Process the Macro-commands file")
+        Write.LOG(LOGFILE,"Rnmr1D: ------------------------------------")
+        Write.LOG(LOGFILE,"Rnmr1D: ")
+
+      # Read the specs.pack -> specMat
+        specPackFile <- file.path(DATADIR,conf$SPEC_PACKED)
+        specMat <- readSpecMatrix(specPackFile)
+        specMat$dppm <- (specMat$ppm_max - specMat$ppm_min)/(specMat$size - 1)
+        specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
+
+      # specParams
+        specParamFile <- file.path(DATADIR,"list_pars.csv")
+        specParamsDF <- read.table(specParamFile, header=T, sep=";", stringsAsFactors=FALSE)
+
+      # Read the macrocommand file
+        CMDTEXT <- gsub("\t", "", readLines(CMD.filename))
+
+      # Process the Macro-commands file
+        cur_dir <- getwd()
+        setwd(DATADIR)
+        specMat <- RProcCMD1D(specMat, specParamsDF, CMDTEXT, NCPU=env.list$CORES, LOGFILE=LOGFILE, ProgressFile=ProgressFile)
+        setwd(cur_dir)
+
+      # Write the new spectra matrix if needed
+        if (specMat$fWriteSpec) {
+           Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
+           writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
+        }
+
+    }
+
+    # the Supevisor Log file
+    LOGFILE <- paste0(DATADIR,'/', conf$LOGFILE)
+    Write.LOG(LOGFILE, "No processing\n", mode="at")
+
+}, error=function(e) {
+   fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+   writeLines(paste0("ERROR: ",e) , fh)
+   close(fh)
+})

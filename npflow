@@ -1,0 +1,88 @@
+#!/bin/bash
+MYDIR=`dirname $0` && [ ! `echo "$0" | grep '^\/'` ] && MYDIR=`pwd`/$MYDIR
+
+# INI/CONF file
+INI_FILE=$MYDIR/etc/config.ini
+CONF_FILE=$MYDIR/etc/npflow.conf
+
+DEV=$(cat $INI_FILE | grep -E -E "^DEV *=" | cut -d'=' -f2 | tr -d "\n")
+if [ $DEV -eq 0 ]; then
+   for l in `cat $CONF_FILE | grep -E -v "^#" | grep -E "^.+=.+$"`; do
+      e=$(echo "$l" | sed -e 's/\//\\&/g; 1{$s/^$/""/}; 1!s/^/"/; $!s/$/"/')
+      k=`echo $e | cut -d'=' -f1`
+      grep -E "^$k=" $INI_FILE 1>/dev/null 2>/dev/null
+      [ $? -eq 0 ] && sed -i -e "s/^$k=.*$/$e/" $INI_FILE
+   done
+fi
+
+cp -f $INI_FILE $MYDIR/nmrviewer/www/etc/nmrview.conf
+cp -f $INI_FILE $MYDIR/nmrspec/conf/global.ini
+
+DATADIR=$(cat $INI_FILE | grep DATASETS | cut -d'=' -f2 | tr -d "\n")
+HTTP_PORT=$(cat $INI_FILE | grep HTTP_PORT | cut -d'=' -f2 | tr -d "\n")
+
+# nmrspec Container
+SPEC_PORT=$HTTP_PORT
+SPEC_IMAGE=nmrprocflow/npflow:latest
+SPEC_CONTAINER=npflow
+SPEC_PAR="--env-file $MYDIR/etc/npflow.conf"
+SPEC_SRC=''
+SPEC_TMP=''
+if [ $DEV -eq 1 ]; then
+   SPEC_PAR=''
+   SPEC_SRC="-v $MYDIR/nmrspec:/srv/shiny-server -v $MYDIR/nmrviewer/www:/var/www/html/nv"
+fi
+if [ $DEV -eq 0 ]; then
+   SPEC_TMP="-v /tmp:/tmp -v /tmp:/var/www/html/nv/tmp"
+fi
+
+CMD=$1
+
+# If you use a named volume, (assumes that your docker version >= 1.9)
+# - First you have to create the /opt/data volume
+# sudo docker create -v /opt/data --name npflow_data_volume ubuntu
+# - Second, uncomment the line below, and
+#   comment the line with 'VOLS' specified further with a local directory .
+#VOLS="--volumes-from npflow_data_volume"
+
+# If you use a local directory, first you have to create the /opt/data directory
+VOLS="-v $DATADIR:/opt/data"
+
+usage() { echo "usage: sh $0 start|stop|ps|restart|logs|update";  exit 1; }
+
+case "$CMD" in
+   start)
+        # run NMRProcFlow
+        sudo docker run -d $SPEC_PAR $VOLS $SPEC_SRC $SPEC_TMP -p $SPEC_PORT:80 --name $SPEC_CONTAINER $SPEC_IMAGE
+
+        # show Logs
+        sudo docker logs $SPEC_CONTAINER
+        ;;
+   stop)
+        sudo docker rm -f $SPEC_CONTAINER
+        ;;
+   restart)
+        ( sh $0 stop; sh $0 start)
+        ;;
+   logs)
+        sudo docker logs $SPEC_CONTAINER
+        ;;
+   ps)
+        sudo docker ps | head -1
+        sudo docker ps | grep "nmrprocflow/"
+        ;;
+   build)
+        ( rm -rf ./nmrviewer/www/tmp/_*; sudo docker build -t $SPEC_IMAGE . )
+        ;;
+   pull)
+        sudo docker pull $SPEC_IMAGE
+        ;;
+   push)
+        sudo docker push $SPEC_IMAGE
+        ;;
+   clean)
+        ( rm -rf /opt/data/_*; rm -rf /tmp/Rtmp*; rm -rf /tmp/_*; rm -rf ./nmrviewer/www/tmp/_* )
+        ;;
+   *) usage
+      exit 2
+esac
