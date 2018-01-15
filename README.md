@@ -1,9 +1,9 @@
 ![logo](nmrpf_logo_full.png)
-# NMRProcFlow
+## NMRProcFlow
 
 An efficient GUI tool for spectra processing from 1D NMR metabolomics data
 
-## Description
+### Description
 
 * The NMRProcFlow open source software provides an efficient GUI tool for spectra processing from 1D NMR metabolomics data, based on an interactive interface for the spectra visualization, that greatly helps spectra processing. 
 * The 'NMR spectra viewer' is the central tool of NMRProcFlow and the core of the application. It allows the user to visually explore the spectra overlaid or stacked, to zoom on intensity scale, to group set of spectra by color based on their factor level.
@@ -11,14 +11,14 @@ An efficient GUI tool for spectra processing from 1D NMR metabolomics data
 * the spectra processing includes: the calibration of the ppm scale, the base line correction (locally or  fully), the realignment of a set of ppm areas, and the binning (Intelligent, variable size or fixed width)
 
 
-## Installation
+### Installation
 
 Requirements:
 
 * a recent Linux OS that support Docker (see https://www.docker.com/)
 
 
-From bitbucket.org, clone the repository
+From GitHub, clone the repository
 
 ```
     $ git clone https://github.com/INRA/NMRProcFlow.git
@@ -83,46 +83,51 @@ USRCONMGR=0
 #
 ```
 
-## Usage
 
-### Run the application
+### Usage
+
+#### Run the application
 
 ```
     $ sh ./npflow start
 ```
 
-### Stop the application
+#### Stop the application
 
 ```
     $ sh ./npflow stop
 ```
 
 
-### View the status of the application
+#### View the status of the application
 
 ```
     $ sh ./npflow ps
 ```
 
 
-### check on http://<your_local_host>:<port>/npflow/
+#### check on http://<your_local_host>:<port>/npflow/
 
 
-## Main contributors:
+
+---
+
+
+### Main contributors:
 
 * Daniel Jacob, Catherine Deborde, Marie Lefebvre, Michaël Maucourt
 * Special thanks to Alain Girard (INRA Bordeaux) for designing the logo.
 
-## Publication:
+### Publication:
 
 Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcFlow: A graphical and interactive tool dedicated to 1D spectra processing for NMR-based metabolomics, Metabolomics 13:36. doi:10.1007/s11306-017-1178-y
 
-## Funded by:
+### Funded by:
 
 * INRA UMR 1332 BFP, Bordeaux Metabolomics Facility
 * the ANR-11-INBS-0010 grant (MetaboHUB)
 
-## License
+### License
 
 Copyright (C) 2017  Daniel Jacob - INRA 
 
