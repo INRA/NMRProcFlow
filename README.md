@@ -21,7 +21,7 @@ Requirements:
 From bitbucket.org, clone the repository
 
 ```
-    $ git clone https://github.com/INRA/NMRProcFlow/NMRProcFlow.git
+    $ git clone https://github.com/INRA/NMRProcFlow.git
 ```
 
 Then `cd` to your clone path
