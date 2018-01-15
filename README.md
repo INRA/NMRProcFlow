@@ -10,19 +10,6 @@ An efficient GUI tool for spectra processing from 1D NMR metabolomics data
 * NMRProcFlow was built by involving NMR spectroscopists eager to have a quick and easy tool to use.
 * the spectra processing includes: the calibration of the ppm scale, the base line correction (locally or  fully), the realignment of a set of ppm areas, and the binning (Intelligent, variable size or fixed width)
 
-## Funded by:
-
-* INRA UMR 1332 BFP, Bordeaux Metabolomics Facility
-* the ANR-11-INBS-0010 grant (MetaboHUB)
-
-## Main contributors:
-
-* Daniel Jacob, Catherine Deborde, Marie Lefebvre, Michaël Maucourt
-* Special thanks to Alain Girard (INRA Bordeaux) for designing the logo.
-
-## Publication:
-
-Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcFlow: A graphical and interactive tool dedicated to 1D spectra processing for NMR-based metabolomics, Metabolomics 13:36. doi:10.1007/s11306-017-1178-y
 
 ## Installation
 
@@ -120,6 +107,20 @@ USRCONMGR=0
 
 ### check on http://<your_local_host>:<port>/npflow/
 
+
+## Main contributors:
+
+* Daniel Jacob, Catherine Deborde, Marie Lefebvre, Michaël Maucourt
+* Special thanks to Alain Girard (INRA Bordeaux) for designing the logo.
+
+## Publication:
+
+Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcFlow: A graphical and interactive tool dedicated to 1D spectra processing for NMR-based metabolomics, Metabolomics 13:36. doi:10.1007/s11306-017-1178-y
+
+## Funded by:
+
+* INRA UMR 1332 BFP, Bordeaux Metabolomics Facility
+* the ANR-11-INBS-0010 grant (MetaboHUB)
 
 ## License
 
