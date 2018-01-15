@@ -109,6 +109,7 @@ USRCONMGR=0
 #### check on http://<your_local_host>:<port>/npflow/
 
 
+See more information in http://nmrprocflow.org/c_download
 
 ---
 
@@ -120,7 +121,7 @@ USRCONMGR=0
 
 ### Publication:
 
-Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcFlow: A graphical and interactive tool dedicated to 1D spectra processing for NMR-based metabolomics, Metabolomics 13:36. doi:10.1007/s11306-017-1178-y
+Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcFlow: A graphical and interactive tool dedicated to 1D spectra processing for NMR-based metabolomics, Metabolomics 13:36. [doi:10.1007/s11306-017-1178-y](http://link.springer.com/article/10.1007%2Fs11306-017-1178-y)
 
 ### Funded by:
 
