@@ -1085,7 +1085,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
    bdata$BUCMIN <- 0.003
    bdata$VREF <- 1
 
-   Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="wt")
+   Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="at")
 
    # For each PPM range
    buckets_zones <- NULL
@@ -1113,7 +1113,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
        buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>snr), ]
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
-   Write.LOG(BUC.cmd,"EOL", mode="at")
+   Write.LOG(BUC.cmd,"EOL\n", mode="at")
 
    if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Total Buckets =",dim(buckets_zones)[1],"\n"))
 
@@ -1124,7 +1124,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
    # The bucket zones files
    write.table(buckets_zones, file=BUC.filename, append=f_append, sep="\t", row.names=F, col.names=!f_append, quote=F)
    buclist <- cbind( 0.5*(buckets_zones[,1]+buckets_zones[,2]), abs(buckets_zones[,2]-buckets_zones[,1]) )
-   write.table(buclist, file=BUCKET_LIST, append=F, sep="\t", row.names=F, col.names=F, quote=F)
+   write.table(buclist, file=BUCKET_LIST, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
    gc()
 }
 
