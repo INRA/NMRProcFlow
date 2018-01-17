@@ -1,28 +1,57 @@
 ##---------------
+## UI initialization events
+##---------------
+   output$panelHeader <- reactive({
+       values$header==1
+   })
+   outputOptions(output, "panelHeader", suspendWhenHidden = FALSE)
+
+   observeEvent( values$psession, { 
+       if (values$psession==1) {
+          showTab(inputId = "conditionedPanels", target = "Processing", select=TRUE)
+       }
+   })
+   observeEvent( values$header, {
+       if (values$header==0 && values$psession==1) {
+          runjs( "document.getElementById('conditionedPanels').style.display = 'none';" )
+          hideTab(inputId = "conditionedPanels", target = "Load")
+       }
+   })
+   observeEvent( values$export, {
+       if (values$export==0) {
+          hideTab(inputId = "condProcPanels", target = "Data Export")
+       }
+   })
+   observeEvent( values$import, {
+       if (values$import==0) {
+          v_options <- c("uniforme", "AIBIN", "VSB", "bucreset" )
+          names(v_options) <- c("Uniforme", "Intelligent Bucketing", "Variable Size Buckets", "Merging / Resetting" )
+          v_select<-'AIBIN'
+          updateRadioButtons(session, "bucmeth", choices = v_options, selected=v_select)
+       }
+   })
+
+##---------------
 ## Upload & Preprocessing
 ##---------------
 
-   observe ({
-       values$sessinit
+   observeEvent ( values$sessinit, {
        if (values$sessinit==1 && conf$nmrML_input==1) {
           v_options <- c('bruker', 'varian','nmrml'); names(v_options) <- c('Bruker', 'Varian/Agilent', 'nmrML v1.0.rc1'); v_select<-'bruker'
           updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
        }
    })
 
-   observe ({
-       input$vendor
+   observeEvent ( input$vendor, {
        v_options <- c("fid"); names(v_options) <- c('FID'); v_select<-'fid'
        if ( input$vendor=="bruker" ) {
             v_options[length(v_options)+1] <- '1r'; names(v_options)[length(v_options)] <- '1r spectrum';
             v_select<-'fid'
        }
        updateSelectInput(session, "spectype", choices = v_options, selected=v_select)
-
    })
 
-   observe ({
-       ERROR$MsgErrLoad
+   observeEvent ( ERROR$MsgErrLoad, {
        if (nchar(ERROR$MsgErrLoad)>0) {
           createAlert(session, "ErrAlertLoad", "ErrAlertLoadId", title = "", content = ERROR$MsgErrLoad, append = FALSE, style='danger')
        }
@@ -126,7 +155,12 @@
          if ( ! is.null(sessionViewer) && file.exists(file.path(conf$DATASETS,sessionViewer)) ) {
             outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
             INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
-            if (file.exists(INI.filename)) procParams <<- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
+            if (file.exists(INI.filename)) { 
+                procParams <<- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
+            } else {
+                procParams <<- Spec1r.Procpar
+                generate_INI_file(procParams)
+            }
             values$reload <- 1
             updateRefSpecSelect()
          } else {
@@ -313,6 +347,7 @@
    output$zipLog <- renderPrint({
         values$proc
         if (values$proc==0) return(NULL)
+        if (values$header==0 && values$psession==1) return(NULL)
         t1 <- file.info(file.path(outDataViewer,conf$semapFileIn))$ctime
         t2 <- file.info(file.path(outDataViewer,conf$semapFileOut))$ctime
         elapsedtime <- as.numeric(difftime(t2,t1),units="secs")

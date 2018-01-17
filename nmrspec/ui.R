@@ -1,5 +1,6 @@
 library(shiny)
 library(shinyBS)
+library(shinyjs)
 
 source("R/ui_frame.R", local=TRUE)
 source("R/ui_upload.R", local=TRUE)
@@ -19,6 +20,8 @@ shinyUI(fluidPage(
       tags$script(type="text/javascript", src = "js/jobstatus.js"),          # Job Status - Event trigger
       tags$script(type="text/javascript", src = "js/google-analytics.js")
   ),
+
+  shinyjs::useShinyjs(debug = TRUE, html = FALSE),
   ui_header,
   ui_padding,
 

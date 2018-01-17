@@ -35,6 +35,10 @@ shinyServer(function(input, output, session) {
     values$jobrun <- 0
     values$error <- 0
     values$updatevent <- 0
+    values$header <- 1
+    values$export <- 1
+    values$import <- 1
+    values$psession <- 0
 
     source("R/utils.R", local=TRUE)     # general routines
     source("R/Login.R", local=TRUE)     # Log in module
@@ -55,6 +59,21 @@ shinyServer(function(input, output, session) {
         if (length(lparams)>0) {
             sessid <- lparams[1]
         }
+        params <- parseQueryString(cdata$url_search)
+        if (!is.null(params[['header']])) {
+            values$header <- as.numeric(params[['header']])
+        }
+        if (!is.null(params[['export']])) {
+            values$export <- as.numeric(params[['export']])
+        }
+        if (!is.null(params[['import']])) {
+            values$import <- as.numeric(params[['import']])
+        }
+        if (!is.null(params[['frameproc']]) && as.numeric(params[['frameproc']])==1) {
+            values$header <- 0
+            values$import <- 0
+            values$export <- 0
+        }
 
         # Is a new Session ?
         newSession <- nchar(sessid)==0 || ! ( file.exists(file.path(tempdir(),sessid)) || file.exists(file.path(conf$DATASETS,sessid)) )
@@ -71,9 +90,10 @@ shinyServer(function(input, output, session) {
         if (condLogin || ! newSession) {
            sessionViewer <<- sessid
            values$sessinit <- 1
-           if (newSession ) {
+           if ( newSession ) {
                output$jreload <- renderUI({ tags$script(HTML(paste0("window.history.replaceState('",sessid,"', '",sessid,"', '?", sessid, "');"))) })
            }
+           values$psession <- ifelse( file.exists(file.path(conf$DATASETS,sessid,conf$SPEC_PACKED)), 1, 0 )
         }
 
         output$title <- renderUI({ tags$h4(paste(conf$TITLE,'- ver.',conf$VERSION))})

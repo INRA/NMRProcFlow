@@ -1,6 +1,7 @@
 library(Rnmr1D)
 library(shiny)
 library(shinyBS)
+library(shinyjs)
 library(digest)
 library(rjson)
 library(parallel)

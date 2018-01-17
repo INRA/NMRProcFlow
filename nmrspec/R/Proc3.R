@@ -205,11 +205,17 @@
              if (values$reload==1) {
                  INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
                  procParams <<- Parse.INI(INI.filename, INI.list=list(), section="PROCPARAMS")
-                 V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
-                 NameZip <<- V[1]
-                 SampleFilename <<- V[2]
-                 outDir <<- dirname(V[3])
-                 if (! file.exists(outDir) ) outDir <<- outDataViewer
+                 if (! file.exists(file.path(outDataViewer,"userfiles"))) {
+                    outDir <<- outDataViewer
+                    NameZip <<- 'noname.zip'
+                 }
+                 else {
+                    V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
+                    NameZip <<- V[1]
+                    SampleFilename <<- V[2]
+                    outDir <<- dirname(V[3])
+                    if (! file.exists(outDir) ) outDir <<- outDataViewer
+                 }
                  if (file.exists(file.path(outDataViewer,"pcmdfiles"))) {
                     V <- read.table(file.path(outDataViewer,"pcmdfiles"), header=F, stringsAsFactors=FALSE)[,1]
                     PCMDFilename <<- V[1]

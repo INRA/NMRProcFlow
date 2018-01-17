@@ -1,10 +1,10 @@
-# Header
-ui_header <- withTags(
+# Header 
+ui_header <- conditionalPanel( condition = 'output.panelHeader==1',withTags(
   table(tr(td(style="width: 5px;",""),
            td(style="width: 30px;", img(src="images/nmrpf_logo.png", height = 32, width = 32)),
            td(style="width: 5px;",""), 
            td(htmlOutput("title"))), width="100%", style="background-color: #8cb1db; color: #fff;")
-)
+))
 
 ui_padding <- column(12, style="font-size: 5px;", htmlOutput("jreload"), tags$img(src="images/img_00.gif", height = 3, width = 100))
 
@@ -44,7 +44,7 @@ ui_frontpage <- column(12,
 ui_mainpanel  <- mainPanel(
   width=12,
   tabsetPanel(
-      tabPanel("Load"),
+      tabPanel("Load") ,
       tabPanel("Processing"),
       #tabPanel("data analysis"),
       #tabPanel("Identification"),
@@ -54,7 +54,7 @@ ui_mainpanel  <- mainPanel(
 
 # Footer
 ui_footer <- column(12, tags$hr(),
-  tags$p(class="cprght", "(C) INRA UMR 1332 BFP, Metabolomics Facility - CGFB Bordeaux, MetaboHUB - 2016")
+  tags$p(class="cprght", "NMRProcFlow -(C) INRA UMR 1332 BFP, Metabolomics Facility - MetaboHUB - 2017")
 )
 
 # Textarea UI widget

@@ -113,6 +113,9 @@ See more information in http://nmrprocflow.org/c_download
 
 ---
 
+[![](https://images.microbadger.com/badges/image/nmrprocflow/nmrprocflow.svg)](https://microbadger.com/images/nmrprocflow/nmrprocflow "Get your own image badge on microbadger.com")
+
+---
 
 ### Main contributors:
 

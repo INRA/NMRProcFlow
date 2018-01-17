@@ -106,7 +106,7 @@ if (!$conf->error) {
 <td width="20%"><bZout>zoom out</bZout><bZprev>previous</bZprev></td>
 <td align="center"><div id="info" class="ui-widget"><?php if (!$conf->error) echo DS_html_elems($arr_select); ?></div></td>
 <td><input type="checkbox" id="check"><label for="check">Force the display of the legend</label></td>
-<td><input type="checkbox" name="stack" id="stack"><label for="stack">Stacked spectra</label></td>
+<td width="15%"><input type="checkbox" name="stack" id="stack"><label for="stack">Stacked spectra</label></td>
 <td style="width:200px;" align="center"><div id="right" class="ui-widget">-</div></td>
 </tr></table>
 </td><td align="right"><bBefore>&#60;-</bBefore><bAfter>-&#62;</bAfter></td><td style="width:100px;">&nbsp;</td></tr></table>
