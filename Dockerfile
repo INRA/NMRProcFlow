@@ -85,10 +85,10 @@ ADD ./nmrviewer/www /var/www/html/nv
 
 RUN mkdir -p /opt/data \
     && rm -f /etc/apache2/sites-enabled/000-default.conf \
-    && chmod 755 /usr/bin/launch-server.sh
-#    && mkdir -p /var/www/html/nv/tmp \
-#    && chown -R www-data.www-data /var/www/html/nv \
-#    && chmod 777 /var/www/html/nv/tmp
+    && chmod 755 /usr/bin/launch-server.sh \
+    && mkdir -p /var/www/html/nv/tmp \
+    && chown -R www-data.www-data /var/www/html/nv \
+    && chmod 777 /var/www/html/nv/tmp
 
 # Volume as the root directory that will contain the output data
 # the data will be stored within the directory /opt/data/<DATAID>
@@ -115,4 +115,3 @@ WORKDIR /var/www/html
 EXPOSE 80
 
 CMD ["/usr/bin/launch-server.sh"]
-
