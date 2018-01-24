@@ -504,3 +504,9 @@
          filename = function() { get_CMD_filename() },
          content = function(file) { get_CMD_content(file) }
     )
+
+   observeEvent( input$exportCMD3, {
+       macrofile <- file.path(outDataViewer, get_CMD_filename())
+	   get_CMD_content(macrofile)
+	   submit_PythonScript(outDataViewer, macrofile)
+   })

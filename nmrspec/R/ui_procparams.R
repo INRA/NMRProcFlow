@@ -191,8 +191,10 @@ ui_proc_export <- column(12,
      column(4,
          conditionalPanel(condition="output.ProcSelect==1 && input.eptype=='epcmd'",
              tags$br(),
-             downloadButton("exportCMD2", "Export Macro commands" ),
-             bsTooltip("exportCMD2", "Download the Macro commands file", "bottom", options = list(container = "body"))
+                downloadButton("exportCMD2", "Export Macro commands" ),
+                bsTooltip("exportCMD2", "Download the Macro commands file", "bottom", options = list(container = "body")),
+                bsButton("exportCMD3", icon=icon("spinner"), label = "Upload Macro commands to Galaxy", style="primary" ),
+                bsTooltip("exportCMD3", "Upload the Macro commands file to Galaxy history", "bottom", options = list(container = "body"))
          ),
      # Export format selection
          conditionalPanel(condition="input.eptype=='epdata' || input.eptype=='epbuckets' || input.eptype=='epsnr' || input.eptype == 'epspec'",

@@ -391,3 +391,34 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
          }
      }
 }
+
+
+#----
+# Generates the shell script that :
+#  i/ init the semaphores
+#  ii/ will launch the R cmdR script, 
+# then launches the shell script in background mode (nohup)
+#----
+submit_PythonScript <- function(outDataViewer, macrofile)
+{
+   cmdfile <- file.path(outDataViewer,'jobScript.sh')
+   pidfile <- file.path(outDataViewer,conf$JobPIDFile)
+   LOGFILE <- file.path(outDataViewer,conf$ERRORFILE)
+   PythonScript <- conf$UPLOAD2GALAXY
+
+   fh<-file(cmdfile,"wt")
+   writeLines("#!/bin/bash\n\n", fh)
+   writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileIn),"\n"), fh)
+   writeLines( paste(PythonScript,macrofile,"\n"), fh)
+   writeLines( paste0('RET=$(echo $?)' ,"\n"), fh)
+   writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileOut),"\n"), fh)
+   writeLines("exit $RET\n", fh)
+   close(fh)
+
+   delete_file(conf$semapFileIn)
+   delete_file(conf$semapFileOut)
+   delete_file(conf$semapFileErr)
+   delete_file(conf$ProgressFile)
+
+   system( paste("nohup /bin/sh ",cmdfile, " 2>>",LOGFILE," 1>>",LOGFILE,"& echo $! > ",pidfile, sep=""))
+}

@@ -30,6 +30,14 @@
           updateRadioButtons(session, "bucmeth", choices = v_options, selected=v_select)
        }
    })
+   observeEvent( values$fgalaxy, {
+       if (values$header==0 && values$fgalaxy==1) {
+          runjs( "document.getElementById('exportCMD2').style.display = 'none';" )
+       }
+       if (values$fgalaxy==2) {
+          runjs( "document.getElementById('exportCMD3').style.display = 'none';" )
+       }
+   })
 
 ##---------------
 ## Upload & Preprocessing

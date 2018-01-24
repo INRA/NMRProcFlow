@@ -39,6 +39,8 @@ shinyServer(function(input, output, session) {
     values$export <- 1
     values$import <- 1
     values$psession <- 0
+    values$fgalaxy <- 0
+
 
     source("R/utils.R", local=TRUE)     # general routines
     source("R/Login.R", local=TRUE)     # Log in module
@@ -74,6 +76,13 @@ shinyServer(function(input, output, session) {
             values$import <- 0
             values$export <- 0
         }
+        if (!is.null(params[['galaxy']]) && as.numeric(params[['galaxy']])==1) {
+            values$header <- 0
+            values$fgalaxy <- 1
+        } else {
+            values$fgalaxy <- 2
+        }
+
 
         # Is a new Session ?
         newSession <- nchar(sessid)==0 || ! ( file.exists(file.path(tempdir(),sessid)) || file.exists(file.path(conf$DATASETS,sessid)) )
