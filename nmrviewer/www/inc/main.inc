@@ -33,6 +33,9 @@
      body { font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif"; font-size: 62.5%; }
      .ui-noselect {-webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
      .ui-nopad { vertical-align:top; margin:0px 0px 0px 0px; padding=0px; }
+     .ui-button-text-only .ui-button-text { padding-right: 0.4em; padding-left: 0.4em; }
+     .ui-widget select, .ui-widget button { min-height: 20px; }
+}
   </style>
   <script language=JavaScript type="text/javascript">
   $(function() {

@@ -58,7 +58,7 @@ ui_proc_buttons <- column(4,
 ##---------------
 ui_proc_tabs <- column(12, conditionalPanel(condition="output.Processing==0",
      splitLayout(cellWidths = c("5%","74%", "20%"),
-         column(1, tags$img(src="images/img_00.gif", height = 600, width = 1)),
+         column(1, tags$img(src="images/img_00.gif", height = 100, width = 1)),
          column(12, bsAlert("ErrAlertProc"), ui_proctabPanel ),
          ui_proc_buttons
      )

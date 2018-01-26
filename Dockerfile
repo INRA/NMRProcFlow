@@ -23,8 +23,7 @@ RUN apt-get update && apt-get install -y \
     r-cran-foreach \
     r-cran-multicore \
     r-cran-base64enc \
-    r-cran-xml \
-    r-cran-rcpp
+    r-cran-xml
 
 # Install Apache+PHP
 RUN apt-get update && apt-get -y upgrade && apt-get install -y \
@@ -55,7 +54,7 @@ RUN wget --no-verbose http://download3.rstudio.org/ubuntu-12.04/x86_64/VERSION -
     rm -f version.txt ss-latest.deb
 
 # Install Shiny and some extensions and some other dependencies
-RUN R -e "install.packages(c('gsl','RcppGSL','inline','rjson'), repos='http://cran.rstudio.com')"
+RUN R -e "install.packages(c('gsl','Rcpp', 'RcppGSL','inline','rjson'), repos='http://cran.rstudio.com')"
 RUN R -e "install.packages( c( 'httpuv', 'mime', 'jsonlite', 'xtable', 'htmltools', 'R6', 'shiny'), repos='http://cran.rstudio.com/')"
 RUN R -e "install.packages(c('shinyBS', 'shinyjs', 'stringi', 'docopt','doParallel','signal','ptw', 'openxlsx'), repos='http://cran.rstudio.com')"
 RUN R -e "source('http://bioconductor.org/biocLite.R'); biocLite('MassSpecWavelet'); biocLite('impute'); install.packages('speaq', repos='http://cran.rstudio.com')"
