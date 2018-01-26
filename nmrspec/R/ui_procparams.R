@@ -116,7 +116,7 @@ ui_proc_process <- column(12,
                  bsTooltip("ppmfilt", "Restricted PPM range for applying the denoising", "bottom", options = list(container = "body"))
               )
          ),
-         column(1, tags$img(src="images/img_00.gif", height = 400, width = 1))
+         column(1, tags$img(src="images/img_00.gif", height = 320, width = 1))
      )
 )
 
@@ -173,7 +173,7 @@ ui_proc_bucket <- column(12,
              selectInput("maxBucPPM", "PPM max", c("Column 1" = "1", "Column 2" = "2", "Column 3" = "3", "Column 4" = "4" ), selected = "4")
          )
      ),
-     column(1, tags$img(src="images/img_00.gif", height = 400, width = 1))
+     column(1, tags$img(src="images/img_00.gif", height = 320, width = 1))
 )
 
 
@@ -191,10 +191,20 @@ ui_proc_export <- column(12,
      column(4,
          conditionalPanel(condition="output.ProcSelect==1 && input.eptype=='epcmd'",
              tags$br(),
-                downloadButton("exportCMD2", "Export Macro commands" ),
-                bsTooltip("exportCMD2", "Download the Macro commands file", "bottom", options = list(container = "body")),
-                bsButton("exportCMD3", icon=icon("spinner"), label = "Upload Macro commands to Galaxy", style="primary" ),
-                bsTooltip("exportCMD3", "Upload the Macro commands file to Galaxy history", "bottom", options = list(container = "body"))
+                tags$div(id="nogalaxy",
+                  downloadButton("exportCMD2", "Export Macro commands" ),
+                  bsTooltip("exportCMD2", "Download the Macro commands file", "bottom", options = list(container = "body"))
+                ),
+               ## Extension for Galaxy Interactive Environment
+                tags$div(id="egalaxy",
+                  bsButton("exportCMD3", icon=icon("spinner"), label = "Upload Macro commands to Galaxy", style="primary" ),
+                  bsTooltip("exportCMD3", "Upload the Macro commands file to Galaxy history", "bottom", options = list(container = "body")),
+                  tags$br(), tags$div( id="uploadmsg", style="display: none;"),
+                  bsAlert("AlertUpLoad"),
+                  tags$br(),
+                  bsButton("exportlog", icon=icon("file-text-o"), label = "Log", style="info" ),
+                  bsModal("modalExportlog", "Log Watcher","exportlog", size="large", htmlOutput("watcher2c"))
+                )
          ),
      # Export format selection
          conditionalPanel(condition="input.eptype=='epdata' || input.eptype=='epbuckets' || input.eptype=='epsnr' || input.eptype == 'epspec'",
@@ -253,19 +263,19 @@ ui_proc_export <- column(12,
             downloadButton("exportSNR", "Export SNR Matrix" ),
             bsTooltip("exportSNR", "Download the SNR matrix file", "bottom", options = list(container = "body"))
          )
-     ),
-     column(1, tags$img(src="images/img_00.gif", height = 400, width = 1))
+     )
      ),
      conditionalPanel(condition="output.ProcSelect==0 && input.eptype=='epcmd'",
-         column(9,
+         column(8,
            tags$p(tags$b("Warning: You need to launch at least one processing command before exporting the macro-command file"))
          )
      ),
      conditionalPanel(condition="output.BucSelect==0 && input.eptype != 'epspec' && input.eptype != 'epcmd'",
-         column(9,
+         column(8,
            tags$p(tags$b("Warning: You need to generate a bucket list before exporting this data type."))
          )
-     )
+     ),
+     column(1, tags$img(src="images/img_00.gif", height = 320, width = 1))
 )
 
 

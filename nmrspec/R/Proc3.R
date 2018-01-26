@@ -290,20 +290,24 @@
              if (values$jobrun==0 || input$joblog==0) return(NULL)
              if (is.null(procJobName)) return (NULL)
              if (procJobName != "process") return (NULL)
-             logtype <- ifelse(input$condProcPanels == 'Bucketing', 'bucket', 'proc')
+             if (input$condProcPanels == 'Processing') logtype <- 'proc'
+             if (input$condProcPanels == 'Bucketing') logtype <- 'bucket'
+             if (input$condProcPanels == 'Data Export') logtype <- 'export'
              renderWatcher(values$jobrun,logtype,600)
          })
     })
     outputOptions(output, 'watcher2', suspendWhenHidden=FALSE)
     outputOptions(output, 'watcher2', priority=5)
 
-    ## Watcher 1b: Watch the logfile in shift time
+    ## Watcher 2b: Watch the logfile in shift time
     output$watcher2b <- renderUI({ 
          input$proclog
          isolate({
              if (is.null(procJobName)) return (NULL)
              html <- ''
-             LOGFILE <- ifelse (input$condProcPanels == 'Bucketing', conf$LOGFILE2, conf$LOGFILE)
+             if (input$condProcPanels == 'Processing') LOGFILE <- conf$LOGFILE
+             if (input$condProcPanels == 'Bucketing') LOGFILE <- conf$LOGFILE2
+             if (input$condProcPanels == 'Data Export') LOGFILE <- conf$LOGFILE3
              fileLog <- file.path(outDataViewer,LOGFILE)
              if (file.exists(fileLog)) {
                 t1 <- file.info(file.path(outDataViewer,conf$semapFileIn))$ctime
@@ -505,8 +509,56 @@
          content = function(file) { get_CMD_content(file) }
     )
 
-   observeEvent( input$exportCMD3, {
-       macrofile <- file.path(outDataViewer, get_CMD_filename())
-	   get_CMD_content(macrofile)
-	   submit_PythonScript(outDataViewer, macrofile)
-   })
+    ##---------------
+    ## Extension for Galaxy Interactive Environment
+    ##---------------
+
+    observeEvent( input$exportCMD3, {
+           values$uploadmsg <- 1
+           runjs( "document.getElementById('uploadmsg').style.display = 'block';" )
+    })
+    
+    observeEvent( values$uploadmsg, {
+        if (values$uploadmsg==1) {
+           macrofile <- file.path(outDataViewer, get_CMD_filename())
+           get_CMD_content(macrofile)
+           ERROR$MsgUpload <- ''
+           closeAlert(session, "AlertUpLoadId")
+           procJobName <- 'Export'
+           RET <- submit_UploadScript(outDataViewer, macrofile)
+           if (RET==0) {
+               MsgStyle <<- 'info'
+               ERROR$MsgUpload <- 'SUCCESS!'
+           } else {
+               MsgStyle <<- 'danger'
+               ERROR$MsgUpload <- 'FAILED!'
+           }
+           values$uploadmsg <- 2
+        }
+        if (values$uploadmsg==2) {
+           values$uploadmsg <- 0
+           runjs( "document.getElementById('exportlog').style.display = 'block';" )
+        }
+        if (values$uploadmsg==3) {
+           values$uploadmsg <- 0
+           runjs( "document.getElementById('exportlog').style.display = 'none';" )
+        }
+        if (values$uploadmsg==0) {
+           runjs( "document.getElementById('uploadmsg').style.display = 'none';" )
+        }
+    })
+    
+    ## Watcher 2c: Watch the logfile in shift time
+    output$watcher2c <- renderUI({ 
+         input$exportlog
+         isolate({
+             if (is.null(procJobName)) return (NULL)
+             html <- ''
+             LOGFILE <- conf$LOGFILE3
+             fileLog <- file.path(outDataViewer,LOGFILE)
+             if (file.exists(fileLog)) {
+                html <- paste0('<div style="height: 600px;"><pre style="height: 600px;">', paste(as.list(readLines(fileLog)), collapse="\n"),'</pre></div>' )
+             }
+             return(HTML(html))
+         })
+    })

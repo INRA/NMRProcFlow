@@ -23,9 +23,10 @@ shinyServer(function(input, output, session) {
     BUCKET <- 3                 # Bucketing
     UNDO <- 4                   # Undo
     ErrMsg <- ''                # Error Message
+    MsgStyle <- 'danger'        # Style of Message Box
     ArrayProc <- rep(0, NBPROC) # Init the status of each process type
 
-    ERROR <- reactiveValues(MsgErrLog = '', MsgErrLoad='', MsgErrProc='' )
+    ERROR <- reactiveValues(MsgErrLog = '', MsgErrLoad='', MsgErrProc='', MsgUpload='' )
     values <- reactiveValues()
     values$sessinit <- 0
     values$started <- 0
@@ -36,10 +37,9 @@ shinyServer(function(input, output, session) {
     values$error <- 0
     values$updatevent <- 0
     values$header <- 1
-    values$export <- 1
-    values$import <- 1
     values$psession <- 0
     values$fgalaxy <- 0
+    values$uploadmsg <- 0
 
 
     source("R/utils.R", local=TRUE)     # general routines
@@ -65,20 +65,10 @@ shinyServer(function(input, output, session) {
         if (!is.null(params[['header']])) {
             values$header <- as.numeric(params[['header']])
         }
-        if (!is.null(params[['export']])) {
-            values$export <- as.numeric(params[['export']])
-        }
-        if (!is.null(params[['import']])) {
-            values$import <- as.numeric(params[['import']])
-        }
-        if (!is.null(params[['frameproc']]) && as.numeric(params[['frameproc']])==1) {
-            values$header <- 0
-            values$import <- 0
-            values$export <- 0
-        }
         if (!is.null(params[['galaxy']]) && as.numeric(params[['galaxy']])==1) {
             values$header <- 0
             values$fgalaxy <- 1
+            values$uploadmsg <- 3
         } else {
             values$fgalaxy <- 2
         }

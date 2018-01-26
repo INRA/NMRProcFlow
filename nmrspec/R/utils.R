@@ -393,32 +393,44 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
 }
 
 
-#----
+##---------------
+## Extension for Galaxy Interactive Environment
+##---------------
 # Generates the shell script that :
 #  i/ init the semaphores
-#  ii/ will launch the R cmdR script, 
-# then launches the shell script in background mode (nohup)
+#  ii/ will launch the upload script, 
+# then launches the shell script
 #----
-submit_PythonScript <- function(outDataViewer, macrofile)
+submit_UploadScript <- function(outDataViewer, macrofile)
 {
    cmdfile <- file.path(outDataViewer,'jobScript.sh')
-   pidfile <- file.path(outDataViewer,conf$JobPIDFile)
    LOGFILE <- file.path(outDataViewer,conf$ERRORFILE)
-   PythonScript <- conf$UPLOAD2GALAXY
+   LOGFILE3 <- file.path(outDataViewer,conf$LOGFILE3)
 
-   fh<-file(cmdfile,"wt")
-   writeLines("#!/bin/bash\n\n", fh)
-   writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileIn),"\n"), fh)
-   writeLines( paste(PythonScript,macrofile,"\n"), fh)
-   writeLines( paste0('RET=$(echo $?)' ,"\n"), fh)
-   writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileOut),"\n"), fh)
-   writeLines("exit $RET\n", fh)
-   close(fh)
-
+   delete_file(conf$ERRORFILE)
+   delete_file(conf$LOGFILE3)
    delete_file(conf$semapFileIn)
    delete_file(conf$semapFileOut)
    delete_file(conf$semapFileErr)
-   delete_file(conf$ProgressFile)
 
-   system( paste("nohup /bin/sh ",cmdfile, " 2>>",LOGFILE," 1>>",LOGFILE,"& echo $! > ",pidfile, sep=""))
+   UploadScript <- conf$UPLOADSCRIPT
+   if (! file.exists(UploadScript) ) {
+      msg <- paste('ERROR: ',UploadScript," not found\n")
+      write_textlines(LOGFILE3, msg, mode="at")
+      RET <- 1
+   } else {
+     cmd <- paste(UploadScript,macrofile)
+     
+     fh<-file(cmdfile,"wt")
+     writeLines("#!/bin/bash\n\n", fh)
+     writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileIn),"\n"), fh)
+     writeLines( paste(cmd, " 2>>",LOGFILE3," 1>>",LOGFILE3,"\n"),fh )
+     writeLines( paste0('RET=$(echo $?)' ,"\n"), fh)
+     writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileOut),"\n"), fh)
+     writeLines("exit $RET\n", fh)
+     close(fh)
+          
+     RET <- system( paste("/bin/sh ",cmdfile, " 2>>",LOGFILE," 1>>",LOGFILE,"; echo $?"), intern=TRUE )
+   }
+   RET
 }

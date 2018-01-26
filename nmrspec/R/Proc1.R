@@ -17,25 +17,13 @@
           hideTab(inputId = "conditionedPanels", target = "Load")
        }
    })
-   observeEvent( values$export, {
-       if (values$export==0) {
-          hideTab(inputId = "condProcPanels", target = "Data Export")
-       }
-   })
-   observeEvent( values$import, {
-       if (values$import==0) {
-          v_options <- c("uniforme", "AIBIN", "VSB", "bucreset" )
-          names(v_options) <- c("Uniforme", "Intelligent Bucketing", "Variable Size Buckets", "Merging / Resetting" )
-          v_select<-'AIBIN'
-          updateRadioButtons(session, "bucmeth", choices = v_options, selected=v_select)
-       }
-   })
+   ## Extension for Galaxy Interactive Environment
    observeEvent( values$fgalaxy, {
        if (values$header==0 && values$fgalaxy==1) {
-          runjs( "document.getElementById('exportCMD2').style.display = 'none';" )
+          runjs( "document.getElementById('nogalaxy').style.display = 'none';" )
        }
        if (values$fgalaxy==2) {
-          runjs( "document.getElementById('exportCMD3').style.display = 'none';" )
+          runjs( "document.getElementById('egalaxy').style.display = 'none';" )
        }
    })
 

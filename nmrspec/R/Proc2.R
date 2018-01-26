@@ -23,6 +23,16 @@
    })
 
    ##---------------
+   ## Alert Box
+   ##---------------
+   observe ({
+       ERROR$MsgUpload
+       if (nchar(ERROR$MsgUpload)>0) {
+          createAlert(session, "AlertUpLoad", "AlertUpLoadId", title = "", content = ERROR$MsgUpload, append = FALSE, style=MsgStyle)
+       }
+   })
+
+   ##---------------
    ## capMode - switch On/Off
    ##---------------
    observe ({

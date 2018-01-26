@@ -41,6 +41,7 @@ repeat {
     if (TYPE=='init')   LOGFILE <- conf$LOGFILE0
     if (TYPE=='proc')   LOGFILE <- conf$LOGFILE
     if (TYPE=='bucket') LOGFILE <- conf$LOGFILE2
+    if (TYPE=='export') LOGFILE <- conf$LOGFILE3
 
     # Gets file list in the session directory
     DataViewer <- file.path(conf$DATASETS,SID)
