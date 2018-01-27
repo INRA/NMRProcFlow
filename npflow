@@ -6,14 +6,14 @@ INI_FILE=$MYDIR/etc/config.ini
 CONF_FILE=$MYDIR/etc/npflow.conf
 
 DEV=$(cat $INI_FILE | grep -E -E "^DEV *=" | cut -d'=' -f2 | tr -d "\n")
-if [ $DEV -eq 0 ]; then
-   for l in `cat $CONF_FILE | grep -E -v "^#" | grep -E "^.+=.+$"`; do
-      e=$(echo "$l" | sed -e 's/\//\\&/g; 1{$s/^$/""/}; 1!s/^/"/; $!s/$/"/')
-      k=`echo $e | cut -d'=' -f1`
-      grep -E "^$k=" $INI_FILE 1>/dev/null 2>/dev/null
-      [ $? -eq 0 ] && sed -i -e "s/^$k=.*$/$e/" $INI_FILE
-   done
-fi
+#if [ $DEV -eq 0 ]; then
+#   for l in `cat $CONF_FILE | grep -E -v "^#" | grep -E "^.+=.+$"`; do
+#      e=$(echo "$l" | sed -e 's/\//\\&/g; 1{$s/^$/""/}; 1!s/^/"/; $!s/$/"/')
+#      k=`echo $e | cut -d'=' -f1`
+#      grep -E "^$k=" $INI_FILE 1>/dev/null 2>/dev/null
+#      [ $? -eq 0 ] && sed -i -e "s/^$k=.*$/$e/" $INI_FILE
+#   done
+#fi
 
 cp -f $INI_FILE $MYDIR/nmrviewer/www/etc/nmrview.conf
 cp -f $INI_FILE $MYDIR/nmrspec/conf/global.ini
