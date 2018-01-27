@@ -26,7 +26,7 @@ mkdir -p $DATADIR/tmp/nv && chmod 777 $DATADIR/tmp/nv
 
 # nmrspec Container
 SPEC_PORT=$HTTP_PORT
-SPEC_IMAGE=nmrprocflow/nmrprocflow:latest
+SPEC_IMAGE=nmrprocflow/nmrprocflow:v1.2.12
 SPEC_CONTAINER=npflow
 SPEC_PAR="--env-file $MYDIR/etc/npflow.conf"
 SPEC_SRC=''

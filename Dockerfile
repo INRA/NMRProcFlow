@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y \
 
 # See https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-16-04-2
 RUN sh -c 'echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list' && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 
+#    apt-key adv --keyserver hkp://keys.gnupg.net:80 --recv-keys A04A6C4681484CF1
 
 # Install R / ...
 RUN apt-get update && apt-get install -y \
