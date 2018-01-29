@@ -19,7 +19,7 @@
    })
    ## Extension for Galaxy Interactive Environment
    observeEvent( values$fgalaxy, {
-       if (values$header==0 && values$fgalaxy==1) {
+       if (values$fgalaxy==1) {
           runjs( "document.getElementById('nogalaxy').style.display = 'none';" )
        }
        if (values$fgalaxy==2) {
