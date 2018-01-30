@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import time
  
@@ -7,10 +8,11 @@ if len(sys.argv) != 2:
     print('Usage: ./hello_worls.py filename')
     sys.exit(1)
 
-# Wait for 5 seconds
-time.sleep(5)
 
 print('Hello World! \nMacro-command file = %s' % sys.argv[1])
+
+# Wait for 5 seconds
+time.sleep(5)
 
 num_words = num_lines = num_chars = 0  # chain assignment
  

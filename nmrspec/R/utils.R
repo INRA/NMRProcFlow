@@ -409,9 +409,6 @@ submit_UploadScript <- function(outDataViewer, macrofile)
 
    delete_file(conf$ERRORFILE)
    delete_file(conf$LOGFILE3)
-   delete_file(conf$semapFileIn)
-   delete_file(conf$semapFileOut)
-   delete_file(conf$semapFileErr)
 
    UploadScript <- conf$UPLOADSCRIPT
    if (! file.exists(UploadScript) ) {
@@ -420,17 +417,7 @@ submit_UploadScript <- function(outDataViewer, macrofile)
       RET <- 1
    } else {
      cmd <- paste(UploadScript,macrofile)
-     
-     fh<-file(cmdfile,"wt")
-     writeLines("#!/bin/bash\n\n", fh)
-     writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileIn),"\n"), fh)
-     writeLines( paste(cmd, " 2>>",LOGFILE3," 1>>",LOGFILE3,"\n"),fh )
-     writeLines( paste0('RET=$(echo $?)' ,"\n"), fh)
-     writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileOut),"\n"), fh)
-     writeLines("exit $RET\n", fh)
-     close(fh)
-          
-     RET <- system( paste("/bin/sh ",cmdfile, " 2>>",LOGFILE," 1>>",LOGFILE,"; echo $?"), intern=TRUE )
+     RET <- system( paste(cmd, " 2>>",LOGFILE3," 1>>",LOGFILE3,"; echo $?"), intern=TRUE )
    }
    RET
 }
