@@ -65,6 +65,9 @@ shinyServer(function(input, output, session) {
         if (!is.null(params[['header']])) {
             values$header <- as.numeric(params[['header']])
         }
+        if (as.numeric(conf$HEADER)==0) {
+            values$header <- 0
+        }
         if (as.numeric(conf$GALAXY)==1) {
             values$fgalaxy <- 1
             values$uploadmsg <- 3

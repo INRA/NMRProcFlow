@@ -199,11 +199,11 @@ tryCatch({
        } else {
           PARS <- t(sapply(c(1:N), function(x) { c( samples[x, 1], samples[x, 2], 
                     specList[,x]$acq$PULSE, specList[,x]$acq$NUC, specList[,x]$acq$SOLVENT,
-                    specList[,x]$proc$phc0, specList[,x]$proc$phc1,
+                    specList[,x]$acq$GRPDLY, specList[,x]$proc$phc0, specList[,x]$proc$phc1,
                     specList[,x]$acq$SFO1, specList[,x]$proc$SI, specList[,x]$acq$SW, specList[,x]$acq$SWH, 
                     specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
           }))
-         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
+         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
        }
        Write.LOG('nuc.txt',specList[,1]$acq$NUC)
     } else {
@@ -214,9 +214,9 @@ tryCatch({
          colnames(PARS) <- c("Spectrum", "Samplecode", "EXPNO", "PROCNO", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
        } else {
           PARS <- t( c( samples[1, 1], samples[1, 2],
-                    spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$proc$phc0, spec$proc$phc1,
+                    spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$acq$GRPDLY, spec$proc$phc0, spec$proc$phc1,
                     spec$acq$SFO1, spec$proc$SI, specList$acq$SW, spec$acq$SWH, spec$acq$RELAXDELAY, spec$acq$O1))
-         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
+         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
        }
        Write.LOG('nuc.txt',spec$acq$NUC)
     }

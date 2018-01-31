@@ -36,10 +36,14 @@ Spec1r.Procpar.default <- list (
     TSP=FALSE,                 # PPM referencing
     TSPSNR=100,                # Minimal S/N Ratio for TSP Peak
     RABOT=FALSE,               # Zeroing of Negative Values 
+    OPTPHC0=TRUE,              # Zero order phase optimization
     OPTPHC1=FALSE,             # First order phase optimization
     ALGO2=FALSE,               # alternative algorithm for phase optimization
     FRACPPM= 0,                # Origin point for adjustment of the first order phase (defined as a fraction of the ppm scale)
     CFRACPPM= 0.25,            # Origin point for adjustment of the first order phase (defined as a fraction of the ppm scale)
+    INCFRACPPM1=0.125,         # Incrementation value for search of optimal point for adjustment of the first order phase : step 1
+    INCFRACPPM2=0.0125,        # Incrementation value for search of optimal point for adjustment of the first order phase : step 2
+    JGD_INNER=TRUE,            # JEOL : internal or external estimation for Group Delay
     RMS=0
 )
 
@@ -173,20 +177,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
    rawR <- fidGoodSize[seq(from = 1, to = TD, by = 2)]
    rawI <- fidGoodSize[seq(from = 2, to = TD, by = 2)]
-
-   mediar<-mean(as.integer(rawR[c((length(rawR)/2):length(rawR))]),na.rm = TRUE)
-   mediai<--mean(as.integer(rawI[c((length(rawR)/2):length(rawR))]),na.rm = TRUE)
-   rawR<-rawR-mediar
-   rawI<-rawI-mediai
    fid <- complex(real=rawR, imaginary=rawI)
-
-   ### TD needs to be power of 2; if not, apply a padding of zeros
    TD <- length(fid)
-   tdp2 <- 2^round(log2(TD)+0.4999)
-   if (TD < tdp2 ) {
-      fid <- c( fid, rep(complex(real=0, imaginary=0), (tdp2-TD)) )
-      TD <- length(fid)
-   }
 
    if (is.null(GRPDLY) || is.na(GRPDLY) ||  length(GRPDLY)==0 || GRPDLY<0) {
 
@@ -206,17 +198,6 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
                   .estime_grpdelay(fid)
                 })
    }
-
-   m <- length(fid)
-   Omega <- (0:(m-1))/m
-   i <- complex(real=0,imaginary=1)
-   Spectrum <- fft(fid)
-     p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-     Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
-     Spectrum <- Spectrum * exp(i*GRPDLY*2*pi*Omega)
-     p <- length(seq1); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-     Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
-   fid <- fft(Spectrum, inverse = TRUE)
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, 
                 PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, TEMP=TEMP, NUC=NUC, 
@@ -305,18 +286,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    td <- length(signal)
    rawR <- signal[seq(from = 1, to = td, by = 2)]
    rawI <- signal[seq(from = 2, to = td, by = 2)]
-   TD <- length(rawR)
-
-   # null average
-   mediar <-  mean(rawR[c((length(rawR)/2):length(rawR))],na.rm = TRUE)
-   mediai <- -mean(rawI[c((length(rawR)/2):length(rawR))],na.rm = TRUE)
-   if (dtype=="integer") {
-      mediar <- as.integer(mediar)
-      mediai <- as.integer(mediai)
-   }
-   rawR<-rawR-mediar
-   rawI<-rawI-mediai
    fid <- complex(real=rawR, imaginary=rawI)
+   TD <- length(fid)
 
    GRPDLY <- 0
    PROBE <- .varian.get_param(ACQ,"probe_",type="string")
@@ -418,8 +389,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
      History_Length=readBin(to.read, what="int", n=1,  size=4L, signed=T, endian = "big"),        #
      Param_Start=readBin(to.read, what="int", n=1,  size=4L, signed=T, endian = "big"),           #
      Param_Length=readBin(to.read, what="int", n=1,  size=4L, signed=T, endian = "big"),          #
-     List_Start=readBin(to.read, what="int", n=1,  size=4L, signed=T, endian = "big"),            #
-     List_Length=readBin(to.read, what="int", n=1,  size=4L, signed=T, endian = "big"),           #
+     List_Start=readBin(to.read, what="int", n=8,  size=4L, signed=T, endian = "big"),            #
+     List_Length=readBin(to.read, what="int", n=8,  size=4L, signed=T, endian = "big"),           #
      Data_Start=readBin(to.read, what="int", n=1,  size=4L, signed=T, endian = "big"),            #
      Data_Length=readBin(to.read, what="int", n=1,  size=8L, signed=T, endian = "big"),           #
      Context_Start=readBin(to.read, what="int", n=1,  size=8L, signed=T, endian = "big"),         #
@@ -471,6 +442,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
        Value <- NULL
        if (Value_Type==0) {
            Value <- readChar(to.read, 16)
+           Value <- gsub("\\\\" , "/", Value)
+           Value <- gsub("<<" , "", Value)
            pad <- readBin(to.read, what="int", n=4, size=1L, signed=T, endian = endian)
        }
        if (Value_Type==1) {
@@ -496,6 +469,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
            pad <- readBin(to.read, what="int", n=20, size=1L, signed=T, endian = endian)
        }
        Name <- tolower(readChar(to.read, 28))
+       Name <- gsub("\\.", "_", gsub(" ", "_", trim(Name)))
+
        if (! is.na(suppressWarnings(as.numeric(Value)))) {
            Value <- as.numeric(Value)
        } else if (! is.na(suppressWarnings(as.logical(Value)))) {
@@ -527,15 +502,16 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    #--------------
    # Read Fid Data
    #--------------
+   fid <- NULL
    to.read = file(FILE,"rb")
    seek(to.read,where=Header$Data_Start, origin="start")
-   if (Header$Data_Type==1) {
+   if (Header$Data_Type==1) { # One_D - 64 bits
        seek(to.read,where=Header$Data_Offset_Start[1], origin="current")
        readpoints <-  Header$Data_Offset_Stop[1]-Header$Data_Offset_Start[1]+1;
        rawR <- readBin(to.read, what="numeric", n=readpoints, size=8L, endian = endian)
        seek(to.read,where=Header$Data_Offset_Start[1], origin="current")
        rawI <- readBin(to.read, what="numeric", n=readpoints, size=8L, endian = endian)
-       data  <- complex(real=rawR, imaginary=rawI)
+       fid  <- complex(real=rawR, imaginary=rawI)
    }
    close(to.read)
 
@@ -548,41 +524,32 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
         ifelse( is.null(value), defvalue, value)
    }
 
-   acq <- list( INSTRUMENT=gp('inst_model_number','undef'), SOFTWARE=gp('version','undef'),
+   NUC <- "1H"
+   if( tolower(procpar$x_domain$value=="carbon") ) NUC <- "13C"
+
+   acq <- list( INSTRUMENT="JEOL", SOFTWARE=gp('version','undef'),
                 ORIGIN=Header$File_Identifier, ORIGPATH=Header$Title, SOLVENT=procpar$solvent$value, TEMP=procpar$temp_set$value, 
-                PROBE=procpar$x_probe_map$value, PULSE=procpar$experiment$value, NUC=procpar$x_domain$value,
+                PROBE=procpar$x_probe_map$value, PULSE=procpar$experiment$value, NUC=NUC,
                 NUMBEROFSCANS=procpar$total_scans$value, DUMMYSCANS=procpar$x_prescans$value, PULSEWIDTH=procpar$x_pulse$value,
                 RELAXDELAY=procpar$relaxation_delay$value, SPINNINGRATE=procpar$spin_set$value, TD=procpar$x_points$value, 
-                SW=procpar$x_sweep$value/Header$Base_Freq[1], SWH=procpar$x_sweep$value, offset=procpar$x_offset$value,
+                SW=procpar$x_sweep$value/Header$Base_Freq[1], SWH=procpar$x_sweep$value, OFFSET=procpar$x_offset$value,
                 SFO1=procpar$irr_freq$value, O1=procpar$x_offset$value*Header$Base_Freq[1], GRPDLY=0 )
 
    if( procpar$temp_set$Unit=="dC") acq$TEMP <- acq$TEMP + 273.15
 
-
-   rawR <- Re(data)
-   rawI <- Im(data)
-   mediar <-  mean(as.integer(rawR[c((length(rawR)/2):length(rawR))]),na.rm = TRUE)
-   mediai <- -mean(as.integer(rawI[c((length(rawR)/2):length(rawR))]),na.rm = TRUE)
-   rawR <- rawR-mediar
-   rawI <- rawI-mediai
-   fid <- complex(real=rawR, imaginary=rawI)
    acq$TD <- length(fid)
 
-   # Estime Group Delay
-   acq$GRPDLY <- .estime_grpdelay(fid)
-
-   if (acq$GRPDLY>0) {
-      m <- length(fid)
-      Omega <- (0:(m-1))/m
-      theta <- 2*pi*acq$GRPDLY
-      i <- complex(real=0,imaginary=1)
-      Spectrum <- fft(fid)
-        p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-        Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
-        Spectrum <- Spectrum * exp(i*theta*Omega)
-        p <- length(seq1); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-        Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
-      fid <- fft(Spectrum, inverse = TRUE)
+   # Group Delay : Internal or External
+   if (Spec1r.Procpar$JGD_INNER) {
+      GRPDLY <- 0
+      factors <- eval(parse(text=paste0("c(",gsub(" +",",",procpar$factors$value),")")))
+      orders <- eval(parse(text=paste0("c(",gsub(" +",",",procpar$orders$value),")")))
+      for (k in 1:orders[1]) {
+            GRPDLY <- GRPDLY+ 0.5*(( orders[k+1] - 1)/prod(factors[k:orders[1]]));
+      }
+      acq$GRPDLY <- GRPDLY
+   } else {
+      acq$GRPDLY <- .estime_grpdelay(fid)
    }
 
    spec <- list( path=FILE, acq=acq, fid=fid )
@@ -604,11 +571,13 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    
    tree <- xmlTreeParse(filename)
    root <- xmlRoot(tree)
+
    fidData <- xmlElementsByTagName(root, "fidData", recursive = TRUE)[["acquisition.acquisition1D.fidData"]]
    b64string <- gsub("\n", "", xmlValue(fidData))
    byteFormat <- xmlAttrs(fidData)["byteFormat"]
    raws <- memDecompress(base64decode(b64string), type=compression)
    signal <- readBin(raws, n=length(raws), what=what, size=sizeof, endian = endian)
+   TD <- length(signal)
 
    SFO1 <- as.double(xmlAttrs(xmlElementsByTagName(root, "irradiationFrequency", recursive = TRUE)[[1]])["value"])
    SWH <-  as.double(xmlAttrs(xmlElementsByTagName(root, "sweepWidth", recursive = TRUE)[[1]])["value"])
@@ -627,7 +596,6 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    instrument <- xmlElementsByTagName(root, "instrumentConfiguration", recursive = TRUE)[[1]]
    INSTRUMENT <- xmlAttrs(xmlElementsByTagName(instrument,"cvParam")[[1]])["name"]
    PROBE <- xmlAttrs(xmlElementsByTagName(instrument,"userParam")[[1]])["value"]
-
    NUC_LABEL <- xmlAttrs(xmlElementsByTagName(root, "acquisitionNucleus", recursive = TRUE)[[1]])["name"]
    if (length(grep("hydrogen",NUC_LABEL))>0) NUC <- '1H'
    if (length(grep("carbon",NUC_LABEL))>0)   NUC <- '13C'
@@ -636,49 +604,35 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    PULSE   <- ''
 
    ORIGIN   <- '-'
+   repeat {
+       if ( length(grep("BRUKER",toupper(INSTRUMENT)))>0  ) { ORIGIN <- 'BRUKER'; break; }
+       if ( length(grep("VARIAN",toupper(INSTRUMENT)))>0  ) { ORIGIN <- 'VARIAN'; break; }
+       if ( length(grep("JEOL",  toupper(INSTRUMENT)))>0  ) { ORIGIN <- 'JEOL';   break; }
+       break
+   }
    ORIGPATH <- '-'
+   if ( length(xmlAttrs(xmlElementsByTagName(root, "acquisition1D", recursive = TRUE)[[1]])["id"]) ) {
+      ORIGPATH <- xmlAttrs(xmlElementsByTagName(root, "acquisition1D", recursive = TRUE)[[1]])["id"]
+   } else {
+      ORIGPATH <- gsub(".nmrML", "", basename(filename))
+   }
    SOLVENT <- '-'
 
    td <- length(signal)
    rawR <- signal[seq(from = 1, to = td, by = 2)]
    rawI <- signal[seq(from = 2, to = td, by = 2)]
-
-   mediar<-mean(as.integer(rawR[c((3*length(rawR)/4):length(rawR))]),na.rm = TRUE)
-   mediai<--mean(as.integer(rawI[c((3*length(rawR)/4):length(rawR))]),na.rm = TRUE)
-   rawR<-rawR-mediar
-   rawI<-rawI-mediai
    fid <- complex(real=rawR, imaginary=rawI)
+   TD <- length(fid)
 
    # Bruker && Jeol : Estimation of the Group Delay if zero
    if (GRPDLY==0 && (length(grep("Bruker",INSTRUMENT))>0 || length(grep("JEOL",INSTRUMENT))>0)) {
        GRPDLY <- .estime_grpdelay(fid)
    }
 
-   ### TD needs to be power of 2; if not, apply a padding of zeros
-   TD <- length(fid)
-   tdp2 <- 2^round(log2(td)+0.4999)
-   if (td < tdp2 ) {
-       fid <- c( fid, rep(complex(real=0, imaginary=0), (tdp2-td)) )
-       TD <- length(fid)
-   }
-
-   if (GRPDLY>0) {
-      m <- length(fid)
-      Omega <- (0:(m-1))/m
-      i <- complex(real=0,imaginary=1)
-      Spectrum <- fft(fid)
-        p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-        Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
-        Spectrum <- Spectrum * exp(i*GRPDLY*2*pi*Omega)
-        p <- length(seq1); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-        Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
-      fid <- fft(Spectrum, inverse = TRUE)
-   }
-
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT,
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH, TEMP=TEMP, NUC=NUC,
-                TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=0, GRPDLY=GRPDLY )
-   spec <- list( path=dirname(filename), acq=acq, fid=fid )
+                NUMBEROFSCANS='-', DUMMYSCANS='-', TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=0, GRPDLY=GRPDLY )
+   spec <- list( path=filename, acq=acq, fid=fid )
 
    spec
 }
@@ -773,6 +727,37 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    spec
 }
 
+### Group Delay correction
+.groupDelay_correction <- function(spec, param=Spec1r.Procpar)
+{
+    fid <- spec$fid
+    if (spec$acq$GRPDLY>0) {
+       if (! is.null(param$GRDFLG) && param$GRDFLG) spec$acq$GRPDLY <- .estime_grpdelay(fid)
+       m <- length(fid)
+       if (is.null(param$OC)) {
+          P <- sqrt(  Re(fid)^2 + Im(fid)^2 )
+          nd0 <- which(P>max(P)/2)[1];
+          param$OC <- (sign(Re(fid)[nd0])==sign(Im(fid)[nd0]))
+       }
+       # Omega Centred ?
+       if (param$OC) {
+          Omega <- ((-m/2):(m/2-1))/m
+       } else {
+          Omega <- (0:(m-1))/m
+       }
+       
+       i <- complex(real=0,imaginary=1)
+       p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
+       Spectrum <- fft(fid)
+       Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
+       Spectrum <- Spectrum * exp(i*spec$acq$GRPDLY*2*pi*Omega)
+       p <- length(seq1); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
+       Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
+       fid <- fft(Spectrum, inverse = TRUE)
+    }
+    fid
+}
+
 #--------------------------------
 # Pre-Processing
 #--------------------------------
@@ -785,78 +770,72 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
     td <- length(spec$fid)
 
-    # Retaining the non-zero points at the end of the FID is important for minimizing baseline distortion.
-    KEEPTAIL <- FALSE
-    if (spec$acq$GRPDLY>=0) {
-       NTAIL <- ifelse(spec$acq$GRPDLY>0, round(spec$acq$GRPDLY+0.5), 100)
-       Vtail <- spec$fid[(td-NTAIL-1):td]
-       KEEPTAIL <- TRUE
-    }
-
     ### Line Broadening
     if (param$LINEBROADENING && param$LB!=0) {
-       if(param$DEBUG) .v("Exp. Line Broadening (LB=%f)\n", param$LB, logfile=logfile)
+       if(param$DEBUG) .v("\tExp. Line Broadening (LB=%f)\n", param$LB, logfile=logfile)
        t <- seq(0,td-1)/(2*spec$acq$SWH)
        if (param$GB==0) {
            vlb <- exp( -t*param$LB*pi )
        } else {
-           if(param$DEBUG) .v("Gauss. Line Broadening (GB=%f)\n", param$GB, logfile=logfile)
+           if(param$DEBUG) .v("\tGauss. Line Broadening (GB=%f)\n", param$GB, logfile=logfile)
            AQ <- td/(2*spec$acq$SWH)
            vlb <- exp(  t*param$LB*pi - ( t^2 )*param$LB*pi/(2*param$GB*AQ) )
            Tmax <- max(vlb); vlb <- vlb/Tmax
        }
-       if (KEEPTAIL) spec$fid[(td-NTAIL-1):td] <- rep(complex(real=0, imaginary=0), NTAIL)
        spec$fid <- vlb*spec$fid
-       if (KEEPTAIL) spec$fid[(td-NTAIL-1):td] <- Vtail
     }
 
-    if (param$DEBUG) .v("TD = %d\n", td, logfile=logfile)
+    if (param$DEBUG) .v("\tTD = %d\n", td, logfile=logfile)
 
     ### TD needs to be power of 2; if not, apply a padding of zeros
     tdp2 <- 2^round(log2(td)+0.4999)
     if (td < tdp2 ) {
-       if(param$DEBUG) .v("Zero Padding = %d\n", tdp2 - td, logfile=logfile)
-       if (KEEPTAIL) spec$fid[(td-NTAIL-1):td] <- rep(complex(real=0, imaginary=0), NTAIL)
+       if(param$DEBUG) .v("\tZero Padding = %d\n", tdp2 - td, logfile=logfile)
        spec$fid <- c( spec$fid, rep(complex(real=0, imaginary=0), (tdp2-td)) )
-       if (KEEPTAIL)spec$fid[(td-NTAIL-1):td] <- Vtail
        td <- length(spec$fid)
     }
-    spec$fid0 <- spec$fid
+    spec$fid0 <- .groupDelay_correction(spec, param)
 
     ### Zero filling
     if (param$ZEROFILLING) {
        TDMAX <- min(param$ZFFAC*td,131072)
-       if(param$DEBUG) .v("Zero Filling (x%d)\n", round(TDMAX/td), logfile=logfile)
-       if (KEEPTAIL) spec$fid[(td-NTAIL-1):td] <- rep(complex(real=0, imaginary=0), NTAIL)
+       if(param$DEBUG) .v("\tZero Filling (x%d)\n", round(TDMAX/td), logfile=logfile)
        while ((td/TDMAX) < 1 ) {
           td=length(spec$fid)
           spec$fid <- c( spec$fid, rep(complex(real=0, imaginary=0), td) )
           td=length(spec$fid)
        }
-       if (KEEPTAIL) spec$fid[(td-NTAIL-1):td] <- Vtail
        td=length(spec$fid)
     }
-    if (param$DEBUG) .v("SI = %d\n", td, logfile=logfile)
+    if (param$DEBUG) .v("\tSI = %d\n", td, logfile=logfile)
+
+    ### Group Delay correction if needed
+    if (spec$acq$GRPDLY>0) {
+       if(param$DEBUG) .v("\tApplied GRPDLY ...", logfile=logfile)
+       spec$fid <- .groupDelay_correction(spec, param)
+       if(param$DEBUG) .v("OK\n", logfile=logfile)
+    }
 
     ### FFT of FID
-    if(param$DEBUG) .v("FFT ...", logfile=logfile)
-    fspec <- fft(spec$fid)
+    if(param$DEBUG) .v("\tFFT ...", logfile=logfile)
+    Spectrum <- fft(spec$fid)
     if(param$DEBUG) .v("OK\n", logfile=logfile)
-
 
     ### Rotation
     p <- td/2
-    spec.p <- c( fspec[(p+1):td], fspec[1:p] )
-    param$REVTIME <- param$REVTIME || ( length(grep("[V|v]arian",spec$acq$INSTRUMENT))>0 )
+    spec.p <- c( Spectrum[(p+1):td], Spectrum[1:p] )
+    param$REVTIME <- param$REVTIME || ( length(grep("VARIAN",toupper(spec$acq$INSTRUMENT)))>0 || length(grep("JEOL",toupper(spec$acq$INSTRUMENT)))>0)
     if ( param$REVTIME ) {
        rawspec <- spec.p[rev(1:td)]
     } else {
        rawspec <- spec.p
     }
+    param$SI <- length(rawspec)
 
     proc <- list( phc0=0, phc1=0, RMS=0, SI=length(rawspec) )
 
     ### Save into the spec object instance
+    spec$acq$TD <- length(rawspec)
     spec$data <- rawspec
     spec$param <- param
     spec$proc <- proc
@@ -960,9 +939,9 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    } else {
       # Step 1: Fast exploration of full space for alpha
       spec1r <- spec1r_cal(flg=0)
-      opt <- OptimAlpha(0.125, 0.875, 0.125)
+      opt <- OptimAlpha(0.125, 0.875, spec$param$INCFRACPPM1)
       # Step 2: Exploration of the optimial local space for alpha
-      opt <- OptimAlpha(opt$fracppm-0.0625, opt$fracppm+0.0625, 0.0125)
+      opt <- OptimAlpha(opt$fracppm-0.0625, opt$fracppm+0.0625, spec$param$INCFRACPPM1)
    }
    # if criterim is better for phc1=0
    if (opt$rms>best0[["objective"]]) {
@@ -989,20 +968,31 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    m <- spec$proc$SI
    SW <- spec$acq$SW
    spec$dppm <- SW/(m-1)
-   if (spec$acq$NUC %in% c('1H','H1') ) {
-      ARRAY_SWREF   <- c(  10,   11, 12, 14,   15, 20)
-      ARRAY_PMINREF <- c(-0.4, -0.5, -1, -2, -2.6, -4)
-      n <- trunc(SW+0.1)
-      if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n + 1
-      if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n -2
-      if (sum(ARRAY_SWREF==trunc(SW))==0) {
-          spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
-      } else {
-          spec$pmin <- ARRAY_PMINREF[which(ARRAY_SWREF==n)]
+   spec$pmin <- 0
+
+   repeat {
+      if (spec$acq$INSTRUMENT=="JEOL") {
+         spec$pmin <- spec$acq$OFFSET-SW/2
+         break
       }      
-   }
-   if (spec$acq$NUC == '13C') {
-      spec$pmin <- -20
+      if (spec$acq$NUC %in% c('1H','H1') ) {
+         ARRAY_SWREF   <- c(  10,   11, 12, 14,   15, 20)
+         ARRAY_PMINREF <- c(-0.4, -0.5, -1, -2, -2.6, -4)
+         n <- trunc(SW+0.1)
+         if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n + 1
+         if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n -2
+         if (sum(ARRAY_SWREF==trunc(SW))==0) {
+             spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
+         } else {
+             spec$pmin <- ARRAY_PMINREF[which(ARRAY_SWREF==n)]
+         }      
+         break
+      }
+      if (spec$acq$NUC == '13C') {
+         spec$pmin <- -20
+         break
+      }
+      break
    }
 
    # Calibration based on TSP
@@ -1072,14 +1062,16 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
       if ( param$INPUT_SIGNAL == "fid") {
           ## Pre-processing: group delay, zero filling, line broadening
-          if(param$DEBUG) .v("Preprocessing ...",logfile=logfile)
+          if(param$DEBUG) .v("Preprocessing ...\n",logfile=logfile)
           spec <- .preprocess(spec,param)
           if(param$DEBUG) .v("OK\n",logfile=logfile)
           
           ## Phasing
-          if(param$DEBUG) .v("Optimizing the zero order phase ...",logfile=logfile)
-          spec <- .optimphase0(spec)
-          if(param$DEBUG) .v("OK\n",logfile=logfile)
+          if(param$OPTPHC0) {
+               if(param$DEBUG) .v("Optimizing the zero order phase ...",logfile=logfile)
+               spec <- .optimphase0(spec)
+               if(param$DEBUG) .v("OK\n",logfile=logfile)
+          }
           if(param$OPTPHC1) {
               if(param$DEBUG) .v("Optimizing the first order phase ...",logfile=logfile)
               spec <- .optimphase1(spec)

@@ -149,6 +149,7 @@ generate_Metadata_File <- function(RawZip, DATADIR, procParams)
 
    if (procParams$VENDOR=="varian") return( set_Metadata_File_Varian(RAWDIR, DATADIR, procParams) )
    if (procParams$VENDOR=="nmrml")  return( set_Metadata_File_nmrML(RAWDIR, DATADIR, procParams) )
+   if (procParams$VENDOR=="jeol")   return( set_Metadata_File_jeol(RAWDIR, DATADIR, procParams) )
 
    # if a file  of samples was uploaded along with the ZIP file
    SampleFile <- file.path(RAWDIR,'samples.txt')
@@ -321,6 +322,7 @@ set_Metadata_File <- function(RAWDIR, DATADIR, procParams)
    if (procParams$VENDOR == "bruker") return (set_Metadata_File_Bruker(RAWDIR, DATADIR, procParams))
    if (procParams$VENDOR == "varian") return (set_Metadata_File_Varian(RAWDIR, DATADIR, procParams))
    if (procParams$VENDOR == "nmrml")  return (set_Metadata_File_nmrML(RAWDIR, DATADIR, procParams))
+   if (procParams$VENDOR == "jeol")   return (set_Metadata_File_jeol(RAWDIR, DATADIR, procParams))
    return(0)
 }
 
@@ -457,12 +459,21 @@ set_Metadata_File_Varian <- function(RAWDIR, DATADIR, procParams)
 
 set_Metadata_File_nmrML <- function(RAWDIR, DATADIR, procParams)
 {
+      set_Metadata_File_ext(RAWDIR, DATADIR, procParams, "nmrML")
+}
+set_Metadata_File_jeol <- function(RAWDIR, DATADIR, procParams)
+{
+      set_Metadata_File_ext(RAWDIR, DATADIR, procParams, "jdf")
+}
+
+set_Metadata_File_ext <- function(RAWDIR, DATADIR, procParams, ext)
+{
    lstfac <- c("1;Samplecode")
    rawdir <- NULL
    ERRORLIST <- c()
    OKRAW <- 1
-
-   LIST <- gsub('//', '/', list.files(path = RAWDIR, pattern = ".nmrML$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   pattern <- paste0('.',ext,'$')
+   LIST <- gsub('//', '/', list.files(path = RAWDIR, pattern = pattern, all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
    if ( class(LIST)=="character" && length(LIST)==0 ) return(0)
 
    SampleFile <- file.path(RAWDIR,'samples.txt')
@@ -491,7 +502,7 @@ set_Metadata_File_nmrML <- function(RAWDIR, DATADIR, procParams)
       }
    } else {
       rawdir <- cbind( LIST, rep(0, length(LIST)), rep(0, length(LIST)) )
-      M <- cbind( basename(LIST), gsub(".nmrML$", "", basename(LIST)) )
+      M <- cbind( basename(LIST), gsub(pattern, "", basename(LIST)) )
    }
    if (length(ERRORLIST)>0) {
       write.table(ERRORLIST, file=file.path(DATADIR,'errorlist.csv'), sep=';', row.names=F, col.names=F, quote=F)

@@ -33,7 +33,7 @@
 
    observeEvent ( values$sessinit, {
        if (values$sessinit==1 && conf$nmrML_input==1) {
-          v_options <- c('bruker', 'varian','nmrml'); names(v_options) <- c('Bruker', 'Varian/Agilent', 'nmrML v1.0.rc1'); v_select<-'bruker'
+          v_options <- c('bruker', 'varian','jeol', 'nmrml'); names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1'); v_select<-'bruker'
           updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
        }
    })
@@ -257,9 +257,10 @@
                procParams$LB <<- as.numeric(input$LB)
                #procParams$GB <<- as.numeric(input$GB)
                procParams$BLPHC <<- ifelse(input$blphc==1, TRUE, FALSE)
-               procParams$REVTIME <<- ifelse(input$vendor == 'varian', TRUE, FALSE)
+               procParams$REVTIME <<- ifelse(input$vendor == 'bruker', FALSE, TRUE)
                procParams$ZEROFILLING <<- ifelse(input$zerofilling==1, TRUE, FALSE)
                procParams$ZFFAC <<- as.numeric(input$zffac)
+               procParams$OPTPHC0 <<- TRUE
                procParams$OPTPHC1 <<- ifelse(input$optimphc1==1, TRUE, FALSE)
                procParams$FRACPPM <<- as.numeric(input$fracppm)
                procParams$RABOT <<- ifelse(input$rabot==1, TRUE, FALSE)
