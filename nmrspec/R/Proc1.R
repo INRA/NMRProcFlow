@@ -31,13 +31,6 @@
 ## Upload & Preprocessing
 ##---------------
 
-   observeEvent ( values$sessinit, {
-       if (values$sessinit==1 && conf$nmrML_input==1) {
-          v_options <- c('bruker', 'varian','jeol', 'nmrml'); names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1'); v_select<-'bruker'
-          updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
-       }
-   })
-
    observeEvent ( input$vendor, {
        v_options <- c("fid"); names(v_options) <- c('FID'); v_select<-'fid'
        if ( input$vendor=="bruker" ) {
@@ -50,6 +43,48 @@
    observeEvent ( ERROR$MsgErrLoad, {
        if (nchar(ERROR$MsgErrLoad)>0) {
           createAlert(session, "ErrAlertLoad", "ErrAlertLoadId", title = "", content = ERROR$MsgErrLoad, append = FALSE, style='danger')
+       }
+   })
+
+   observeEvent ( input$macropcmd, {
+       macropcmd <- input$macropcmd
+       if ( ! is.null(macropcmd) ) {
+          CMDTEXT <- gsub("\t", "", readLines(macropcmd$datapath))
+          if ( length(grep("#%%", CMDTEXT[1]))==1 ) {
+               procpar <- unlist(strsplit(gsub("#%% ", "", CMDTEXT[1]), "; "))
+               parnames <- NULL; parvals <- NULL
+               for (param in procpar ) { 
+                    parnames <- c( parnames, unlist(strsplit(param,"="))[1] ); parvals <- c( parvals, unlist(strsplit(param,"="))[2] );
+               }
+               names(parvals) <- parnames;  procpar <- data.frame(t(parvals), stringsAsFactors=FALSE)
+               if (! is.null(procpar$Vendor)) {
+                  v_options <- c('bruker', 'varian','jeol', 'nmrml')
+                  names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1')
+                  v_select<-tolower(trim(procpar$Vendor))
+                  updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
+               }
+               if (! is.null(procpar$Type)) {
+                  v_options <- c("fid","1r"); names(v_options) <- c('FID','1r spectrum');
+                  updateSelectInput(session, "spectype", choices = v_options, selected=trim(procpar$Type))
+               }
+               if (! is.null(procpar$LB)) { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
+               if (! is.null(procpar$GB)) { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
+               if (! is.null(procpar$BLPHC)) { updateCheckboxInput(session, "blphc", value = ifelse( procpar$BLPHC=="TRUE", 1, 0)); }
+               if (! is.null(procpar$ZF)) {
+                  updateCheckboxInput(session, "zerofilling", value = 1);
+                  v_options <- c('2','4'); names(v_options) <- c("x2","x4");
+                  updateSelectInput(session, "zffac", choices = v_options, selected=as.numeric(procpar$ZF))
+               }
+               if (! is.null(procpar$PHC1)) { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
+               if (! is.null(procpar$ZNEG)) { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
+               if (! is.null(procpar$TSP)) { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
+               if (! is.null(procpar$TSPSNR)) { updateNumericInput(session, "TSPSNR", value = as.numeric(procpar$TSPSNR)); }
+               if (! is.null(procpar$FP)) {
+                  v_options <- c("0","0.0625","0.125","0.25","0.5","0.625","0.75" );
+                  names(v_options) <- c("Auto", "1/16", "1/8", "1/4", "1/2", "5/8", "3/4" );
+                  updateSelectInput(session, "fracppm", choices = v_options, selected=as.numeric(procpar$FP))
+               }
+          }
        }
    })
 
@@ -218,6 +253,7 @@
             if (is.na(USER$email)) USER$email <- 'none'
             if (! file.exists(file.path(outDataViewer,"user")) ) Write.LOG(file.path(outDataViewer,"user"),USER$email, mode="wt")
 
+            # Save the processing file if provided
             macropcmd <- input$macropcmd
             PCMDFilename <<- NULL
             if ( ! is.null(macropcmd) ) {
@@ -255,7 +291,7 @@
             if (input$spectype=="fid") {
                procParams$READ_RAW_ONLY <<- FALSE
                procParams$LB <<- as.numeric(input$LB)
-               #procParams$GB <<- as.numeric(input$GB)
+               procParams$GB <<- as.numeric(input$GB)
                procParams$BLPHC <<- ifelse(input$blphc==1, TRUE, FALSE)
                procParams$REVTIME <<- ifelse(input$vendor == 'bruker', FALSE, TRUE)
                procParams$ZEROFILLING <<- ifelse(input$zerofilling==1, TRUE, FALSE)
@@ -266,7 +302,8 @@
                procParams$RABOT <<- ifelse(input$rabot==1, TRUE, FALSE)
                procParams$TSP <<- ifelse(input$zeroref==1, TRUE, FALSE)
                procParams$TSPSNR <<- as.numeric(input$TSPSNR)
-               CMD <- paste0(CMD, "LB=",input$LB,"; ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
+               CMD <- paste0(CMD, "LB=",input$LB,"; GB=",input$GB, "; ")
+               CMD <- paste0(CMD, "ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
                CMD <- paste0(CMD, "BLPHC=",input$blphc,"; ")
                CMD <- paste0(CMD, "PHC1=",input$optimphc1, "; FP=",input$fracppm,"; ")
                CMD <- paste0(CMD, "TSP=",input$zeroref,"; TSPSNR=",input$TSPSNR,"; ")
