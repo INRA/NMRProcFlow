@@ -293,7 +293,7 @@
                procParams$LB <<- as.numeric(input$LB)
                procParams$GB <<- as.numeric(input$GB)
                procParams$BLPHC <<- ifelse(input$blphc==1, TRUE, FALSE)
-               procParams$REVTIME <<- ifelse(input$vendor == 'bruker', FALSE, TRUE)
+               procParams$REVTIME <<- ifelse(input$vendor == 'varian' || input$vendor == 'jeol', TRUE, FALSE)
                procParams$ZEROFILLING <<- ifelse(input$zerofilling==1, TRUE, FALSE)
                procParams$ZFFAC <<- as.numeric(input$zffac)
                procParams$OPTPHC0 <<- TRUE

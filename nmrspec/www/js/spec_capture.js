@@ -45,7 +45,7 @@ var refresh_if_capturebox = function() {
 var resize_spectrumHeight = function(imgheight) {
      do {
         if( ! $("#ifspecview").get(0) ) break;
-        ifrminheight=imgheight+70
+        ifrminheight=imgheight+76
         $("#ifspecview").height(ifrminheight);
         $("#ifspecview").get(0).contentWindow.set_spectrum_imgheight(imgheight);
         refresh_spectrum();

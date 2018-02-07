@@ -105,7 +105,7 @@ if (!$conf->error) {
 <tr><td></td>
 <td>
 <table width="100%"><tr><td>
-<table align=left><tr>
+<table align="left" style="min-width: 700px;"><tr>
 <td width="20%"><bZout>zoom out</bZout><bZprev>previous</bZprev></td>
 <td align="center"><div id="info" class="ui-widget"><?php if (!$conf->error) echo DS_html_elems($arr_select); ?></div></td>
 <td><input type="checkbox" id="check"><label for="check">Force the display of the legend</label></td>
