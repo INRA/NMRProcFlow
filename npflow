@@ -18,9 +18,6 @@ else
    HTTP_PORT=$(cat $CONF_FILE | grep HTTP_PORT | cut -d'=' -f2 | tr -d "\n")
 fi
 
-DATADIR=$(cat $INI_FILE | grep DATASETS | cut -d'=' -f2 | tr -d "\n")
-HTTP_PORT=$(cat $INI_FILE | grep HTTP_PORT | cut -d'=' -f2 | tr -d "\n")
-
 mkdir -p $DATADIR/tmp/np && chmod 777 $DATADIR/tmp/np
 mkdir -p $DATADIR/tmp/nv && chmod 777 $DATADIR/tmp/nv
 
