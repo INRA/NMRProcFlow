@@ -45,8 +45,8 @@ Then, you should have something like below:
 
 	$ docker image
 ```
-REPOSITORY           TAG                 IMAGE ID            CREATED             SIZE
-nmrprocflow/npflow   latest              0cda738b9a36        48 minutes ago      1.54 GB
+REPOSITORY                   TAG                 IMAGE ID            CREATED             SIZE
+nmrprocflow/nmrprocflow      latest              c7bf03be9a38        48 seconds ago      1.449 GB
 ```
 
 Then edit **./etc/npflow.conf**, and pay attention to these lines :
