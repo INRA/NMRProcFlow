@@ -258,6 +258,9 @@
             PCMDFilename <<- NULL
             if ( ! is.null(macropcmd) ) {
                  CMDTEXT <- gsub("\t", "", readLines(macropcmd$datapath))
+                 if ( length(grep( "^#%%", CMDTEXT))>0 ) {
+                     CMDTEXT <- CMDTEXT[grep( "^#%%", CMDTEXT, invert=TRUE )]
+                 }
                  fileConn<-file(file.path(outDataViewer,conf$Rnmr1D_PCMD))
                  writeLines(CMDTEXT, fileConn)
                  close(fileConn)
@@ -306,7 +309,7 @@
                CMD <- paste0(CMD, "ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
                CMD <- paste0(CMD, "BLPHC=",input$blphc,"; ")
                CMD <- paste0(CMD, "PHC1=",input$optimphc1, "; FP=",input$fracppm,"; ")
-               CMD <- paste0(CMD, "TSP=",input$zeroref,"; TSPSNR=",input$TSPSNR,"; ")
+               CMD <- paste0(CMD, "TSP=",input$zeroref,"; TSPSNR=",input$TSPSNR)
             }
             write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), paste0(CMD,"\n"), "wt")
             values$error <- 0
