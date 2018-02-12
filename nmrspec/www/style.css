@@ -58,6 +58,10 @@ textarea {
     line-height: 1.5;
 }
 
+.input-group .form-control, .input-group-addon, .input-group-btn {
+    height: 26px;
+}
+
 .btn {
     line-height: 1;
     font-size: 12px;
