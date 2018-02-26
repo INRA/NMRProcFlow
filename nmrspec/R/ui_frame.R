@@ -34,9 +34,7 @@ ui_frontpage <- column(12,
        td(valign="top", style="width: 400px;", ui_login_gui )),
     tr(td( colspan=3, br() ), td( bsAlert("ErrorAlert") ) ),
     tr(td( colspan=4, br(), hr() )),
-    tr(td(colspan=4, align="center", a(img(src="images/INRA_logo.png", height = 60), href="http://www.inra.fr/en/", target="_blank"),
-                     img(src="images/img_00.gif", height = 5, width = 100),
-                     a(img(src="images/metaboHUB_logo.png", height = 60), href="http://metabohub.fr/index.php?lang=en", target="_blank") ))
+    tr(td(colspan=4, align="center", a(img(src="images/INRA_logo.png", height = 60), href="http://www.inra.fr/en/", target="_blank") ))
   ))
 )
 
@@ -54,7 +52,7 @@ ui_mainpanel  <- mainPanel(
 
 # Footer
 ui_footer <- column(12, tags$hr(),
-  tags$p(class="cprght", "NMRProcFlow -(C) INRA UMR 1332 BFP, Metabolomics Facility - MetaboHUB - 2015-2018")
+  tags$p(class="cprght", "NMRProcFlow -(C) INRA UMR 1332 BFP, Metabolomics Facility - 2016-2018")
 )
 
 # Textarea UI widget
