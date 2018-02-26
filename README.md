@@ -133,7 +133,7 @@ Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcF
 
 ### License
 
-Copyright (C) 2017  Daniel Jacob - INRA 
+Copyright (C) 2016-2018  Daniel Jacob - INRA 
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
