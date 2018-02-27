@@ -17,6 +17,7 @@
           hideTab(inputId = "conditionedPanels", target = "Load")
        }
    })
+
    ## Extension for Galaxy Interactive Environment
    observeEvent( values$fgalaxy, {
        if (values$fgalaxy==1) {
@@ -160,6 +161,7 @@
          if (nchar(conf$PROXY_URL_ROOT)>0) urlwatcher <- paste0(conf$PROXY_URL_ROOT,'/',urlwatcher)
          return(HTML(paste0('<iframe id="ifwatcher" name="ifwatcher" src=',urlwatcher,' frameborder="0" style="overflow: hidden; height: ',height,'px; width: 100%; border: 0px;" width="100%" onload="this.contentWindow.document.documentElement.scrollTop=1000"></iframe>')))
    }
+
    ##---------------
    ## Output: Update the 'Reference spectrum' SelectBox 
    ##---------------
@@ -375,7 +377,7 @@
 
    ## Watcher 1b: Preprocessing
    output$watcher1b <- renderUI({
-        renderWatcher(1,'init',600)
+        renderWatcher(1,'view',600)
    })
 
    ##---------------

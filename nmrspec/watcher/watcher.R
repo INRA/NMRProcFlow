@@ -39,6 +39,7 @@ repeat {
     TYPE <- opts[3]
 
     if (TYPE=='init')   LOGFILE <- conf$LOGFILE0
+    if (TYPE=='view')   LOGFILE <- conf$LOGFILE0
     if (TYPE=='proc')   LOGFILE <- conf$LOGFILE
     if (TYPE=='bucket') LOGFILE <- conf$LOGFILE2
     if (TYPE=='export') LOGFILE <- conf$LOGFILE3
@@ -110,6 +111,8 @@ repeat {
 
     break
 }
+
+if (TYPE=='view') jscript <- ''
 
 #---------------------------------------
 # HTML CONTENT

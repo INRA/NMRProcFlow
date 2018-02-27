@@ -1,4 +1,6 @@
-# NMRViewer Docker Image
+# NMRViewer Docker Image - Standalone Installation 
+
+   * NMRViewer module is included within the NMRProcFlow docker image, but if you can also build and use NMRViewer as a standalone docker image
 
 ### Based on: Docker Apache + php Image
    * cf https://registry.hub.docker.com/_/php/
@@ -39,8 +41,7 @@
 * Run an instance (container) of the nmrview docker image
 
 ```
-  cd nmrproc
-  $ sh ./etc/dockmgr nvapp start
+  $ docker run -it --rm -v /opt/data:/opt/data -p 80:80 --name nvapp nmrview
 ```
 
 

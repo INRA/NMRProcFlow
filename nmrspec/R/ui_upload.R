@@ -86,8 +86,8 @@ ui_load_report <- conditionalPanel(condition="output.fileProcessed==1 || output.
         verbatimTextOutput("zipLog"), tags$br(), tags$br(),
         uiOutput("reload"), 
         bsButton("resetButton", label = "Reset", style="primary" ),
-        bsButton("loadlog", label = "Log", style="primary" ),
-        bsModal("modalLoadlog", "Job Watcher","loadlog", size="large", htmlOutput("watcher1b") ),
+        bsButton("loadlog", label = "Log", type="action", style="primary" ),
+        bsModal("modalLoadlog", "Job Watcher", "loadlog", htmlOutput("watcher1b"), size="large" ),
         downloadButton("exportPars", "Export Parameters" ),
         bsTooltip("exportPars", "Download the spectra parameter table", "bottom", options = list(container = "body"))
     ),
