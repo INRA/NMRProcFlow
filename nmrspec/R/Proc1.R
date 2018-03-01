@@ -455,6 +455,10 @@
              outData <- file.path(tempdir(),sessid)
              if ( ! file.exists(outData) ) dir.create(outData)
              system( paste("chmod 777 ",outData) )
+             #if (file.exists(file.path(outDataViewer,"userfiles")) && file.exists(RawZip) ) {
+             #    file.copy(file.path(outDataViewer,"userfiles"), file.path(outData,"userfiles"))
+             #    file.copy(RawZip, file.path(outData,basename(RawZip)))
+             #}
              output$jreload <- renderUI({ HTML(paste0("<script>window.location.replace('?", sessid, "');</script>")) })
              outputOptions(output, 'jreload', suspendWhenHidden=FALSE)
              outputOptions(output, 'jreload', priority=1)

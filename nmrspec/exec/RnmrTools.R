@@ -194,7 +194,10 @@ generate_Metadata_File_fid <- function(RAWDIR, DATADIR, procParams)
    LIST <- LIST[, c(-1:-nDir)]
    nc <- dim(LIST)[2]
    nr <- dim(LIST)[1]
-   if (nc<3) return(0)
+   if (nc<3) {
+      if (!is.null(procParams)) return(0)
+      LIST <- cbind(LIST[,1],LIST)
+   }
 
    SL <- NULL
    if (nc>3) { SL <- LIST[, c(1:(nc-3)) ]; LIST <- LIST[ , c((nc-2):nc) ]; }

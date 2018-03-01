@@ -864,7 +864,9 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    }
 
    if (spec$param$ALGO2==FALSE && spec$acq$NUC %in% c('1H','H1')) {
-      lparams <- list(re=Re(spec$data),im=Im(spec$data), phc0=0, phc1=0, alpha=0, p=0.95, blphc=spec$param$BLPHC)
+      V <- spec$data
+      V[ round(spec$proc$SI*(0.5-0.3/spec$acq$SW)):round(spec$proc$SI*(0.5+0.3/spec$acq$SW)) ] <- 0+0i
+      lparams <- list(re=Re(V),im=Im(V), phc0=0, phc1=0, alpha=0, p=0.95, blphc=spec$param$BLPHC)
       best1 <- C_optim_phc(-pi, pi, lparams, 0, 1e-7)
       best2 <- C_optim_phc(0, 2*pi, lparams, 0, 1e-7)
       if ( best1[["objective"]] < best2[["objective"]] ) {
@@ -872,7 +874,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
       } else { 
          best <- best2
       }
-      lparams <- list(re=Re(spec$data),im=Im(spec$data), phc0=0, phc1=0, alpha=0, p=0.95, blphc=1)
+      lparams <- list(re=Re(V),im=Im(V), phc0=0, phc1=0, alpha=0, p=0.95, blphc=1)
       best1 <- C_optim_phc(best[["minimum"]]-0.5, best[["minimum"]]+0.5, lparams, 0, 1e-7)
       if ( best1[["objective"]] < best[["objective"]] ) {
          best <- best1
@@ -890,7 +892,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
 .optimphase1 <- function(spec)
 {
-   spec1r_cal <- function(flg=0) {
+   spec1r_cal <- function(flg=0,midzero=0) {
       if (flg==0) { 
           fid <- spec$fid0
       } else {
@@ -899,7 +901,12 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
       m <- length(fid)
       Spectrum <- fft(fid)
       p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-      return( c( Spectrum[seq1], Spectrum[seq2] ) )
+      V <- c( Spectrum[seq1], Spectrum[seq2] )
+      if (midzero==1) {
+          N <- length(fid); SW <- spec$acq$SW
+          V[ round(N*(0.5-0.3/SW)):round(N*(0.5+0.3/SW)) ] <- 0+0i
+      }
+      return(V)
    }
 
    # rms function to be optimised
@@ -928,17 +935,17 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    }
 
    # Compute criterim for phc1=0
-   spec1r <- spec1r_cal(flg=1)
+   spec1r <- spec1r_cal(flg=1,midzero=1)
    blphc <-  ifelse( spec$param$BLPHC, 1, 0)
    best0 <- C_optim_phc(0, 0, list(re=Re(spec1r),im=Im(spec1r), phc0=spec$proc$phc0, phc1=0, alpha=0, p=0.95, blphc=blphc), -1, 0)
 
    # Optimisation of the first order phase
    if (spec$param$FRACPPM>0) {
-      spec1r <- spec1r_cal(flg=1)
+      spec1r <- spec1r_cal(flg=1,midzero=1)
       opt <- OptimAlpha(spec$param$FRACPPM, spec$param$FRACPPM, 0)
    } else {
       # Step 1: Fast exploration of full space for alpha
-      spec1r <- spec1r_cal(flg=0)
+      spec1r <- spec1r_cal(flg=0,midzero=1)
       opt <- OptimAlpha(0.125, 0.875, spec$param$INCFRACPPM1)
       # Step 2: Exploration of the optimial local space for alpha
       opt <- OptimAlpha(opt$fracppm-0.0625, opt$fracppm+0.0625, spec$param$INCFRACPPM1)
@@ -952,7 +959,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    spec$proc$phc1 <- opt$phc1
    spec$proc$RMS <- opt$rms
    spec$proc$CFRACPPM <- opt$fracppm
-   spec1r <- spec1r_cal(flg=1)
+   spec1r <- spec1r_cal(flg=1,midzero=0)
    new_spec1r <- C_corr_spec_re(list(re=Re(spec1r),im=Im(spec1r), phc0=spec$proc$phc0, phc1=spec$proc$phc1, alpha=opt$fracppm))
    spec$data <- complex(real=new_spec1r$re,imaginary=new_spec1r$im)
    if (spec$param$REVTIME) spec$data <- spec$data[rev(1:length(spec$data))]
@@ -967,6 +974,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    # Get a default calibration
    m <- spec$proc$SI
    SW <- spec$acq$SW
+   SWH <- spec$acq$SWH
+   O1 <- spec$acq$O1
    spec$dppm <- SW/(m-1)
    spec$pmin <- 0
 
@@ -974,22 +983,14 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
       if (spec$acq$INSTRUMENT=="JEOL") {
          spec$pmin <- spec$acq$OFFSET-SW/2
          break
-      }      
+      }
       if (spec$acq$NUC %in% c('1H','H1') ) {
-         ARRAY_SWREF   <- c(  10,   11, 12, 14,   15, 20)
-         ARRAY_PMINREF <- c(-0.4, -0.5, -1, -2, -2.6, -4)
-         n <- trunc(SW+0.1)
-         if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n + 1
-         if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n -2
-         if (sum(ARRAY_SWREF==trunc(SW))==0) {
-             spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
-         } else {
-             spec$pmin <- ARRAY_PMINREF[which(ARRAY_SWREF==n)]
-         }      
+         spec$pmin <- (O1/SWH-0.5)*SW
          break
       }
       if (spec$acq$NUC == '13C') {
-         spec$pmin <- -20
+         spec$pmin <- (O1/SWH-0.5)*SW
+         #spec$pmin <- -20
          break
       }
       break
