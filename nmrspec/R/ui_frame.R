@@ -6,7 +6,7 @@ ui_header <- conditionalPanel( condition = 'output.panelHeader==1',withTags(
            td(htmlOutput("title"))), width="100%", style="background-color: #8cb1db; color: #fff;")
 ))
 
-ui_padding <- column(12, style="font-size: 5px;", htmlOutput("jreload"), tags$img(src="images/img_00.gif", height = 3, width = 100))
+ui_padding <- column(12, style="font-size: 5px;", tags$img(src="images/img_00.gif", height = 3, width = 100))
 
 ## Login module;
 ui_login_gui <- div(class = "login",

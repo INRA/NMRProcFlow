@@ -6,7 +6,7 @@
    })
    outputOptions(output, "panelHeader", suspendWhenHidden = FALSE)
 
-   observeEvent( values$psession, { 
+   observeEvent( values$psession, {
        if (values$psession==1) {
           showTab(inputId = "conditionedPanels", target = "Processing", select=TRUE)
        }
@@ -47,46 +47,51 @@
        }
    })
 
+   ##---------------
+   ## Preprocessing : init parameters depending on macrocommand file
+   ##---------------
+   initPreprocessingParams <- function(macropcmdfile) {
+       CMDTEXT <- gsub("\t", "", readLines(macropcmdfile))
+       if ( length(grep("#%%", CMDTEXT[1]))==1 ) {
+            procpar <- unlist(strsplit(gsub("#%% ", "", CMDTEXT[1]), "; "))
+            parnames <- NULL; parvals <- NULL
+            for (param in procpar ) {
+                 parnames <- c( parnames, unlist(strsplit(param,"="))[1] ); parvals <- c( parvals, unlist(strsplit(param,"="))[2] );
+            }
+            names(parvals) <- parnames;  procpar <- data.frame(t(parvals), stringsAsFactors=FALSE)
+            if (! is.null(procpar$Vendor)) {
+               v_options <- c('bruker', 'varian','jeol', 'nmrml')
+               names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1')
+               v_select<-tolower(trim(procpar$Vendor))
+               updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
+            }
+            if (! is.null(procpar$Type)) {
+               v_options <- c("fid","1r"); names(v_options) <- c('FID','1r spectrum');
+               updateSelectInput(session, "spectype", choices = v_options, selected=trim(procpar$Type))
+            }
+            if (! is.null(procpar$LB)) { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
+            if (! is.null(procpar$GB)) { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
+            if (! is.null(procpar$BLPHC)) { updateCheckboxInput(session, "blphc", value = ifelse( procpar$BLPHC=="TRUE", 1, 0)); }
+            if (! is.null(procpar$ZF)) {
+               updateCheckboxInput(session, "zerofilling", value = 1);
+               v_options <- c('2','4'); names(v_options) <- c("x2","x4");
+               updateSelectInput(session, "zffac", choices = v_options, selected=as.numeric(procpar$ZF))
+            }
+            if (! is.null(procpar$PHC1)) { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
+            if (! is.null(procpar$ZNEG)) { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
+            if (! is.null(procpar$TSP)) { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
+            if (! is.null(procpar$TSPSNR)) { updateNumericInput(session, "TSPSNR", value = as.numeric(procpar$TSPSNR)); }
+            if (! is.null(procpar$FP)) {
+               v_options <- c("0","0.0625","0.125","0.25","0.5","0.625","0.75" );
+               names(v_options) <- c("Auto", "1/16", "1/8", "1/4", "1/2", "5/8", "3/4" );
+               updateSelectInput(session, "fracppm", choices = v_options, selected=as.numeric(procpar$FP))
+            }
+       }
+   }
+
    observeEvent ( input$macropcmd, {
        macropcmd <- input$macropcmd
-       if ( ! is.null(macropcmd) ) {
-          CMDTEXT <- gsub("\t", "", readLines(macropcmd$datapath))
-          if ( length(grep("#%%", CMDTEXT[1]))==1 ) {
-               procpar <- unlist(strsplit(gsub("#%% ", "", CMDTEXT[1]), "; "))
-               parnames <- NULL; parvals <- NULL
-               for (param in procpar ) { 
-                    parnames <- c( parnames, unlist(strsplit(param,"="))[1] ); parvals <- c( parvals, unlist(strsplit(param,"="))[2] );
-               }
-               names(parvals) <- parnames;  procpar <- data.frame(t(parvals), stringsAsFactors=FALSE)
-               if (! is.null(procpar$Vendor)) {
-                  v_options <- c('bruker', 'varian','jeol', 'nmrml')
-                  names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1')
-                  v_select<-tolower(trim(procpar$Vendor))
-                  updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
-               }
-               if (! is.null(procpar$Type)) {
-                  v_options <- c("fid","1r"); names(v_options) <- c('FID','1r spectrum');
-                  updateSelectInput(session, "spectype", choices = v_options, selected=trim(procpar$Type))
-               }
-               if (! is.null(procpar$LB)) { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
-               if (! is.null(procpar$GB)) { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
-               if (! is.null(procpar$BLPHC)) { updateCheckboxInput(session, "blphc", value = ifelse( procpar$BLPHC=="TRUE", 1, 0)); }
-               if (! is.null(procpar$ZF)) {
-                  updateCheckboxInput(session, "zerofilling", value = 1);
-                  v_options <- c('2','4'); names(v_options) <- c("x2","x4");
-                  updateSelectInput(session, "zffac", choices = v_options, selected=as.numeric(procpar$ZF))
-               }
-               if (! is.null(procpar$PHC1)) { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
-               if (! is.null(procpar$ZNEG)) { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
-               if (! is.null(procpar$TSP)) { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
-               if (! is.null(procpar$TSPSNR)) { updateNumericInput(session, "TSPSNR", value = as.numeric(procpar$TSPSNR)); }
-               if (! is.null(procpar$FP)) {
-                  v_options <- c("0","0.0625","0.125","0.25","0.5","0.625","0.75" );
-                  names(v_options) <- c("Auto", "1/16", "1/8", "1/4", "1/2", "5/8", "3/4" );
-                  updateSelectInput(session, "fracppm", choices = v_options, selected=as.numeric(procpar$FP))
-               }
-          }
-       }
+       if ( ! is.null(macropcmd) ) initPreprocessingParams(macropcmd$datapath)
    })
 
    ##---------------
@@ -141,7 +146,7 @@
              cmdR <- paste(conf$Rscript_exec,"Rnmr1D -d -i ", as.character(outDir), "  -o ", as.character(outDataViewer), sep="")
              submit_Rscript(outDir, outDataViewer, cmdR)
              break
-       }}, error=function(e) { 
+       }}, error=function(e) {
             ret <- 0
             values$error <- 1
             toggleModal(session, "modalWatcher1", toggle = "close")
@@ -163,7 +168,7 @@
    }
 
    ##---------------
-   ## Output: Update the 'Reference spectrum' SelectBox 
+   ## Output: Update the 'Reference spectrum' SelectBox
    ##---------------
    updateRefSpecSelect <- function () {
          samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
@@ -185,24 +190,56 @@
    ##---------------
    output$SessInit <- reactive({
          values$sessinit
-         if ( ! is.null(sessionViewer) && file.exists(file.path(conf$DATASETS,sessionViewer)) ) {
-            outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
-            INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
-            if (file.exists(INI.filename)) { 
-                procParams <<- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
-            } else {
-                procParams <<- Spec1r.Procpar
-                generate_INI_file(procParams)
-            }
-            values$reload <- 1
-            updateRefSpecSelect()
-         } else {
-            values$reload <- 0
+         repeat {
+             if ( is.null(sessionViewer) ) {
+                values$reload <- 0
+                break
+             }
+             if ( file.exists(file.path(conf$DATASETS,sessionViewer)) ) {
+                outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
+                INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
+                if (file.exists(INI.filename)) {
+                   procParams <<- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
+                } else {
+                   procParams <<- Spec1r.Procpar
+                   generate_INI_file(procParams)
+                }
+                values$reload <- 1
+                updateRefSpecSelect()
+                break
+             }
+             outData <- file.path(tempdir(),sessionViewer)
+             if ( file.exists(file.path(outData,'userfiles')) ) {
+                outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
+                if ( ! file.exists(outDataViewer) ) dir.create(outDataViewer)
+                system( paste("chmod 777 ",outDataViewer) )
+                file.copy(file.path(outData,"userfiles"), file.path(outDataViewer,"userfiles"))
+                V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
+                NameZip <<- V[1]
+                ext <- tolower(gsub("^.*\\.", "", NameZip))
+                RawZip <<- file.path(outData,paste0('raw.',ext))
+                outDir <<- outData
+                values$ziploaded <- 1
+                values$reload <- 0
+                break
+             }
+             values$reload <- 0
+             break
          }
          return(values$sessinit)
    })
    outputOptions(output, 'SessInit', suspendWhenHidden=FALSE)
    outputOptions(output, 'SessInit', priority=1)
+
+   output$ZipPreLoaded <- reactive({
+         if (values$ziploaded>0) {
+            if (file.exists(file.path(outDir,conf$Rnmr1D_PPCMD))) initPreprocessingParams(file.path(outDir,conf$Rnmr1D_PPCMD))
+            updateTextInput(session, "namezip", value = NameZip)
+         }
+         return( values$ziploaded )
+   })
+   outputOptions(output, 'ZipPreLoaded', suspendWhenHidden=FALSE)
+   outputOptions(output, 'ZipPreLoaded', priority=20)
 
    ##---------------
    ## Uploading file : Preparation
@@ -219,18 +256,20 @@
 
          isolate({
             # Get & Rename the ZIP file
-            zipfile <- input$zipfile
-            if ( is.null(zipfile) ) return (0)
-            NameZip <<- zipfile$name
-            ext <- tolower(gsub("^.*\\.", "", NameZip))
-            outDir <<- dirname(zipfile$datapath)
-            RawZip <<- paste(outDir,paste0('raw.',ext),  sep='/' )
-            file.rename( zipfile$datapath, RawZip )
+            if ( isolate({ values$ziploaded==0 }) ) {
+                zipfile <- input$zipfile
+                if ( is.null(zipfile) ) return (0)
+                NameZip <<- zipfile$name
+                outDir <<- dirname(zipfile$datapath)
+                ext <- tolower(gsub("^.*\\.", "", NameZip))
+                RawZip <<- paste(outDir,paste0('raw.',ext),  sep='/' )
+                file.rename( zipfile$datapath, RawZip )
 
-            # Create if not exist the directory where the data for NMRViewer will be stored
-            outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
-            if ( ! file.exists(outDataViewer) ) dir.create(outDataViewer)
-            system( paste("chmod 777 ",outDataViewer) )
+                # Create if not exist the directory where the data for NMRViewer will be stored
+                outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
+                if ( ! file.exists(outDataViewer) ) dir.create(outDataViewer)
+                system( paste("chmod 777 ",outDataViewer) )
+            }
 
             samplefile <- input$samplefile
             SampleFile <<- NULL
@@ -420,7 +459,6 @@
             "The number of Spectra = ", dim(samples)[1], "\n",
             "The number of Factors = ", dim(factors)[1]-1, "\n",
             "----\n",
-            #"Elapsed time = ", elapsedtime," sec.\n",
            sep="")
    })
    outputOptions(output, 'zipLog', priority=5)
@@ -447,34 +485,43 @@
    ##---------------
    ## ResetButton / Reload
    ##---------------
-   output$reload <- renderUI({
-         input$resetButton # create connection with the resetButton
-
-         if (input$resetButton > 0) {
-             sessid <- paste0('_',paste(sample(c(0:9, letters[1:6]),30, replace=TRUE),collapse=""))
-             outData <- file.path(tempdir(),sessid)
-             if ( ! file.exists(outData) ) dir.create(outData)
-             system( paste("chmod 777 ",outData) )
-             #if (file.exists(file.path(outDataViewer,"userfiles")) && file.exists(RawZip) ) {
-             #    file.copy(file.path(outDataViewer,"userfiles"), file.path(outData,"userfiles"))
-             #    file.copy(RawZip, file.path(outData,basename(RawZip)))
-             #}
-             output$jreload <- renderUI({ HTML(paste0("<script>window.location.replace('?", sessid, "');</script>")) })
-             outputOptions(output, 'jreload', suspendWhenHidden=FALSE)
-             outputOptions(output, 'jreload', priority=1)
+   AppliReload <- function(flg) {
+        sessid <- paste0('_',paste(sample(c(0:9, letters[1:6]),30, replace=TRUE),collapse=""))
+        outData <- file.path(tempdir(),sessid)
+        if ( ! file.exists(outData) ) dir.create(outData)
+        if (flg>0 && file.exists(file.path(outDataViewer,"userfiles")) && file.exists(RawZip) ) {
+           #system( paste("chmod 777 ",outData) )
+           if (file.exists(file.path(outDataViewer,conf$Rnmr1D_PPCMD))) {
+               file.copy(file.path(outDataViewer,conf$Rnmr1D_PPCMD), file.path(outData,conf$Rnmr1D_PPCMD))
+           }
+           file.copy(RawZip, file.path(outData,basename(RawZip)))
+           file.remove(RawZip)
+        }
+        return(sessid)
+   }
+   # Reset the session with keeping the ZIP
+   observeEvent( input$resetButton, {
+         if (input$resetButton>0) {
+            runjs( paste0("window.location.replace('?", AppliReload(1), "');") )
+         }
+   })
+   # Full Reset
+   observeEvent( input$resetFullButton, {
+         if (input$resetFullButton>0) {
+            runjs( paste0("window.location.replace('?", AppliReload(0), "');") )
          }
    })
 
-    ##---------------
-    ## Export Parameters
-    ##---------------
-    output$exportPars <- downloadHandler(
-         filename = function() { paste0(strsplit(NameZip,"\\.")[[1]][1], '.txt' ) },
-         content = function(file) {
-              parsfile <- paste0(outDataViewer,'/list_pars.csv')
-              if ( file.exists(parsfile) ) {
-                 PARS <- read.table(parsfile,header=T, sep=";", stringsAsFactors=FALSE) 
-                 write.table(PARS, file, sep="\t", row.names=F, col.names=T, quote=F)
-              }
-         }
-    )
+   ##---------------
+   ## Export Parameters
+   ##---------------
+   output$exportPars <- downloadHandler(
+        filename = function() { paste0(strsplit(NameZip,"\\.")[[1]][1], '.txt' ) },
+        content = function(file) {
+             parsfile <- paste0(outDataViewer,'/list_pars.csv')
+             if ( file.exists(parsfile) ) {
+                PARS <- read.table(parsfile,header=T, sep=";", stringsAsFactors=FALSE)
+                write.table(PARS, file, sep="\t", row.names=F, col.names=T, quote=F)
+             }
+        }
+   )

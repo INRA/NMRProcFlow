@@ -27,18 +27,27 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
             tags$br(),tags$br()
         ),
 
-        fileInput( 'zipfile', 'ZIP file', accept = c( 'application/zip', '.7z' ) ),
+        conditionalPanel(condition="output.ZipPreLoaded==0",
+            fileInput( 'zipfile', 'ZIP file', accept = c( 'application/zip', '.7z' ) )
+        ),
+        conditionalPanel(condition="output.ZipPreLoaded==1",
+            disabled( textInput( 'namezip', '') )
+        ),
+
         fileInput( 'samplefile', 'Samples file (Tabular format)', accept = c( 'text/plain' ) ),
 
-        conditionalPanel(condition="output.ZipUploaded==1",
+        conditionalPanel(condition="output.ZipUploaded==1 || output.ZipPreLoaded==1",
             checkboxInput("advancedUsr", "Advanced User", FALSE),
             conditionalPanel(condition="input.advancedUsr==1",
                 fileInput( 'macropcmd', 'Macro-commands for processing (Text file)', accept = c( 'text/plain' ) )
-           ),
-           bsButton("goButton", label = "Launch", style="primary" ), tags$br(),tags$br()
+            ),
+            column(2, bsButton("goButton", label = "Launch", style="primary" ) ),
+            column(2, conditionalPanel(condition="output.ZipPreLoaded==1",
+                bsButton("resetFullButton", label = "Reset", style="primary" )
+            ), tags$br(),tags$br() )
         ),
-        withTags(table(align="left", tr(td(a(img(src="images/help.png"), href="http://nmrprocflow.org/c1", target="_blank")),
-                                        td(valign="center", tags$p(class="cprght", "Get more information on input data format ")))))
+        column(12, withTags(table(align="left", tr(td(a(img(src="images/help.png"), href="http://nmrprocflow.org/c1", target="_blank")),
+                                        td(valign="center", tags$p(class="cprght", "Get more information on input data format "))))))
     ),
     conditionalPanel(condition="input.spectype=='fid'",
         bsModal("modalAdvusers", "Pre-processing Parameters", "bsadvusers", size="large",

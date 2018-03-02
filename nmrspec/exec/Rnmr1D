@@ -91,6 +91,8 @@ samples <- read.table(file.path(DATADIR,"samples.csv"), header=F, sep=";", strin
 registerDoParallel(cores=env.list$CORES)
 Sys.sleep(1)
 
+Write.LOG(LOGFILE, paste0("Rnmr1D:  -- Nb Spectra = ",dim(LIST)[1]," -- Nb Cores = ",env.list$CORES,"\n"))
+
 n <- 0
 init_counter(ProgressFile, dim(LIST)[1])
 tryCatch({

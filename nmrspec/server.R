@@ -32,6 +32,7 @@ shinyServer(function(input, output, session) {
     values$started <- 0
     values$load <- 0
     values$reload <- 0
+    values$ziploaded <- 0
     values$proc <- 0
     values$jobrun <- 0
     values$error <- 0
