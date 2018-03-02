@@ -494,6 +494,7 @@
            if (file.exists(file.path(outDataViewer,conf$Rnmr1D_PPCMD))) {
                file.copy(file.path(outDataViewer,conf$Rnmr1D_PPCMD), file.path(outData,conf$Rnmr1D_PPCMD))
            }
+           file.copy(file.path(outDataViewer,"userfiles"), file.path(outData,"userfiles"))
            file.copy(RawZip, file.path(outData,basename(RawZip)))
            file.remove(RawZip)
         }
