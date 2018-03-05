@@ -985,6 +985,20 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
          break
       }
       if (spec$acq$NUC %in% c('1H','H1') ) {
+         if (spec$acq$INSTRUMENT=="VARIAN") {
+            ARRAY_SWREF   <- c(  10,   11, 12, 14,   15, 20)
+            ARRAY_PMINREF <- c(-0.4, -0.5, -1, -2, -2.6, -4)
+            n <- trunc(SW+0.1)
+            if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n + 1
+            if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n -2
+            if (sum(ARRAY_SWREF==trunc(SW))==0) {
+                spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
+            } else {
+                spec$pmin <- ARRAY_PMINREF[which(ARRAY_SWREF==n)]
+            }
+            break
+      
+         }
          spec$pmin <- (O1/SWH-0.5)*SW
          break
       }

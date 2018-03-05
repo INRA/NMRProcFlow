@@ -73,9 +73,11 @@
             if (! is.null(procpar$GB)) { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
             if (! is.null(procpar$BLPHC)) { updateCheckboxInput(session, "blphc", value = ifelse( procpar$BLPHC=="TRUE", 1, 0)); }
             if (! is.null(procpar$ZF)) {
-               updateCheckboxInput(session, "zerofilling", value = 1);
-               v_options <- c('2','4'); names(v_options) <- c("x2","x4");
-               updateSelectInput(session, "zffac", choices = v_options, selected=as.numeric(procpar$ZF))
+                updateCheckboxInput(session, "zerofilling", value = ifelse( as.numeric(procpar$ZF)>0, 1, 0));
+                if (as.numeric(procpar$ZF)>0) {
+                    v_options <- c('2','4'); names(v_options) <- c("x2","x4");
+                    updateSelectInput(session, "zffac", choices = v_options, selected=as.numeric(procpar$ZF))
+                }
             }
             if (! is.null(procpar$PHC1)) { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
             if (! is.null(procpar$ZNEG)) { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }

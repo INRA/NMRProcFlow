@@ -53,7 +53,7 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
         bsModal("modalAdvusers", "Pre-processing Parameters", "bsadvusers", size="large",
             numericInput("LB", "Exp. Line Broadening:", 0.3, min = -1, max = 2, step=0.1),
             numericInput("GB", "Gauss. Line Broadening:", 0, min = 0, max = 1, step=0.1),
-            checkboxInput("blphc", "Intensity offset correction", TRUE),
+            checkboxInput("blphc", "Intensity offset correction", FALSE),
             checkboxInput("zerofilling", "Zero filling", TRUE),
             conditionalPanel(condition="input.zerofilling==1",
                   selectInput("zffac", "Max factor for Zero Filling:", c("x4"="4" , "x2"="2" ), selected = "4")
