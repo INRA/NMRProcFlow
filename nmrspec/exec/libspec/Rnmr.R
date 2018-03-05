@@ -1003,8 +1003,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
          break
       }
       if (spec$acq$NUC == '13C') {
-         spec$pmin <- (O1/SWH-0.5)*SW
-         #spec$pmin <- -20
+         #spec$pmin <- (O1/SWH-0.5)*SW
+         spec$pmin <- -20
          break
       }
       break
