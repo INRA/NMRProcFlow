@@ -53,21 +53,21 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
         bsModal("modalAdvusers", "Pre-processing Parameters", "bsadvusers", size="large",
             numericInput("LB", "Exp. Line Broadening:", 0.3, min = -1, max = 2, step=0.1),
             numericInput("GB", "Gauss. Line Broadening:", 0, min = 0, max = 1, step=0.1),
-            checkboxInput("blphc", "Intensity offset correction", FALSE),
+            #checkboxInput("blphc", "Intensity offset correction", FALSE),
             checkboxInput("zerofilling", "Zero filling", TRUE),
             conditionalPanel(condition="input.zerofilling==1",
                   selectInput("zffac", "Max factor for Zero Filling:", c("x4"="4" , "x2"="2" ), selected = "4")
             ),
             checkboxInput("optimphc1", "first order phase setting", FALSE),
-            conditionalPanel(condition="input.optimphc1==1",
-                  selectInput("fracppm", "Fixe the abscissa point for adjustment of the first order phase:", 
-                        c("Auto"="0", "1/16"="0.0625", "1/8"="0.125", "1/4"="0.25" , "1/2"="0.5", "5/8"="0.625", "3/4"="0.75" ), selected = "0")
-            ),
+            #conditionalPanel(condition="input.optimphc1==1",
+            #      selectInput("fracppm", "Fixe the abscissa point for adjustment of the first order phase:", 
+            #            c("Auto"="0", "1/16"="0.0625", "1/8"="0.125", "1/4"="0.25" , "1/2"="0.5", "5/8"="0.625", "3/4"="0.75" ), selected = "0")
+            #),
             checkboxInput("rabot", "Zeroing of Negative Values", FALSE),
-            checkboxInput("zeroref", "TSP/TMS/DSS", FALSE),
-            conditionalPanel(condition="input.zeroref==1",
-                numericInput("TSPSNR", "S/N Ratio", 100, min = 1, max = 1000, step=10)
-            )
+            checkboxInput("zeroref", "TSP/TMS/DSS", FALSE)
+            #conditionalPanel(condition="input.zeroref==1",
+            #    numericInput("TSPSNR", "S/N Ratio", 100, min = 1, max = 1000, step=10)
+            #)
 
         )
     ),

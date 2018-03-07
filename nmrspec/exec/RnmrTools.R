@@ -747,7 +747,7 @@ RNorm1D <- function(specMat, normmeth, zones)
           # .. for each spectrum
           t(simplify2array(lapply( 1:specMat$nspec, function(x) { specMat$int[x,i1:i2] })))
       }
-      # Calculate the most probabe quotient
+      # Calculate the most probable quotient
       V <- apply(SUBMAT, 2, median)
       MQ <- t(t(SUBMAT)/V)
       COEFF <- apply(MQ,1,median)

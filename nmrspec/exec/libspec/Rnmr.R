@@ -30,11 +30,12 @@ Spec1r.Procpar.default <- list (
     GB= 0,                     # Gaussian Line Broadening parameter
     REVTIME=FALSE,             # Reverse time points
     BLPHC=FALSE,               # Intensity offset correction
+    SOLVPPM=4.8,               # ppm of the solvent (D20 by default)
     ZEROFILLING=FALSE,         # Zero Filling
     ZFFAC=4,                   # Max factor for Zero Filling 
     LINEBROADENING=TRUE,       # Line Broading
     TSP=FALSE,                 # PPM referencing
-    TSPSNR=100,                # Minimal S/N Ratio for TSP Peak
+    #TSPSNR=100,                # Minimal S/N Ratio for TSP Peak
     RABOT=FALSE,               # Zeroing of Negative Values 
     OPTPHC0=TRUE,              # Zero order phase optimization
     OPTPHC1=FALSE,             # First order phase optimization
@@ -229,7 +230,9 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    ACQ  <- readLines(ACQFILE)
    SWH  <-  .varian.get_param(ACQ,"sw")
    SFO1 <- .varian.get_param(ACQ,"sfrq")
+   REFFRQ <- .varian.get_param(ACQ,"reffrq")
    O1   <- .varian.get_param(ACQ,"tof")
+   OFFSET <- 1e6*(1- REFFRQ/SFO1)
    SW   <- SWH/SFO1
    ENDIAN = "big"
 
@@ -304,7 +307,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
    acq <- list( INSTRUMENT="VARIAN", SOFTWARE="VnmrJ", ORIGIN="VARIAN", ORIGPATH=ORIGPATH, PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, 
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH, TEMP=TEMP, NUC=NUC,
-                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS,
+                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, OFFSET=OFFSET,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
    spec <- list( path=DIR, acq=acq, fid=fid )
 
@@ -834,6 +837,32 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
     proc <- list( phc0=0, phc1=0, RMS=0, SI=length(rawspec) )
 
+    # PPM Calibration
+    m <- proc$SI
+    SW <- spec$acq$SW
+    SWH <- spec$acq$SWH
+    O1 <- spec$acq$O1
+    spec$dppm <- SW/(m-1)
+    spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
+    
+    repeat {
+       if (toupper(spec$acq$INSTRUMENT) %in% c("JEOL","VARIAN")) {
+          spec$pmin <- spec$acq$OFFSET - SW/2
+          break
+       }
+       if (spec$acq$NUC %in% c('1H','H1') ) {
+          spec$pmin <- (O1/SWH-0.5)*SW
+          break
+       }
+       if (spec$acq$NUC == '13C') {
+          spec$pmin <- (O1/SWH-0.5)*SW
+          break
+       }
+       break
+    }
+    spec$pmax <- SW + spec$pmin
+    spec$ppm <- seq(from=spec$pmin, to=spec$pmax, by=spec$dppm)
+
     ### Save into the spec object instance
     spec$acq$TD <- length(rawspec)
     spec$data <- rawspec
@@ -865,7 +894,8 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
    if (spec$param$ALGO2==FALSE && spec$acq$NUC %in% c('1H','H1')) {
       V <- spec$data
-      V[ round(spec$proc$SI*(0.5-0.3/spec$acq$SW)):round(spec$proc$SI*(0.5+0.3/spec$acq$SW)) ] <- 0+0i
+      x0 <- (spec$param$SOLVPPM+abs(spec$pmin))/spec$acq$SW
+      V[ round(spec$proc$SI*(x0-0.3/spec$acq$SW)):round(spec$proc$SI*(x0+0.3/spec$acq$SW)) ] <- 0+0i
       lparams <- list(re=Re(V),im=Im(V), phc0=0, phc1=0, alpha=0, p=0.95, blphc=spec$param$BLPHC)
       best1 <- C_optim_phc(-pi, pi, lparams, 0, 1e-7)
       best2 <- C_optim_phc(0, 2*pi, lparams, 0, 1e-7)
@@ -971,59 +1001,23 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 {
    logfile <- spec$param$LOGFILE
    
-   # Get a default calibration
+   # PPM Calibration
    m <- spec$proc$SI
    SW <- spec$acq$SW
-   SWH <- spec$acq$SWH
-   O1 <- spec$acq$O1
-   spec$dppm <- SW/(m-1)
-   spec$pmin <- 0
-
-   repeat {
-      if (spec$acq$INSTRUMENT=="JEOL") {
-         spec$pmin <- spec$acq$OFFSET-SW/2
-         break
-      }
-      if (spec$acq$NUC %in% c('1H','H1') ) {
-         if (spec$acq$INSTRUMENT=="VARIAN") {
-            ARRAY_SWREF   <- c(  10,   11, 12, 14,   15, 20)
-            ARRAY_PMINREF <- c(-0.4, -0.5, -1, -2, -2.6, -4)
-            n <- trunc(SW+0.1)
-            if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n + 1
-            if (sum(ARRAY_SWREF==trunc(SW))==0) n <- n -2
-            if (sum(ARRAY_SWREF==trunc(SW))==0) {
-                spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
-            } else {
-                spec$pmin <- ARRAY_PMINREF[which(ARRAY_SWREF==n)]
-            }
-            break
-      
-         }
-         spec$pmin <- (O1/SWH-0.5)*SW
-         break
-      }
-      if (spec$acq$NUC == '13C') {
-         #spec$pmin <- (O1/SWH-0.5)*SW
-         spec$pmin <- -20
-         break
-      }
-      break
-   }
 
    # Calibration based on TSP
    if (spec$param$TSP) {
-      vmin <- spec$param$TSPSNR*C_estime_sd(spec$int,128)
-      n0 <- findTSPPeak(spec$int, vmin, round(0.3/spec$dppm,0))
-      if (n0>0) {
-         spec$pmin <- -SW*(n0/m)
-         if (spec$param$DEBUG) .v("PPM min =%f\n", spec$pmin ,logfile=logfile)
-      } else {
-         if (spec$param$DEBUG) .v("Internal Ref. not found\n" ,logfile=logfile)
+      x0 <- abs(spec$pmin)/SW
+      n1 <- round(m*(x0-0.3/SW)); n2 <- round(m*(x0+0.3/SW))
+      range <- c(n1:n2)
+      if (max(spec$int[ range ])>10*C_estime_sd(spec$int,128)) {
+          n0 <- which(spec$int[ range ] == max(spec$int[ range ])) + n1 - 2
+          spec$pmin <- -SW*(n0/m)
+          spec$pmax <- SW + spec$pmin
+          spec$ppm <- seq(from=spec$pmin, to=spec$pmax, by=spec$dppm)
+          if (spec$param$DEBUG) .v("PPM min =%f\n", spec$pmin ,logfile=logfile)
       }
    }
-
-   spec$pmax <- SW + spec$pmin
-   spec$ppm <- seq(from=spec$pmin, to=spec$pmax, by=spec$dppm)
 
    spec
 }
@@ -1096,10 +1090,12 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
           # Get real spectrum
           spec$int <- ajustBL(Re(spec$data),0)
 
-          # ppm calibration
-          if (param$DEBUG) .v("Initialization of the PPM scale ... ", logfile=logfile)
-          spec <- .ppm_calibration(spec)
-          if(param$DEBUG) .v("OK\n",logfile=logfile)
+          # PPM calibration based on TSP
+          if (param$TSP) {
+              if (param$DEBUG) .v("PPM calibration based on TSP  ... ", logfile=logfile)
+              spec <- .ppm_calibration(spec)
+              if(param$DEBUG) .v("OK\n",logfile=logfile)
+          }
 
           # Zeroing of Negative Values
           if (param$RABOT) {
