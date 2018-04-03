@@ -71,7 +71,6 @@
             }
             if (! is.null(procpar$LB)) { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
             if (! is.null(procpar$GB)) { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
-            #if (! is.null(procpar$BLPHC)) { updateCheckboxInput(session, "blphc", value = ifelse( procpar$BLPHC=="TRUE", 1, 0)); }
             if (! is.null(procpar$ZF)) {
                 updateCheckboxInput(session, "zerofilling", value = ifelse( as.numeric(procpar$ZF)>0, 1, 0));
                 if (as.numeric(procpar$ZF)>0) {
@@ -82,12 +81,6 @@
             if (! is.null(procpar$PHC1)) { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
             if (! is.null(procpar$ZNEG)) { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
             if (! is.null(procpar$TSP)) { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
-            #if (! is.null(procpar$TSPSNR)) { updateNumericInput(session, "TSPSNR", value = as.numeric(procpar$TSPSNR)); }
-            #if (! is.null(procpar$FP)) {
-            #   v_options <- c("0","0.0625","0.125","0.25","0.5","0.625","0.75" );
-            #   names(v_options) <- c("Auto", "1/16", "1/8", "1/4", "1/2", "5/8", "3/4" );
-            #   updateSelectInput(session, "fracppm", choices = v_options, selected=as.numeric(procpar$FP))
-            #}
        }
    }
 
@@ -338,23 +331,18 @@
                procParams$READ_RAW_ONLY <<- FALSE
                procParams$LB <<- as.numeric(input$LB)
                procParams$GB <<- as.numeric(input$GB)
-               #procParams$BLPHC <<- ifelse(input$blphc==1, TRUE, FALSE)
-               procParams$BLPHC <<- ifelse(input$optimphc1==1, TRUE, FALSE)
                procParams$REVTIME <<- ifelse(input$vendor == 'varian' || input$vendor == 'jeol', TRUE, FALSE)
                procParams$ZEROFILLING <<- ifelse(input$zerofilling==1, TRUE, FALSE)
                procParams$ZFFAC <<- as.numeric(input$zffac)
                procParams$OPTPHC0 <<- TRUE
                procParams$OPTPHC1 <<- ifelse(input$optimphc1==1, TRUE, FALSE)
-               #procParams$FRACPPM <<- as.numeric(input$fracppm)
+               procParams$BLPHC <<- ifelse(input$optimphc1==1, TRUE, FALSE)
                procParams$RABOT <<- ifelse(input$rabot==1, TRUE, FALSE)
                procParams$TSP <<- ifelse(input$zeroref==1, TRUE, FALSE)
-               #procParams$TSPSNR <<- as.numeric(input$TSPSNR)
                CMD <- paste0(CMD, "LB=",input$LB,"; GB=",input$GB, "; ")
                CMD <- paste0(CMD, "ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
                CMD <- paste0(CMD, "BLPHC=",input$optimphc1,"; PHC1=",input$optimphc1, "; FP=0; ")
                CMD <- paste0(CMD, "TSP=",input$zeroref)
-               #CMD <- paste0(CMD, "PHC1=",input$optimphc1, "; FP=",input$fracppm,"; ")
-               #CMD <- paste0(CMD, "TSP=",input$zeroref,"; TSPSNR=",input$TSPSNR)
             }
             write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), paste0(CMD,"\n"), "wt")
             values$error <- 0

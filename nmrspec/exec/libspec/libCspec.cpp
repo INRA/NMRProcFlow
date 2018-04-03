@@ -292,7 +292,7 @@ SEXP C_Estime_LB (SEXP s, int istart, int iend, double WS, double NEIGH, double 
    int edgesize=10;
 
    // Create the BL vector initialize with spectrum values
-   NumericVector lb(TD), BL(TD), m1(TD), m2(TD);
+   NumericVector lb(TD), m1(TD), m2(TD);
 
    // (s1,neigh) = (50,35) => soft, (25,15) => intermediate, (10,5) => hard
 

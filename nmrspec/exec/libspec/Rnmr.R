@@ -35,7 +35,6 @@ Spec1r.Procpar.default <- list (
     ZFFAC=4,                   # Max factor for Zero Filling 
     LINEBROADENING=TRUE,       # Line Broading
     TSP=FALSE,                 # PPM referencing
-    #TSPSNR=100,                # Minimal S/N Ratio for TSP Peak
     RABOT=FALSE,               # Zeroing of Negative Values 
     OPTPHC0=TRUE,              # Zero order phase optimization
     OPTPHC1=FALSE,             # First order phase optimization

@@ -207,7 +207,7 @@ tryCatch({
           }))
          colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
        }
-       Write.LOG('nuc.txt',specList[,1]$acq$NUC)
+       Write.LOG('nuc.txt', specList[,1]$acq$NUC)
     } else {
        if (spec$acq$INSTRUMENT=="Bruker") {
           PARS <- t( c( samples[1, 1], samples[1, 2], IDS[1,c(2:3)],
@@ -220,11 +220,11 @@ tryCatch({
                     spec$acq$SFO1, spec$proc$SI, specList$acq$SW, spec$acq$SWH, spec$acq$RELAXDELAY, spec$acq$O1))
          colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
        }
-       Write.LOG('nuc.txt',spec$acq$NUC)
+       Write.LOG('nuc.txt', spec$acq$NUC)
     }
     write.table(PARS, file='list_pars.csv', sep=";", row.names=F, col.names=T, quote=F)
 
-    Write.LOG('origin.txt',paste(procParams$VENDOR, procParams$INPUT_SIGNAL, sep="\n"))
+    Write.LOG('origin.txt', paste(procParams$VENDOR, procParams$INPUT_SIGNAL, sep="\n"))
 
     setwd(cur_dir)
 

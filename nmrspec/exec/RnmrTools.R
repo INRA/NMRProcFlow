@@ -245,8 +245,9 @@ generate_Metadata_File_1r <- function(RAWDIR, DATADIR, procParams)
    ERRORLIST <- c()
    OKRAW <- 1
    lstfac <- c("1;Samplecode")
+   RAWPATH <- gsub("//", "/", RAWDIR)
 
-   LIST <- gsub("//", "/", list.files(path = RAWDIR, pattern = "1r$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "1r$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
    if ( class(LIST)=="character" && length(LIST)==0 ) return(0)
    L <- simplify2array(strsplit(LIST,'/'))
    if (class(L) != "matrix") {
@@ -266,7 +267,7 @@ generate_Metadata_File_1r <- function(RAWDIR, DATADIR, procParams)
    LIST <- as.data.frame(t(simplify2array(strsplit(LIST,'/'))))
 
    # Check if we have a Bruker directory structure
-   nDir <- dim(simplify2array(strsplit(RAWDIR,'/')))[1]
+   nDir <- dim(simplify2array(strsplit(RAWPATH,'/')))[1]
    LIST <- LIST[, c(-1:-nDir)]
    nc <- dim(LIST)[2]
    nr <- dim(LIST)[1]
@@ -297,7 +298,7 @@ generate_Metadata_File_1r <- function(RAWDIR, DATADIR, procParams)
 
    if( !is.null(SL)) { LIST2 <- cbind(SL[c(1: dim(LIST)[1])], LIST); } else { LIST2 <- LIST; }
    nc <- dim(LIST2)[2]
-   rawdir <- cbind( sapply(1:nr, function(x){ do.call( paste, c( RAWDIR, as.list(LIST2[x,c(1:(nc-3))]), sep="/")) }), MS[, 2], MS[, 4] )
+   rawdir <- cbind( sapply(1:nr, function(x){ do.call( paste, c( RAWPATH, as.list(LIST2[x,c(1:(nc-3))]), sep="/")) }), MS[, 2], MS[, 4] )
 
    if (length(levels(LIST[,1]))==nr) {
       M <-  MS[, c(1,1) ]
@@ -1207,7 +1208,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
                  PPMREF <- params[3]
                  PPM_NOISE <- ifelse( length(params)==5, c( min(params[4:5]), max(params[4:5]) ), c( 10.2, 10.5 ) )
-                 Write.LOG(LOGFILE,paste0("Rnmr1D:  Calibration: PPM REF =",PPMREF,", Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],")"));
+                 Write.LOG(LOGFILE, paste0("Rnmr1D:  Calibration: PPM REF =",PPMREF,", Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],")"));
                  specMat <- RCalib1D(specMat, PPM_NOISE, PPMRANGE, PPMREF)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
