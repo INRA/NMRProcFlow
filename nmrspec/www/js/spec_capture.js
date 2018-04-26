@@ -56,7 +56,8 @@ var get_spectrum_range = function() {
      do {
         if( ! $("#ifspecview").get(0) ) break;
         if (CaptureMode==1 && $( document.activeElement ).is("textarea")) {
-            vallist = $( document.activeElement ).val()
+            vallist = $( document.activeElement ).val().trim()
+            if (vallist.length>0) vallist = vallist + "\n"
             if ( $( document.activeElement ).hasClass("single") ) {
                  $( document.activeElement ).val( $("#ifspecview").get(0).contentWindow.get_spectrum_range() )
             } else {

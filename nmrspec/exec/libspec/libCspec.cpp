@@ -764,7 +764,7 @@ SEXP C_aibin_buckets(SEXP x, SEXP b, SEXP v, SEXP l, int n1, int n2)
    NumericVector vref(v);
    List blist(l);
    struct BinData bdata;
-   int i, ret;
+   int i;
 
    bdata.n_buckets=0;
    bdata.VREF = as<int>(blist["VREF"]);
@@ -780,7 +780,7 @@ SEXP C_aibin_buckets(SEXP x, SEXP b, SEXP v, SEXP l, int n1, int n2)
    bdata.vnoise = bdata.bin_fac*bin_value(x, vref, &bdata, bdata.inoise_start, bdata.inoise_end);
    // Rprintf("AIBIN: range %d - %d, vnoise=%f\n",n1,n2, bdata.vnoise);
 
-   ret=find_buckets(x, buckets,vref,&bdata,n1-1,n2-1);
+   find_buckets(x, buckets,vref,&bdata,n1-1,n2-1);
    // Rprintf("Returned Value = %d, number of buckets found = %d\n",ret, bdata.n_buckets);
    if (bdata.n_buckets==0) return R_NilValue;
 
@@ -914,7 +914,8 @@ double C_estime_sd(SEXP x, int cut)
    double sdx, sdev;
 
    // Sdev estimation
-   for (i=2; i<(cut-1); ++i) {
+   sdev=0;
+   for (i=2; i<(size_t)(cut-1); ++i) {
        for (k=0; k<n2; ++k) v[k] = X[i*n2+k];
        sdx = fabs(gsl_stats_sd (v,1,n2));
        if (i==2 || sdx<sdev) sdev=sdx;
@@ -1033,16 +1034,15 @@ double fmin(SEXP l, double x, int flg)
    int    blphc = as<int>(spec["blphc"]);
    double p     = as<double>(spec["p"]);
    const size_t n = (size_t)(re.size());
-   const size_t n2 = n/32;
-   const size_t n3 = (size_t)(n/24);
-   size_t i,k;
+   const size_t n2 = (size_t)(n/24);
+   size_t i;
 
    // depending on flg, the x value serves to evaluate the optimization criterium for either phc0 (flg=0) or phc1(flg=1)
    if (flg==0) phc0=x;
    if (flg==1) phc1=x;
 
    double Y[n], V[n];
-   double mx, sdx, median, sdev, quant, SSpos, SStot, ysign, ytrim;
+   double quant, SSpos, SStot, ysign, ytrim;
    double phi, dn;
 
    NumericVector X(n), lb(n);
@@ -1056,7 +1056,7 @@ double fmin(SEXP l, double x, int flg)
       lb=C_Estime_LB2(X, 1, n-1, 100, 100, 3.0*sig);
    }
    for (i=0; i<n; ++i) {
-     if (i>n3 || i<(n-n3))
+     if (i>n2 || i<(n-n2))
          if (blphc==1) {
              Y[i] = X[i]-lb[i];
          } else Y[i] = X[i];
@@ -1176,31 +1176,4 @@ for(;;) {
       _["objective"] = fv 
    );
    return best;
-}
-
-// [[Rcpp::export]]
-int findTSPPeak(SEXP x, double vmin, int nrange)
-{
-   NumericVector X(x);
-   const size_t n = (size_t)(X.size());
-   const size_t n1 = n/32;
-   const size_t n2 = n/2;
-   size_t i,k;
-
-   double vmax;
-   int n0,w;
-
-   // Find the first peak that satisfy the constraint (X[i] - X[i+/-w]) > vmin  / w = 0.0004 * Nb Points
-   w=n*0.0004;
-   vmax=0; n0=-1;
-   for (i=n1; i<n2; i++)
-       if ( X[i-2]<X[i-1] && X[i-1]<=X[i] && X[i]>=X[i+1] && X[i+1]>X[i+2] && (X[i]-X[i-w])>vmin && (X[i]-X[i+w])>vmin )
-          { n0 = i; vmax=X[n0]; break; }
-   // Then, find within the next nrange points the maximun intensity and get its correcponding index.
-   if (n0>0) {
-       i=n0;
-       for (k=0; k < nrange; k++)
-           if ( X[i+k]>vmax ) { n0 = i+k; vmax=X[n0]; }
-   }
-   return(n0);
 }

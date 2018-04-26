@@ -430,7 +430,7 @@
                                    tags$td(style="float: right;", tags$h4(sess_name)),
                                    tags$td(style="width: 15px;"," ")
                         ))})
-        output$jreload <- renderUI({ tags$script(HTML(paste0("document.title ='",gsub("\\..*$", "", NameZip), "';"))) })
+        output$jreload <- renderUI({ tags$script(HTML(paste0("document.title ='",gsub("\\..*$", "", NameZip), "';"))) }) # window.history.replaceState('",sessid,"', '",sessid,"', '?", sessid, "');
         samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
         factors <- read.table(file.path(outDataViewer,"factors"), header=F, sep=";", stringsAsFactors=FALSE)
 

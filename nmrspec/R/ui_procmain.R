@@ -3,7 +3,7 @@
 ##---------------
 ## NMR Spectra Viewer
 ##---------------
-ui_viewer <- column(12, htmlOutput("nmrviewer"), htmlOutput("captoggle"), htmlOutput("captoggle2"), 
+ui_viewer <- column(12, htmlOutput("nmrviewer"), htmlOutput("captoggle"), htmlOutput("captoggle2"), htmlOutput("jreload"),
                         htmlOutput("UndoRequest"), htmlOutput("UndoBucket"), htmlOutput("resizetoggle"))
 
 
