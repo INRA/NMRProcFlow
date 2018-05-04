@@ -88,13 +88,12 @@ shinyServer(function(input, output, session) {
            outData <- file.path(tempdir(),sessid)
            if ( ! file.exists(outData) ) dir.create(outData)
         }
+        output$jreload <- renderUI({ tags$script(HTML(paste0("window.history.replaceState(null,'NMRProcFlow', '?", sessid, "');"))) })
+
         # With a valid session identifier, needless to login
         if (condLogin || ! newSession) {
            sessionViewer <<- sessid
            values$sessinit <- 1
-           if ( newSession ) {
-               output$jreload <- renderUI({ tags$script(HTML(paste0("window.history.replaceState('",sessid,"', '",sessid,"', '?", sessid, "');"))) })
-           }
            values$psession <- ifelse( file.exists(file.path(conf$DATASETS,sessid,conf$SPEC_PACKED)), 1, 0 )
         }
 

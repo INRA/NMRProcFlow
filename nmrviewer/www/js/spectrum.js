@@ -132,8 +132,9 @@ var ObjImage = function () {
            $(this.cursor).css('z-index', 3);
        }
        else {
-           $(this.cursor).css({ 'borderRight' : 'dotted 1px #ff0000', 'width' : x - this.xval +'px', 'height' : this.y2 - this.y1 +'px', 
-                                'top' : this.oy + this.y1 + 'px','left' : this.xval + 'px'});
+           (x>this.xval) ?
+               $(this.cursor).css({ 'borderRight' : 'dotted 1px #ff0000', 'width' : x - this.xval +'px', 'height' : this.y2 - this.y1 +'px', 'top' : this.oy + this.y1 + 'px','left' : this.xval + 'px'}) :
+               $(this.cursor).css({ 'borderRight' : 'dotted 1px #ff0000', 'width' : this.xval -x +'px', 'height' : this.y2 - this.y1 +'px', 'top' : this.oy + this.y1 + 'px','left' : x + 'px'});
            if (isIE) $(this.cursor).css('filter', 'alpha(opacity=20)'); else $(this.cursor).css('opacity', 0.2);
        }
        $(this.cursor).css('display','inline');
@@ -147,7 +148,7 @@ var ObjImage = function () {
               this.cursorDraw(this.xpos + this.ox)
               var val = this.getVal(x);
               if (this.mDwn)
-                    this.xneg ? $(this.msg).text(this.unit+' : max='+sprintf("%07.4f",this.val)+' - min='+sprintf("%07.4f",val)) :
+                    (this.xneg && val<this.val)  ? $(this.msg).text(this.unit+' : max='+sprintf("%07.4f",this.val)+' - min='+sprintf("%07.4f",val)) :
                                 $(this.msg).text(this.unit+' : min='+sprintf("%07.4f",this.val)+' - max='+sprintf("%07.4f",val));
               else
                     $(this.msg).text(this.unit+' = '+sprintf("%07.4f",val));
@@ -175,6 +176,9 @@ var ObjImage = function () {
        if (this.flg) {
           this.val2  = this.getVal(v);
           var xval2 = (v + this.x1) + this.ox;
+          if (this.xval > xval2) { 
+              tmp=this.xval; this.xval=xval2; xval2=tmp; tmp=this.val; this.val=this.val2; this.val2=tmp;
+          }
           if (this.keycode==0) {
               if (this.xval < xval2) {
                   this.xneg ? this.AJ_XMS('val1='+this.val2+'&val2='+this.val) :
