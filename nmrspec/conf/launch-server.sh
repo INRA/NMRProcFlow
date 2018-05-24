@@ -15,6 +15,9 @@ if [ ! -z $GALAXY_URL ]; then
     [ $? -eq 0 ] && sed -i -e "s/^GALAXY=.*$/GALAXY=1/" $INI
 fi
 
+CONF=/var/www/html/nv/etc/nmrview.conf
+cp -f $INI $CONF
+
 DATADIR=`cat $INI | grep DATASETS | cut -d'=' -f2 | tr -d "\n"`
 [ ! -d $DATADIR ] && echo "ERROR: It seems that the DATASETS folder declared in $INI does not exist" && exit 1
 [ -d $DATADIR ] && chmod 777 $DATADIR

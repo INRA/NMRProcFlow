@@ -12,6 +12,7 @@ ui_proc_process <- column(12,
                "Normalisation" = "normalisation",
                "Baseline correction" = "baseline",
                "Alignment" = "ppmalign",
+               "PPM shift" = "ppmshift",
                "Zeroing" = "ppmzero"), selected = "baseline")
 #               "Denoising" = "denoising"), selected = "baseline")
      ),
@@ -101,6 +102,18 @@ ui_proc_process <- column(12,
          conditionalPanel(condition="input.tpreproc=='ppmzero'",
               column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
               column(3, tags$strong('PPM Ranges to clean:', class="textlabs"),tags$br(), inputTextarea("ppmrange2", supclass="capture treset", nrows=10, ncols=22, value=""))
+         ),
+         # PPM shift
+         conditionalPanel(condition="input.tpreproc=='ppmshift'",
+              column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
+              column(3,
+                    numericInput("ppmdecal", "PPM shift value:", 0, min = -0.1, max = 0.1, step=0.01),
+                    tags$br(),
+                    tags$strong('PPM Ranges to shift:', class="textlabs"),
+                    tags$br(),
+                    inputTextarea("ppmrefrange2", supclass="single", nrows=1, ncols=18, value=""),
+                    tags$br()
+              )
          ),
          # Denoising
          conditionalPanel(condition="input.tpreproc=='denoising'",

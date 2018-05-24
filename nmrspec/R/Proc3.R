@@ -43,15 +43,22 @@
     get_AlignCmd <- function() {
          isolate({
              procParams$REXEC <<- 'Ralign1D'
-             procParams$ALIGNMETH <<- input$alignmeth
-             procParams$IDXSREF <<- input$RefSpecSelect
-             procParams$RELDECAL <<- input$aligndecal
-             procParams$PTWCRIT <<- input$warpcrit
              procParams$TPROC <<- input$tpreproc
-             procParams$PPM_RANGE <<- input$ppmrefrange3
-             procParams$PPMNOISERANGE <<- input$ppmnoiserange3
-             procParams$SNRBUCLEVEL <<- input$snrpiclev
-             procParams$RESPPM <<- input$resclupa
+             if (input$tpreproc=='ppmalign') {
+                 procParams$ALIGNMETH <<- input$alignmeth
+                 procParams$RELDECAL <<- input$aligndecal
+                 procParams$PTWCRIT <<- input$warpcrit
+                 procParams$IDXSREF <<- input$RefSpecSelect
+                 procParams$PPM_RANGE <<- input$ppmrefrange3
+                 procParams$PPMNOISERANGE <<- input$ppmnoiserange3
+                 procParams$SNRBUCLEVEL <<- input$snrpiclev
+                 procParams$RESPPM <<- input$resclupa
+             }
+             if (input$tpreproc=='ppmshift') {
+                 procParams$ALIGNMETH <<- 'shift'
+                 procParams$RELDECAL <<- input$ppmdecal
+                 procParams$PPM_RANGE <<- input$ppmrefrange2
+             }
          })
          ArrayProc[ALIGN] <<- 1
          return( paste(conf$Rscript_exec,"Ralign1D -p ", as.character(outDataViewer), sep="") )
@@ -108,10 +115,11 @@
              if ( values$load==0 || values$proc==0 || values$jobrun==1 || input$process==0 || sum(ArrayProc)>0 ) return(0);
              repeat {
                 if (input$condProcPanels == 'Processing') {
-                    switch( input$tpreproc, 'calibration'= { cmdR <- get_CorrCmd()  }, 
-                                          'normalisation'= { cmdR <- get_CorrCmd()  }, 
+                    switch( input$tpreproc, 'calibration'= { cmdR <- get_CorrCmd()  },
+                                          'normalisation'= { cmdR <- get_CorrCmd()  },
                                                'baseline'= { cmdR <- get_CorrCmd()  },
                                                'ppmalign'= { cmdR <- get_AlignCmd() },
+                                               'ppmshift'= { cmdR <- get_AlignCmd() },
                                                 'ppmzero'= { cmdR <- get_AlignCmd() },
                                               'denoising'= { cmdR <- get_CorrCmd()  } )
                     break

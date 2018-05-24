@@ -88,6 +88,7 @@ var ObjImage = function () {
    this.keycode= 0;
    this.flg    = 0;
    this.first  = 1;  // first call
+   this.fslider = 0;
 
    this.init = function (iwidth, iheight, x1,x2,y1,y2,Xmin,Xmax,SpecValMin,SpecValMax,xneg) {
        this.x1 = x1; this.x2 = x2; this.y1 = y1; this.y2 = y2;
@@ -173,7 +174,7 @@ var ObjImage = function () {
        var v=x;
        if (x<0) v=0;
        if (x>xmax) v=xmax;
-       if (this.flg) {
+       if (this.flg && ! this.fslider) {
           this.val2  = this.getVal(v);
           var xval2 = (v + this.x1) + this.ox;
           if (this.xval > xval2) { 
@@ -213,6 +214,7 @@ var ObjImage = function () {
    this.AJ_XMS = function (params) {
        var my_params = this.params;
        if (params) my_params += '&'+params;
+
        this.show_waitdiv();
        var self=this;
        $.ajax({

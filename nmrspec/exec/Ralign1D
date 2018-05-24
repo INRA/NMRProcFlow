@@ -68,6 +68,7 @@ specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm
 
 # Read the samples List file
 samples <- read.table( file.path(DATADIR,'/samples.csv'), header=F, sep=";", stringsAsFactors=FALSE)
+factors <- read.table( file.path(DATADIR,'/factors'), header=F, sep=";", stringsAsFactors=FALSE)
 
 # Rnmr1D macrocommand file
 CMD.filename <- paste0(DATADIR,'/',conf$Rnmr1D_PCMD)
@@ -126,18 +127,19 @@ repeat {
    if (is.na(zone)) break
    zoneref <- c(min(zone), max(zone))
 
+   Write.LOG(LOGFILE,paste("Ralign1D:  Alignment of the selected zone = (",min(zoneref),",",max(zoneref),")"));
    Selected <- NULL
    repeat {
        selected.file <- paste0(DATADIR,'/',conf$SPEC_SELECTED)
        if (! conf$ALIGN_SELECTED_ONLY==1 || ! file.exists(selected.file)) break
        selpar <- read.table( selected.file, header=F, sep=";", stringsAsFactors=FALSE)
        if (selpar[1,1]<2 || selpar[1,2]==0) break
-       level <- unique(samples[ order(samples[, selpar[1,1]+1]), selpar[1,1]+1 ])[selpar[1,2]]
+       level <- unique(samples[ order(as.character(samples[, selpar[1,1]+1])), selpar[1,1]+1 ])[selpar[1,2]]
        Selected <- .N(rownames(samples[ samples[, selpar[1,1]+1]==level, ]))
+       Write.LOG(LOGFILE,paste("Ralign1D:  Factor = ",factors[selpar[1,1],2]," -  Level = ",level));
        break
    }
 
-   Write.LOG(LOGFILE,paste("Ralign1D:  Alignment of the selected zone = (",min(zoneref),",",max(zoneref),")"));
    CMDINFO <- paste0(CMDINFO,paste("#\n# Alignment of the selected zones (",min(zoneref),",",max(zoneref),")\n#\n"))
    # Alignment of each PPM range
    if (procParams$ALIGNMETH==1) {
@@ -167,6 +169,49 @@ repeat {
        specMat <- RCluPA1D(specMat, PPM_NOISE_AREA, zoneref, resolution=procParams$RESPPM, 
                            SNR=procParams$SNRBUCLEVEL, idxSref=procParams$IDXSREF, Selected=Selected, ProgressFile=ProgressFile)
    }
+   if (length(Selected)>0) CMDINFO <- paste0(CMDINFO," ",paste(selpar[1,1], selpar[1,2]))
+   CMDINFO <- paste0(CMDINFO,"\n")
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   Write.LOG(LOGFILE,"Ralign1D: ")
+   break
+}
+
+#------------------------------
+# Shift of the selected PPM ranges
+#------------------------------
+repeat {
+   # exit if Shift is not invoked
+   if (! procParams$TPROC == 'ppmshift' ) break
+
+   # get the PPM range
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPM_RANGE, " ")))
+
+   # exit if not PPM ranges file
+   if (is.na(zone)) break
+   zoneref <- c(min(zone), max(zone))
+
+   Write.LOG(LOGFILE,paste("Rshift1D:  Shift of the selected zone = (",min(zoneref),",",max(zoneref),")"));
+
+   Selected <- NULL
+   repeat {
+       selected.file <- paste0(DATADIR,'/',conf$SPEC_SELECTED)
+       if (! conf$ALIGN_SELECTED_ONLY==1 || ! file.exists(selected.file)) break
+       selpar <- read.table( selected.file, header=F, sep=";", stringsAsFactors=FALSE)
+       if (selpar[1,2]==0) break
+       level <- unique(samples[ order(as.character(samples[, selpar[1,1]+1])), selpar[1,1]+1 ])[selpar[1,2]]
+       Selected <- .N(rownames(samples[ samples[, selpar[1,1]+1]==level, ]))
+       Write.LOG(LOGFILE,paste("Rshift1D:  Factor = ",factors[selpar[1,1],2]," -  Level = ",level));
+       break
+   }
+
+   CMDINFO <- paste0(CMDINFO,paste("#\n# Shift of the selected zones (",min(zoneref),",",max(zoneref),")\n#\n"))
+
+   CMDINFO <- paste0(CMDINFO,paste("shift",min(zoneref),max(zoneref),procParams$RELDECAL))
+   registerDoParallel(cores=env.list$CORES)
+   specMat <- RShift1D(specMat, zoneref, procParams$RELDECAL, Selected=Selected)
    if (length(Selected)>0) CMDINFO <- paste0(CMDINFO," ",paste(selpar[1,1], selpar[1,2]))
    CMDINFO <- paste0(CMDINFO,"\n")
 

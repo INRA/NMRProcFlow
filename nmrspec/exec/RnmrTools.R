@@ -1062,6 +1062,30 @@ RWarp1D <- function(specMat, zone, idxSref=0, warpcrit=c("WCC","RMS"), Selected=
 }
 
 #------------------------------
+# Shift of the selected PPM ranges
+#------------------------------
+RShift1D <- function(specMat, zone, RELDECAL=0, Selected=NULL)
+{
+   i1 <- ifelse( max(zone)>=specMat$ppm_max, 1, length(which(specMat$ppm>max(zone))) )
+   i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
+   di <- round(RELDECAL / specMat$dppm,0);
+   j1 <- i1 - di
+   j2 <- i2 - di
+
+   if( is.null(Selected) ) {
+        M <- specMat$int[, c(i1:i2) ]
+        specMat$int[, c(i1:i2) ] <- 0
+        specMat$int[, c(j1:j2) ] <- M
+   } else  {
+        M <- specMat$int[Selected, c(i1:i2) ]
+        specMat$int[Selected, c(i1:i2) ] <- 0
+        specMat$int[Selected, c(j1:j2) ] <- M
+   }
+
+   return(specMat)
+}
+
+#------------------------------
 # Bucket : Apply the bucketing based on the 'Algo' algorithm with the resolution 'resol'.
 # Then elinate buckets with a SNR under the threshold given by 'snr'
 # Append to / or Write upon the bucket file depending the 'appendBuc' value
@@ -1148,7 +1172,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
 #------------------------------
 check_MacroCmdFile <- function(CMD.filename) {
    ret <- 1
-   allowKW <- c( 'align', 'warp', 'clupa', 'gbaseline', 'baseline', 'qnmrbline', 'airpls', 'binning', 'calibration', 'normalisation', 'denoising', 'bucket', 'zero', 'EOL' )
+   allowKW <- c( 'align', 'warp', 'clupa', 'shift', 'gbaseline', 'baseline', 'qnmrbline', 'airpls', 'binning', 'calibration', 'normalisation', 'denoising', 'bucket', 'zero', 'EOL' )
 
    tryCatch({
       # Read the macrocommand file
@@ -1181,6 +1205,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
    lbFILTER <- 'denoising'
    lbWARP <- 'warp'
    lbCLUPA <- 'clupa'
+   lbSHIFT <- 'shift'
    lbBUCKET <- 'bucket'
    lbZERO <- 'zero'
    EOL <- 'EOL'
@@ -1317,7 +1342,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               params <- as.numeric(cmdPars[-1])
               Selected <- NULL
               if (length(params)==6 && (params[5]<2 || params[6])) {
-                 level <- unique(samples[ order(samples[, params[5]+1]), params[5]+1 ])[params[6]]
+                 level <- unique(samples[ order(as.character(samples[, params[5]+1])), params[5]+1 ])[params[6]]
                  Selected <- .N(rownames(samples[ samples[, params[5]+1]==level, ]))
               }
               if (length(params)>=4) {
@@ -1336,7 +1361,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               params <- cmdPars[-1]
               Selected <- NULL
               if (length(params)==6 && (.N(params[5])<2 || .N(params[6]))) {
-                 level <- unique(samples[ order(samples[, .N(params)[5]+1]), .N(params)[5]+1 ])[.N(params[6])]
+                 level <- unique(samples[ order(as.character(samples[, .N(params)[5]+1])), .N(params)[5]+1 ])[.N(params[6])]
                  Selected <- .N(rownames(samples[ samples[, .N(params[5])+1]==level, ]))
               }
               if (length(params)>=4) {
@@ -1355,7 +1380,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               params <- as.numeric(cmdPars[-1])
               Selected <- NULL
               if (length(params)==9 && (params[8]<2 || params[9])) {
-                 level <- unique(samples[ order(samples[, params[8]+1]), params[8]+1 ])[params[9]]
+                 level <- unique(samples[ order(as.character(samples[, params[8]+1])), params[8]+1 ])[params[9]]
                  Selected <- .N(rownames(samples[ samples[, params[8]+1]==level, ]))
               }
               if (length(params)>=7) {
@@ -1367,6 +1392,24 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Alignment: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
                  Write.LOG(LOGFILE,paste0("Rnmr1D:     CluPA - Resolution =",RESOL," - SNR threshold=",SNR, " - Reference=",idxSref))
                  specMat <- RCluPA1D(specMat, PPM_NOISE, PPMRANGE, RESOL, SNR, idxSref, Selected=Selected, ProgressFile=ProgressFile)
+                 specMat$fWriteSpec <- TRUE
+                 CMD <- CMD[-1]
+              }
+              break
+          }
+          if (cmdName == lbSHIFT) {
+              params <- as.numeric(cmdPars[-1])
+              Selected <- NULL
+              if (length(params)==5 && (params[4]<2 || params[5])) {
+                 level <- unique(samples[ order(as.character(samples[, params[4]+1])), params[4]+1 ])[params[5]]
+                 Selected <- .N(rownames(samples[ samples[, params[4]+1]==level, ]))
+              }
+              if (length(params)>=3) {
+                 PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
+                 RELDECAL= params[3]
+                 Write.LOG(LOGFILE,paste0("Rnmr1D:  Shift: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
+                 Write.LOG(LOGFILE,paste0("Rnmr1D:     Shift value =",RELDECAL))
+                 specMat <- RShift1D(specMat, PPMRANGE, RELDECAL, Selected=Selected)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
               }

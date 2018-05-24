@@ -430,6 +430,7 @@
                                    tags$td(style="float: right;", tags$h4(sess_name)),
                                    tags$td(style="width: 15px;"," ")
                         ))})
+        runjs( paste0("window.history.replaceState(null,'NMRProcFlow', '?", sessionViewer, "');") )
         output$jreload <- renderUI({ tags$script(HTML(paste0("document.title ='",gsub("\\..*$", "", NameZip), "';"))) })
         samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
         factors <- read.table(file.path(outDataViewer,"factors"), header=F, sep=";", stringsAsFactors=FALSE)

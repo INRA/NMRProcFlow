@@ -212,7 +212,7 @@ if (!$conf->error) {
        Spectrum.params = Spectrum.params + '&IMGSIZE=' + Spectrum.iwidth;
        Spectrum.params = Spectrum.params + '&IMGHEIGHT=' + Spectrum.iheight;
        Spectrum.params = Spectrum.params + '&SMAX=' + $( "#slider-vertical" ).slider( "value" );
-       Spectrum.params = Spectrum.params + '&' + params;
+       if (params) Spectrum.params = Spectrum.params + '&' + params;
        if ( $('#check').is(':checked') ) Spectrum.params = Spectrum.params + '&legend=1';
        if ( $('#stack').is(':checked') ) {
              Spectrum.params = Spectrum.params + '&stacked=1';
@@ -220,7 +220,7 @@ if (!$conf->error) {
        } else {
              $('#stack').button( 'option', 'label', 'Stacked spectra');
        }
-       Spectrum.callback= function () { $('#slider-vertical').css('height',( Spectrum.iheight-40 )+'px' ); }
+       Spectrum.callback = function () { $('#slider-vertical').css('height',( Spectrum.iheight-40 )+'px' ); }
        Spectrum.view();
    }
 
@@ -231,7 +231,8 @@ if (!$conf->error) {
            min: 1,
            max: 100,
            value: 100,
-           stop: function( event, ui ) { spectrum_view(); }
+           start: function( event, ui ) { Spectrum.fslider=1; },
+           stop: function( event, ui ) { Spectrum.fslider=0; spectrum_view(); }
         }).attr('title', 'Zoom on low intensities.');
    }
 
