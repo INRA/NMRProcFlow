@@ -85,7 +85,6 @@ Write.LOG(LOGFILE,paste0("Rbuc1D:  Bucketing method = ",procParams$BUCMETH));
 
 # Limit size of buckets
 MAXBUCKETS<-2000
-DECAL <- 0
 NOISE_FAC <- 3
 
 #------------------------------
@@ -135,7 +134,7 @@ repeat {
       Write.LOG(LOGFILE,paste("Rbuc1D:  Zone",i,"= (",zones$min[i],",",zones$max[i],"), Nb Buckets =",dim(buckets_m)[1]))
       cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
-   M <- cbind( (buckets_zones[,1] + buckets_zones[,2])/2, abs(buckets_zones[,1] - buckets_zones[,2]) - 2*DECAL*specMat$dppm)
+   M <- cbind( (buckets_zones[,1] + buckets_zones[,2])/2, abs(buckets_zones[,1] - buckets_zones[,2]) )
    Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(M)[1]))
 
    f_append <- ifelse (file.exists(bucketfile) && procParams$BUCAPPEND==TRUE, TRUE, FALSE )
@@ -165,7 +164,7 @@ repeat {
        file.rename(vsbfile, bucketfile)
    } else {
        vsblist <- read.table(vsbfile, header=F, sep="\t",stringsAsFactors=FALSE)
-       write.table(cbind(vsblist[,1], vsblist[,2]-2*DECAL*specMat$dppm), file=bucketfile, append=T, sep="\t", row.names=F, col.names=F, quote=F)
+       write.table(cbind(vsblist[,1], vsblist[,2]), file=bucketfile, append=T, sep="\t", row.names=F, col.names=F, quote=F)
    }
 
    # remove the PPM ranges file
@@ -238,7 +237,7 @@ repeat {
        # Keep only the buckets for which the SNR average is greater than SNRBUCLEVEL
        MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
        buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,mean)>procParams$SNRBUCLEVEL), ]
-       cbind( specMat$ppm[buckets_m[,1]+DECAL], specMat$ppm[buckets_m[,2]-DECAL] )
+       cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(buckets_zones)[1]))
 

@@ -1088,9 +1088,8 @@ RShift1D <- function(specMat, zone, RELDECAL=0, Selected=NULL)
 #------------------------------
 # Bucket : Apply the bucketing based on the 'Algo' algorithm with the resolution 'resol'.
 # Then elinate buckets with a SNR under the threshold given by 'snr'
-# Append to / or Write upon the bucket file depending the 'appendBuc' value
 #------------------------------
-RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LOGFILE=NULL, ProgressFile=NULL)
+RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL, ProgressFile=NULL)
 {
    BUCKET_LIST  <- 'bucket_list.in'
    BUC.filename <- 'SpecBuckets.txt'
@@ -1100,31 +1099,37 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
    MAXBUCKETS<-2000
    NOISE_FAC <- 3
 
-   # Noise estimation
-   if (is.na(zonenoise)) {
-       PPM_NOISE_AREA <- c(10.2, 10.5)
-   } else {
-      PPM_NOISE_AREA <- c(min(zonenoise), max(zonenoise))
+   if (Algo %in% c('aibin','unif')) {
+      # Noise estimation
+      if (is.na(zonenoise)) {
+          PPM_NOISE_AREA <- c(10.2, 10.5)
+      } else {
+         PPM_NOISE_AREA <- c(min(zonenoise), max(zonenoise))
+      }
+      idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+      Vref <- spec_ref(specMat$int)
+      ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
+      Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
+      
+      bdata <- list()
+      bdata$ynoise <- ynoise
+      bdata$vnoise <- NULL
+      bdata$inoise_start <- idx_Noise[1]
+      bdata$inoise_end <- idx_Noise[2]
+      bdata$R <- resol
+      bdata$dppm <- specMat$dppm
+      bdata$noise_fac <- NOISE_FAC
+      bdata$bin_fac <- 0.5
+      bdata$peaknoise_rate <- 15
+      bdata$BUCMIN <- 0.003
+      bdata$VREF <- 1
+
+      Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="at")
    }
-   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
-   Vref <- spec_ref(specMat$int)
-   ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
-   Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
 
-   bdata <- list()
-   bdata$ynoise <- ynoise
-   bdata$vnoise <- NULL
-   bdata$inoise_start <- idx_Noise[1]
-   bdata$inoise_end <- idx_Noise[2]
-   bdata$R <- resol
-   bdata$dppm <- specMat$dppm
-   bdata$noise_fac <- NOISE_FAC
-   bdata$bin_fac <- 0.5
-   bdata$peaknoise_rate <- 15
-   bdata$BUCMIN <- 0.003
-   bdata$VREF <- 1
-
-   Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="at")
+   if (Algo=='vsb') {
+      Write.LOG(BUC.cmd,sprintf("bucket %s",Algo), mode="at")
+   }
 
    # For each PPM range
    buckets_zones <- NULL
@@ -1144,21 +1149,26 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, appendBuc, LO
           n_bucs <- length(seq_buc) - 1
           buckets_m <- cbind ( seq_buc[1:n_bucs], seq_buc[2:(n_bucs+1)])
        }
-       if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",dim(buckets_m)[1],"\n"))
+       if (Algo=='vsb') {
+          buckets_m <- matrix( c( i1, i2 ), nrow=1, ncol=2, byrow=T )
+       }
+
+       if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",dim(buckets_m)[1]))
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        # Keep only the buckets for which the SNR average is greater than 'snr'
-       MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
-       # buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,mean)>snr), ]
-       buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>snr), ]
+       if (dim(buckets_m)[1]>1) {
+          MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
+          buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>snr), ]
+       }
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    Write.LOG(BUC.cmd,"EOL\n", mode="at")
 
-   if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Total Buckets =",dim(buckets_zones)[1],"\n"))
+   if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Total Buckets =",dim(buckets_zones)[1]))
 
    if( buckets_zones[1,1]>buckets_zones[1,2] )  {  colnames(buckets_zones) <- c('max','min') }
                                           else  {  colnames(buckets_zones) <- c('min','max') }
-   f_append <- ifelse (file.exists(BUC.filename) && appendBuc==1, TRUE, FALSE )
+   f_append <- ifelse (file.exists(BUC.filename), TRUE, FALSE )
 
    # The bucket zones files
    write.table(buckets_zones, file=BUC.filename, append=f_append, sep="\t", row.names=F, col.names=!f_append, quote=F)
@@ -1429,22 +1439,30 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               break
           }
           if (cmdName == lbBUCKET) {
-              if ( length(cmdPars) < 7 || ! cmdPars[2] %in% c('aibin','unif') ) {
+              if ( !( length(cmdPars) == 6 && cmdPars[2] %in% c('aibin','unif') ) &&
+                   !( length(cmdPars) == 2 && cmdPars[2] %in% c('vsb') ) ) {
                  CMD <- CMD[-1]
                  break;
               }
-              params <- as.numeric(cmdPars[-c(1:2)])
-              PPM_NOISE <- c( min(params[1:2]), max(params[1:2]) )
+              Write.LOG(LOGFILE,"Rnmr1D: \nRnmr1D:  Bucketing the selected PPM ranges ...")
               CMD <- CMD[-1]
               zones <- NULL
               while(CMD[1] != EOL) {
                   zones <- rbind(zones, as.numeric(unlist(strsplit(CMD[1],";"))))
                   CMD <- CMD[-1]
               }
-              Write.LOG(LOGFILE,"Rnmr1D:  Bucketing the selected PPM ranges ...\n")
-              Write.LOG(LOGFILE,paste0("Rnmr1D:     ",toupper(cmdPars[2])," - Resolution =",params[3]," - SNR threshold=",params[4], " - Append=",params[5],"\n"))
+              if ( cmdPars[2] %in% c('aibin','unif') ) {
+                  params <- as.numeric(cmdPars[-c(1:2)])
+                  PPM_NOISE <- c( min(params[1:2]), max(params[1:2]) )
+                  resol <- params[3]; snr <- params[4];
+                  Write.LOG(LOGFILE,paste0("Rnmr1D:     ",toupper(cmdPars[2])," - Resolution =",resol," - SNR threshold=",snr))
+              } else {
+                  PPM_NOISE <- NULL
+                  resol <- 0; snr <- 0;
+                  Write.LOG(LOGFILE,paste0("Rnmr1D:     ",toupper(cmdPars[2])))
+              }
               registerDoParallel(cores=NCPU)
-              RBucket1D(specMat, cmdPars[2], params[3], params[4], zones, PPM_NOISE, params[5], LOGFILE=LOGFILE, ProgressFile=ProgressFile)
+              RBucket1D(specMat, cmdPars[2], resol, snr, zones, PPM_NOISE, LOGFILE=LOGFILE, ProgressFile=ProgressFile)
               CMD <- CMD[-1]
               break
           }
