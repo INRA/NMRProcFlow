@@ -141,6 +141,7 @@ if (!$conf->error) {
    }});
    $(window).keyup( function (e)  { if ((e.keyCode==ctrlKey || e.keyCode==altKey) && typeof window.parent.CaptureMode != 'undefined') { 
             window.parent.CaptureMode=0; window.parent.toggle_capturemode();
+            Spectrum.reactiveMouveOver();
    }});
 
    $(window).bind('resizeEnd', function() {});

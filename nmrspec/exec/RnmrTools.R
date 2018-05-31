@@ -1439,7 +1439,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               break
           }
           if (cmdName == lbBUCKET) {
-              if ( !( length(cmdPars) == 6 && cmdPars[2] %in% c('aibin','unif') ) &&
+              if ( !( length(cmdPars) >= 6 && cmdPars[2] %in% c('aibin','unif') ) &&
                    !( length(cmdPars) == 2 && cmdPars[2] %in% c('vsb') ) ) {
                  CMD <- CMD[-1]
                  break;

@@ -170,13 +170,16 @@ var ObjImage = function () {
    this.getNewIMG = function () {
        var x = this.xpos - this.x1;
        var xmax = this.x2 - this.x1 - 1;
-       this.mDwn = 0;
        var v=x;
+       this.mDwn = 0;
        if (x<0) v=0;
        if (x>xmax) v=xmax;
-       if (this.flg && ! this.fslider) {
+       while(true) {
+           if ( ! this.flg || this.fslider ) break;
           this.val2  = this.getVal(v);
           var xval2 = (v + this.x1) + this.ox;
+          var xvalmax = (xmax + this.x1) + this.ox;
+          if (this.xval > xvalmax || this.xval<(this.x1+this.ox)) { this.reactiveMouveOver(); break; }
           if (this.xval > xval2) { 
               tmp=this.xval; this.xval=xval2; xval2=tmp; tmp=this.val; this.val=this.val2; this.val2=tmp;
           }
@@ -190,6 +193,7 @@ var ObjImage = function () {
                   document.getElementById(this.selppm).innerHTML = sprintf("%7.4f",this.val)+' '+sprintf("%7.4f",this.val2)
               }
           }
+          break
        }
    }
 
@@ -197,6 +201,10 @@ var ObjImage = function () {
        this.mDwn = 0;
        document.getElementById(this.selppm).innerHTML = ""
        this.cursorMove();
+   }
+
+   this.reactiveMouveOver = function() {
+       $(this.container).mousemove($.proxy(this.e_cursorMove,this));
    }
 
    this.show_waitdiv = function () {
@@ -209,6 +217,7 @@ var ObjImage = function () {
        $(this.cursor).css('display','none');
        $(this.container).mousedown($.proxy(this.e_captureWin,this));
        $(this.container).mousemove($.proxy(this.e_cursorMove,this));
+       $(this.container).dblclick($.proxy(this.e_dblclick,this));
    }
 
    this.AJ_XMS = function (params) {
@@ -271,14 +280,20 @@ var ObjImage = function () {
        $(this.container).mousedown($.proxy(this.e_captureWin,this));
        if (this.coords(e)) this.getNewIMG();
        $(document).keyup($.proxy(this.e_captureReset,this));
+       if (this.keycode==0) this.reactiveMouveOver();
    }
 
    this.e_captureReset = function (e) {
        if (!e) e = window.event;
        if (e.which==27) {
            this.captureReset();
-           $(this.container).mousemove($.proxy(this.e_cursorMove,this));
+           this.reactiveMouveOver();
            $(document).unbind('keyup');
        }
+   }
+
+   this.e_dblclick= function (e) {
+       if (!e) e = window.event;
+       this.AJ_XMS('prev=1');
    }
 }
