@@ -16,7 +16,9 @@
           * application  : -v /<mrviewer path>/www:/var/www/html/nv
           * data         : -v /<data root path>:/opt/data
    * web link : http://<your_host>/nv/view/<session identifier>
+
           * the <session identifier> must correspond to a subdirectory under /opt/data, with the following files:
+
                * specs.pack : The matrix of the binary spectra (N spectra x M points) (Binary format)
                * samples.csv The sample file that links together Raw name, sample name, factor names for each spectrum (CSV format)
                * factors : List of information type available for the NMR spectra viewer (TXT format)
