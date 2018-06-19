@@ -70,9 +70,9 @@ ENV APACHE_RUN_USER=www-data \
     APACHE_SERVERALIAS=docker.localhost \
     APACHE_DOCUMENTROOT=/var/www
 
-COPY ./etc/apache2.conf /etc/apache2/apache2.conf
-COPY ./nmrspec/conf/shiny-server.conf /etc/shiny-server/shiny-server.conf
+COPY ./nmrspec/conf/apache2.conf /etc/apache2/apache2.conf
 COPY ./nmrspec/conf/my-site.conf /etc/apache2/sites-enabled/001-my-site.conf
+COPY ./nmrspec/conf/shiny-server.conf /etc/shiny-server/shiny-server.conf
 COPY ./nmrspec/conf/launch-server.sh /usr/bin/launch-server.sh
 
 # NMRVIEW

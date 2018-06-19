@@ -1,6 +1,6 @@
 # NMRViewer Docker Image - Standalone Installation 
 
-   * NMRViewer module is included within the NMRProcFlow docker image, but if you can also build and use NMRViewer as a standalone docker image
+   * NMRViewer module is included within the NMRProcFlow docker image, but you can also build and use NMRViewer as a standalone docker image
 
 ### Based on: Docker Apache + php Image
    * cf https://registry.hub.docker.com/_/php/
