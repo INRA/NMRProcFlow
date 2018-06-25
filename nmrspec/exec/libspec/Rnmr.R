@@ -582,6 +582,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    TD <- length(signal)
 
    SFO1 <- as.double(xmlAttrs(xmlElementsByTagName(root, "irradiationFrequency", recursive = TRUE)[[1]])["value"])
+   O1 <- as.double(xmlAttrs(xmlElementsByTagName(root, "irradiationFrequencyOffset", recursive = TRUE)[[1]])["value"])
    SWH <-  as.double(xmlAttrs(xmlElementsByTagName(root, "sweepWidth", recursive = TRUE)[[1]])["value"])
    SW <- SWH/SFO1
    TD  <-  as.integer(xmlAttrs(xmlElementsByTagName(root, "DirectDimensionParameterSet", recursive = TRUE)[[1]])["numberOfDataPoints"])
@@ -633,7 +634,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT,
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH, TEMP=TEMP, NUC=NUC,
-                NUMBEROFSCANS='-', DUMMYSCANS='-', TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=0, GRPDLY=GRPDLY )
+                NUMBEROFSCANS='-', DUMMYSCANS='-', TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
    spec <- list( path=filename, acq=acq, fid=fid )
 
    spec
