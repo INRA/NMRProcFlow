@@ -14,34 +14,34 @@ ui_desc <- column(12,
 ##---------------
 ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.SessReload==0",
     column(4,
-        selectInput("vendor", "Instrument/Vendor/Format:", 
-                     c("Bruker"="bruker", "Varian/Agilent"="varian", "Jeol JDF format"="jeol", "nmrML v1.0.rc1"="nmrml"),
-                     selected = "bruker"),
-        selectInput("spectype", "Spectra type:", 
-                     c("1r spectrum" = "1r", "FID" = "fid"), selected = "fid"),
-        conditionalPanel(condition="input.spectype=='fid'",
-            bsButton("bsadvusers", icon=icon("gear"), label = " Parameters", style="primary" ),
-            tags$br(),tags$br()
-        ),
-
-        conditionalPanel(condition="output.ZipPreLoaded==0",
-            fileInput( 'zipfile', 'ZIP file', accept = c( 'application/zip', '.7z' ) )
-        ),
-        conditionalPanel(condition="output.ZipPreLoaded==1",
-            disabled( textInput( 'namezip', '') )
-        ),
-
-        fileInput( 'samplefile', 'Samples file (Tabular format)', accept = c( 'text/plain' ) ),
-
-        conditionalPanel(condition="output.ZipUploaded==1 || output.ZipPreLoaded==1",
-            checkboxInput("advancedUsr", "Advanced User", FALSE),
-            conditionalPanel(condition="input.advancedUsr==1",
-                fileInput( 'macropcmd', 'Macro-commands for processing (Text file)', accept = c( 'text/plain' ) )
-            ),
-            column(2, bsButton("goButton", label = "Launch", style="primary" ) ),
-            column(2, conditionalPanel(condition="output.ZipPreLoaded==1",
-                bsButton("resetFullButton", label = "Reset", style="primary" )
-            ), tags$br(),tags$br() )
+        selectInput("vendor", "Instrument/Vendor/Format:",  c("Select the input format"="sinput", "nmrML v1.0.rc1"="nmrml", "Bruker (TopSpin/X-winnmr)" = "bruker", "Varian/Agilent (VNMRJ)" = "varian", "Jeol (JDF/DELTA)" = "jeol"), selected = "sinput"),
+        conditionalPanel(condition="output.FormatSelected==1",
+             selectInput("spectype", "Spectra type:", 
+                          c("1r spectrum" = "1r", "FID" = "fid"), selected = "fid"),
+             conditionalPanel(condition="input.spectype=='fid'",
+                 bsButton("bsadvusers", icon=icon("gear"), label = " Parameters", style="primary" ),
+                 tags$br(),tags$br()
+             ),
+             
+             conditionalPanel(condition="output.ZipPreLoaded==0",
+                 fileInput( 'zipfile', 'ZIP file', accept = c( 'application/zip', '.7z' ) )
+             ),
+             conditionalPanel(condition="output.ZipPreLoaded==1",
+                 disabled( textInput( 'namezip', '') )
+             ),
+             
+             fileInput( 'samplefile', 'Samples file (Tabular format)', accept = c( 'text/plain' ) ),
+             
+             conditionalPanel(condition="output.ZipUploaded==1 || output.ZipPreLoaded==1",
+                 checkboxInput("advancedUsr", "Advanced User", FALSE),
+                 conditionalPanel(condition="input.advancedUsr==1",
+                     fileInput( 'macropcmd', 'Macro-commands for processing (Text file)', accept = c( 'text/plain' ) )
+                 ),
+                 column(2, bsButton("goButton", label = "Launch", style="primary" ) ),
+                 column(2, conditionalPanel(condition="output.ZipPreLoaded==1",
+                     bsButton("resetFullButton", label = "Reset", style="primary" )
+                 ), tags$br(),tags$br() )
+             )
         ),
         column(12, withTags(table(align="left", tr(td(a(img(src="images/help.png"), href="http://nmrprocflow.org/c1", target="_blank")),
                                         td(valign="center", tags$p(class="cprght", "Get more information on input data format "))))))
@@ -52,7 +52,7 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
             numericInput("GB", "Gauss. Line Broadening:", 0, min = 0, max = 1, step=0.1),
             checkboxInput("zerofilling", "Zero filling", TRUE),
             conditionalPanel(condition="input.zerofilling==1",
-                  selectInput("zffac", "Max factor for Zero Filling:", c("x4"="4" , "x2"="2" ), selected = "4")
+                  selectInput("zffac", "Max factor for Zero Filling:", c("x4"="4" , "x2"="2" ), selected = "2")
             ),
             checkboxInput("optimphc1", "first order phase setting", FALSE),
             checkboxInput("rabot", "Zeroing of Negative Values", FALSE),

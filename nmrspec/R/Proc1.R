@@ -32,6 +32,13 @@
 ## Upload & Preprocessing
 ##---------------
 
+   output$FormatSelected <- reactive({
+         if (input$vendor=="sinput") return(0)
+         return(1)
+   })
+   outputOptions(output, 'FormatSelected', suspendWhenHidden=FALSE)
+   outputOptions(output, 'FormatSelected', priority=20)
+
    observeEvent ( input$vendor, {
        v_options <- c("fid"); names(v_options) <- c('FID'); v_select<-'fid'
        if ( input$vendor=="bruker" ) {
@@ -230,6 +237,7 @@
          if (values$ziploaded>0) {
             if (file.exists(file.path(outDir,conf$Rnmr1D_PPCMD))) initPreprocessingParams(file.path(outDir,conf$Rnmr1D_PPCMD))
             updateTextInput(session, "namezip", value = NameZip)
+            shinyjs::disable("vendor")
          }
          return( values$ziploaded )
    })

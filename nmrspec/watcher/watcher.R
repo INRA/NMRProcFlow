@@ -71,7 +71,7 @@ repeat {
             p1p <- round(100*(P$value/P$size)); p1px <- 4*p1p; p2px <- 400 - p1px;
             progress <- paste0('<table border="0" CELLPADDING="0" CELLSPACING="0"><tr>',
                    '<td style="font-size:8pt;text-decoration:none;font-weight:bold;">current process:</td>',
-                   '<td style="background-color: #0000FF; width: ',p1px,'px; height: 10px;"></td>',
+                   '<td style="background-color: #337AB7; width: ',p1px,'px; height: 10px;"></td>',
                    '<td style="background-color: #DEDEDE; width: ',p2px,'px; height: 10px;"></td>',
                    '<td style="font-size:8pt;text-decoration:none;font-weight:bold;">',p1p,'%</td>',
                    '</tr></table>')
