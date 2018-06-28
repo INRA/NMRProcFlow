@@ -35,6 +35,7 @@ Spec1r.Procpar.default <- list (
     ZFFAC=4,                   # Max factor for Zero Filling 
     LINEBROADENING=TRUE,       # Line Broading
     TSP=FALSE,                 # PPM referencing
+    O1PARAM=TRUE,              # PPM calibration based on the parameter of the spectral region center (O1)
     RABOT=FALSE,               # Zeroing of Negative Values 
     OPTPHC0=TRUE,              # Zero order phase optimization
     OPTPHC1=FALSE,             # First order phase optimization
@@ -841,13 +842,21 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
     m <- proc$SI
     SW <- spec$acq$SW
     SWH <- spec$acq$SWH
-    O1 <- spec$acq$O1
+    if (param$O1PARAM) {
+        O1 <- spec$acq$O1
+    } else {
+        O1 <- SWH/3
+    }
     spec$dppm <- SW/(m-1)
     spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
     
     repeat {
        if (toupper(spec$acq$INSTRUMENT) %in% c("JEOL","VARIAN")) {
-          spec$pmin <- spec$acq$OFFSET - SW/2
+          if (param$O1PARAM) {
+              spec$pmin <- spec$acq$OFFSET - SW/2
+          } else {
+              spec$pmin <- -SW/6
+          }
           break
        }
        if (spec$acq$NUC %in% c('1H','H1') ) {

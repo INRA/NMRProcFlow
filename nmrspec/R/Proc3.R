@@ -205,47 +205,6 @@
     outputOptions(output, 'UndoBucket', priority=1)
 
     ##---------------
-    ## SessReload : Reload the session
-    ##---------------
-    output$SessReload <- reactive({
-         values$reload
-         isolate({
-             if (values$reload==1) {
-                 INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
-                 procParams <<- Parse.INI(INI.filename, INI.list=list(), section="PROCPARAMS")
-                 if (! file.exists(file.path(outDataViewer,"userfiles"))) {
-                    outDir <<- outDataViewer
-                    NameZip <<- 'noname.zip'
-                 }
-                 else {
-                    V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
-                    NameZip <<- V[1]
-                    SampleFilename <<- V[2]
-                    outDir <<- dirname(V[3])
-                    if (! file.exists(outDir) ) outDir <<- outDataViewer
-                 }
-                 if (file.exists(file.path(outDataViewer,"pcmdfiles"))) {
-                    V <- read.table(file.path(outDataViewer,"pcmdfiles"), header=F, stringsAsFactors=FALSE)[,1]
-                    PCMDFilename <<- V[1]
-                 }
-                 procJobName <<- 'process'
-                 nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
-                 bsUndoLabel <- ifelse(nbStackedProc>0, paste0(' (',as.character(nbStackedProc),')'), '')
-                 updateButton(session, "undo", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
-                 nbStackedBuc <- get_maxSTACKID(outDataViewer,conf$BUCKET_LIST)
-                 if (file.exists(file.path(outDataViewer,conf$BUCKET_LIST))) nbStackedBuc <- nbStackedBuc + 1
-                 bsUndoLabel <- ifelse(nbStackedBuc>0, paste0(' (',as.character(nbStackedBuc),')'), '')
-                 updateButton(session, "unBucket", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
-                 values$load <- 1
-                 values$proc <- 1
-             }
-         })
-         return(values$reload)
-    })
-    outputOptions(output, 'SessReload', suspendWhenHidden=FALSE)
-    outputOptions(output, 'SessReload', priority=1)
-
-    ##---------------
     ## Processing : Start - Launch the process
     ##---------------
     output$Processing <- reactive({
@@ -280,54 +239,6 @@
     outputOptions(output, 'Processed', priority=1)
 
 
-    ## Reactive value that indicates if the "Job Watcher" is required
-    output$modaljoblog <- reactive({
-         return(input$joblog);
-    })
-    outputOptions(output, 'modaljoblog', suspendWhenHidden=FALSE)
-    outputOptions(output, 'modaljoblog', priority=1)
-
-
-    ##---------------
-    ## Output: Watch the logfile in realtime
-    ##---------------
-    ## Watcher 2: Processing
-    output$watcher2 <- renderUI({
-         values$jobrun
-         isolate({
-             if (values$jobrun==0 || input$joblog==0) return(NULL)
-             if (is.null(procJobName)) return (NULL)
-             if (procJobName != "process") return (NULL)
-             if (input$condProcPanels == 'Processing') logtype <- 'proc'
-             if (input$condProcPanels == 'Bucketing') logtype <- 'bucket'
-             if (input$condProcPanels == 'Data Export') logtype <- 'export'
-             renderWatcher(values$jobrun,logtype,600)
-         })
-    })
-    outputOptions(output, 'watcher2', suspendWhenHidden=FALSE)
-    outputOptions(output, 'watcher2', priority=5)
-
-    ## Watcher 2b: Watch the logfile in shift time
-    output$watcher2b <- renderUI({ 
-         input$proclog
-         isolate({
-             if (is.null(procJobName)) return (NULL)
-             html <- ''
-             if (input$condProcPanels == 'Processing') LOGFILE <- conf$LOGFILE
-             if (input$condProcPanels == 'Bucketing') LOGFILE <- conf$LOGFILE2
-             if (input$condProcPanels == 'Data Export') LOGFILE <- conf$LOGFILE3
-             fileLog <- file.path(outDataViewer,LOGFILE)
-             if (file.exists(fileLog)) {
-                t1 <- file.info(file.path(outDataViewer,conf$semapFileIn))$ctime
-                t2 <- file.info(file.path(outDataViewer,conf$semapFileOut))$ctime
-                elapsedtime <- round(as.numeric(difftime(t2,t1),units="secs"),3)
-                html <- paste0("<h4>Total Job Duration: ",elapsedtime," secs</h4>" )
-                html <- paste0(html,'<div style="height: 600px;"><pre style="height: 600px;">', paste(as.list(readLines(fileLog)), collapse="\n"),'</pre></div>' )
-             }
-             return(HTML(html))
-         })
-    })
-
     DS_ext <- reactive({
          switch(input$exportFormat,  "csv" = ".csv", "ssv" = ".csv",  "tsv" = ".txt", "json"=".json")
     })
@@ -350,27 +261,27 @@
     outputOptions(output, 'importBUC', suspendWhenHidden=FALSE)
     outputOptions(output, 'importBUC', priority=1)
 
-   ##---------------
-   ## Output: Update the 'Export Format' SelectBox 
-   ##---------------
-   updateExportFormatSelect <- function () {
-         if (file.exists(file.path(outDataViewer,"samples.csv"))) {
-             samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
-             v_options <- c("tsv", "csv", "ssv")
-             names(v_options) <- c("Tabular Separator Value (TXT)", "Comma Separator Value (CSV)", "Semicolon Separator Value (CSV)")
-             op_selected <- "tsv"
-             if (dim(samples)[1]==1 && input$eptype=='epspec') {
-                 v_options$"JSON Format" <- "json"
-                 op_selected <- v_options[4]
-             }
-             updateSelectInput(session, "exportFormat", choices = v_options, selected=op_selected)
-         }
-   }
+    ##---------------
+    ## Output: Update the 'Export Format' SelectBox 
+    ##---------------
+    updateExportFormatSelect <- function () {
+          if (file.exists(file.path(outDataViewer,"samples.csv"))) {
+              samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
+              v_options <- c("tsv", "csv", "ssv")
+              names(v_options) <- c("Tabular Separator Value (TXT)", "Comma Separator Value (CSV)", "Semicolon Separator Value (CSV)")
+              op_selected <- "tsv"
+              if (dim(samples)[1]==1 && input$eptype=='epspec') {
+                  v_options$"JSON Format" <- "json"
+                  op_selected <- v_options[4]
+              }
+              updateSelectInput(session, "exportFormat", choices = v_options, selected=op_selected)
+          }
+    }
 
-   observe ({
-         input$eptype
-         isolate({ if (values$proc==1) updateExportFormatSelect() })
-   })
+    observe ({
+          input$eptype
+          isolate({ if (values$proc==1) updateExportFormatSelect() })
+    })
 
     ##---------------
     ## Export Data matrix

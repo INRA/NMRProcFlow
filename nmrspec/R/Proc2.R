@@ -1,4 +1,85 @@
 ##---------------
+## Watcher
+##---------------
+
+   ##---------------
+   ## Output: Watch the logfile in realtime
+   ##---------------
+   renderWatcher <- function (flg,type, height) {
+         if (flg==0) return(NULL)
+         urlwatcher <- paste0(conf$WatcherURL, sessionViewer,'/',type,'/',digest(runif(1, 1, 10)))
+         if (nchar(conf$PROXY_URL_ROOT)>0) urlwatcher <- paste0(conf$PROXY_URL_ROOT,'/',urlwatcher)
+         return(HTML(paste0('<iframe id="ifwatcher" name="ifwatcher" src=',urlwatcher,' frameborder="0" style="overflow: hidden; height: ',height,'px; width: 100%; border: 0px;" width="100%" onload="this.contentWindow.document.documentElement.scrollTop=1000"></iframe>')))
+   }
+
+   ##---------------
+   ## Output: Watch the logfile in realtime
+   ##---------------
+   ## Watcher 1: Preprocessing
+   output$watcher <- renderUI({
+        values$jobrun
+        values$error
+        if (is.null(procJobName)) return (NULL)
+        if (isolate(input$goButton)>1 && procJobName != "preprocess") return (NULL)
+        renderWatcher(values$jobrun || values$error, 'init', 600)
+   })
+   outputOptions(output, 'watcher', suspendWhenHidden=FALSE)
+   outputOptions(output, 'watcher', priority=5)
+
+   ## Watcher 1b: Preprocessing
+   output$watcher1b <- renderUI({
+        renderWatcher(1,'view',600)
+   })
+
+    ## Reactive value that indicates if the "Job Watcher" is required
+    output$modaljoblog <- reactive({
+         return(input$joblog);
+    })
+    outputOptions(output, 'modaljoblog', suspendWhenHidden=FALSE)
+    outputOptions(output, 'modaljoblog', priority=1)
+
+
+    ##---------------
+    ## Output: Watch the logfile in realtime
+    ##---------------
+    ## Watcher 2: Processing
+    output$watcher2 <- renderUI({
+         values$jobrun
+         isolate({
+             if (values$jobrun==0 || input$joblog==0) return(NULL)
+             if (is.null(procJobName)) return (NULL)
+             if (procJobName != "process") return (NULL)
+             if (input$condProcPanels == 'Processing') logtype <- 'proc'
+             if (input$condProcPanels == 'Bucketing') logtype <- 'bucket'
+             if (input$condProcPanels == 'Data Export') logtype <- 'export'
+             renderWatcher(values$jobrun,logtype,600)
+         })
+    })
+    outputOptions(output, 'watcher2', suspendWhenHidden=FALSE)
+    outputOptions(output, 'watcher2', priority=5)
+
+    ## Watcher 2b: Watch the logfile in shift time
+    output$watcher2b <- renderUI({ 
+         input$proclog
+         isolate({
+             if (is.null(procJobName)) return (NULL)
+             html <- ''
+             if (input$condProcPanels == 'Processing') LOGFILE <- conf$LOGFILE
+             if (input$condProcPanels == 'Bucketing') LOGFILE <- conf$LOGFILE2
+             if (input$condProcPanels == 'Data Export') LOGFILE <- conf$LOGFILE3
+             fileLog <- file.path(outDataViewer,LOGFILE)
+             if (file.exists(fileLog)) {
+                t1 <- file.info(file.path(outDataViewer,conf$semapFileIn))$ctime
+                t2 <- file.info(file.path(outDataViewer,conf$semapFileOut))$ctime
+                elapsedtime <- round(as.numeric(difftime(t2,t1),units="secs"),3)
+                html <- paste0("<h4>Total Job Duration: ",elapsedtime," secs</h4>" )
+                html <- paste0(html,'<div style="height: 600px;"><pre style="height: 600px;">', paste(as.list(readLines(fileLog)), collapse="\n"),'</pre></div>' )
+             }
+             return(HTML(html))
+         })
+    })
+
+##---------------
 ## NMRViewer & Capture
 ##---------------
 
@@ -9,7 +90,7 @@
          if (flg==0) return(NULL)
          urlviewer <- paste0(conf$ViewerURL, sessionViewer)
          if(nchar(conf$PROXY_URL_ROOT)>0) urlviewer <- paste0(conf$PROXY_URL_ROOT,'/',urlviewer)
-         return(HTML(paste0('<iframe id="ifspecview" name="ifspecview" src=',urlviewer,' frameborder="0" style="overflow: hidden; min-height:',conf$Viewer_min_Height,'px; width: 100%; border: 0px;" width="100%"></iframe><script>setTimeout(function(){toggle_capturemode();}, 1000);</script>')))
+         return(HTML(paste0('<iframe id="ifspecview" name="ifspecview" src=',urlviewer,' frameborder="0" style="overflow: hidden; min-height:',conf$Viewer_min_Height,'px; width: 100%; border: 0px;" width="100%"></iframe><script>setTimeout(function(){viewerLoaded=1; toggle_capturemode();}, 1000);</script>')))
    }
 
    ##---------------

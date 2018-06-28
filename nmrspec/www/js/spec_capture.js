@@ -10,10 +10,11 @@
 var CaptureMode=0;
 var ctrlKey = 17;
 var altKey = 18;
+var viewerLoaded=0;
 
 var toggle_capturemode = function() {
      do {
-        if( ! $("#ifspecview").get(0) ) break;
+        if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
         if (CaptureMode==1) {
             $("#ifspecview").get(0).contentWindow.set_spectrum_keycode(ctrlKey);
             $("#ifspecview").css({ "background-color": "rgb(234, 239, 250)" });
@@ -29,7 +30,7 @@ var toggle_capturemode = function() {
 
 var refresh_spectrum = function() {
      do {
-        if( ! $("#ifspecview").get(0) ) break;
+        if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
         $("#ifspecview").get(0).contentWindow.spectrum_view();
         setTimeout(function(){toggle_capturemode();}, 1000);
      } while (0)
@@ -44,7 +45,7 @@ var refresh_if_capturebox = function() {
 
 var resize_spectrumHeight = function(imgheight) {
      do {
-        if( ! $("#ifspecview").get(0) ) break;
+        if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
         ifrminheight=imgheight+76
         $("#ifspecview").height(ifrminheight);
         $("#ifspecview").get(0).contentWindow.set_spectrum_imgheight(imgheight);
@@ -54,7 +55,7 @@ var resize_spectrumHeight = function(imgheight) {
 
 var get_spectrum_range = function() {
      do {
-        if( ! $("#ifspecview").get(0) ) break;
+        if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
         if (CaptureMode==1 && $( document.activeElement ).is("textarea")) {
             vallist = $( document.activeElement ).val().trim()
             if (vallist.length>0) vallist = vallist + "\n"
@@ -75,7 +76,7 @@ var replace_by_NL = function(id) {
 
 $(window).on("keydown", function (e) {
     do {
-       if( ! $("#ifspecview").get(0) ) break;
+       if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
        if (e.keyCode == ctrlKey || e.keyCode == altKey) {
             CaptureMode = 1;
             toggle_capturemode();
@@ -87,7 +88,7 @@ $(window).on("keydown", function (e) {
 
 $(window).on("keyup", function (e) {
     do {
-       if( ! $("#ifspecview").get(0) ) break;
+       if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
        if (e.keyCode == ctrlKey || e.keyCode == altKey) {
             CaptureMode = 0;
             toggle_capturemode();

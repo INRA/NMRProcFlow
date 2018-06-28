@@ -16,7 +16,7 @@ shinyServer(function(input, output, session) {
     procParams <- NULL          # Processing Parameters
     outDataViewer <- NULL       # where data will be stored and used by NMRViewer
     sessionViewer <- NULL       # ID of the NMRViewer session
-    procJobName <- NULL         # Name/ID of the current Job => serves to discriminate which reative/render to activate                        
+    procJobName <- NULL         # Name/ID of the current Job => serves to discriminate which reative/render to activate
     NBPROC <- 4                 # Total of process types
     CORR <- 1                   # Baseline Correction
     ALIGN <- 2                  # Alignment
@@ -45,8 +45,8 @@ shinyServer(function(input, output, session) {
 
     source("R/utils.R", local=TRUE)     # general routines
     source("R/Login.R", local=TRUE)     # Log in module
-    source("R/Proc1.R", local=TRUE)     # Upload & Preprocessing
-    source("R/Proc2.R", local=TRUE)     # NMRViewer & Capture
+    source("R/Proc1.R", local=TRUE)     # UI initialization events - Upload & Preprocessing
+    source("R/Proc2.R", local=TRUE)     # Watcher - NMRViewer & Capture
     source("R/Proc3.R", local=TRUE)     # Processing
 
     #----------------------------------------------------

@@ -6,6 +6,12 @@
    })
    outputOptions(output, "panelHeader", suspendWhenHidden = FALSE)
 
+   output$patchO1param <- reactive({
+       values$header
+       conf$O1_PARAM_PATCH==1
+   })
+   outputOptions(output, "patchO1param", suspendWhenHidden = FALSE)
+
    observeEvent( values$psession, {
        if (values$psession==1) {
           showTab(inputId = "conditionedPanels", target = "Processing", select=TRUE)
@@ -27,10 +33,6 @@
           runjs( "document.getElementById('egalaxy').style.display = 'none';" )
        }
    })
-
-##---------------
-## Upload & Preprocessing
-##---------------
 
    output$FormatSelected <- reactive({
          if (input$vendor=="sinput") return(0)
@@ -55,6 +57,126 @@
    })
 
    ##---------------
+   ## Output: Update the 'Reference spectrum' SelectBox
+   ##---------------
+   updateRefSpecSelect <- function () {
+         samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
+         v_options <- c(0, 1:dim(samples)[1] )
+         names(v_options) <- c('Auto reference',.C(samples[,2]))
+         updateSelectInput(session, "RefSpecSelect", choices = v_options, selected=0)
+   }
+
+   ##---------------
+   ## started: launched when all is started (ui & server)
+   ##---------------
+   output$started <- reactive({
+         values$started
+         return(1)
+   })
+
+   ##---------------
+   ## SessInit: Init the session
+   ##---------------
+   output$SessInit <- reactive({
+         values$sessinit
+         repeat {
+             if ( is.null(sessionViewer) ) {
+                values$reload <- 0
+                break
+             }
+             if ( file.exists(file.path(conf$DATASETS,sessionViewer)) ) {
+                outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
+                INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
+                if (file.exists(INI.filename)) {
+                   procParams <<- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
+                } else {
+                   procParams <<- Spec1r.Procpar
+                   generate_INI_file(procParams)
+                }
+                values$reload <- 1
+                updateRefSpecSelect()
+                break
+             }
+             outData <- file.path(tempdir(),sessionViewer)
+             if ( file.exists(file.path(outData,'userfiles')) ) {
+                outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
+                if ( ! file.exists(outDataViewer) ) dir.create(outDataViewer)
+                system( paste("chmod 777 ",outDataViewer) )
+                file.copy(file.path(outData,"userfiles"), file.path(outDataViewer,"userfiles"))
+                V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
+                NameZip <<- V[1]
+                ext <- tolower(gsub("^.*\\.", "", NameZip))
+                RawZip <<- file.path(outData,paste0('raw.',ext))
+                outDir <<- outData
+                values$ziploaded <- 1
+                values$reload <- 0
+                break
+             }
+             values$reload <- 0
+             break
+         }
+         return(values$sessinit)
+   })
+   outputOptions(output, 'SessInit', suspendWhenHidden=FALSE)
+   outputOptions(output, 'SessInit', priority=1)
+
+    ##---------------
+    ## SessReload : Reload the session
+    ##---------------
+    output$SessReload <- reactive({
+         values$reload
+         isolate({
+             if (values$reload==1) {
+                 #INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
+                 #procParams <<- Parse.INI(INI.filename, INI.list=list(), section="PROCPARAMS")
+                 if (! file.exists(file.path(outDataViewer,"userfiles"))) {
+                    outDir <<- outDataViewer
+                    NameZip <<- 'noname.zip'
+                 }
+                 else {
+                    V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
+                    NameZip <<- V[1]
+                    SampleFilename <<- V[2]
+                    outDir <<- dirname(V[3])
+                    if (! file.exists(outDir) ) outDir <<- outDataViewer
+                 }
+                 if (file.exists(file.path(outDataViewer,"pcmdfiles"))) {
+                    V <- read.table(file.path(outDataViewer,"pcmdfiles"), header=F, stringsAsFactors=FALSE)[,1]
+                    PCMDFilename <<- V[1]
+                 }
+                 procJobName <<- 'process'
+                 nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
+                 bsUndoLabel <- ifelse(nbStackedProc>0, paste0(' (',as.character(nbStackedProc),')'), '')
+                 updateButton(session, "undo", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
+                 nbStackedBuc <- get_maxSTACKID(outDataViewer,conf$BUCKET_LIST)
+                 if (file.exists(file.path(outDataViewer,conf$BUCKET_LIST))) nbStackedBuc <- nbStackedBuc + 1
+                 bsUndoLabel <- ifelse(nbStackedBuc>0, paste0(' (',as.character(nbStackedBuc),')'), '')
+                 updateButton(session, "unBucket", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
+                 values$load <- 1
+                 values$proc <- 1
+             }
+         })
+         return(values$reload)
+    })
+    outputOptions(output, 'SessReload', suspendWhenHidden=FALSE)
+    outputOptions(output, 'SessReload', priority=1)
+
+    output$ZipPreLoaded <- reactive({
+          if (values$ziploaded>0) {
+             if (file.exists(file.path(outDir,conf$Rnmr1D_PPCMD))) initPreprocessingParams(file.path(outDir,conf$Rnmr1D_PPCMD))
+             updateTextInput(session, "namezip", value = NameZip)
+             shinyjs::disable("vendor")
+          }
+          return( values$ziploaded )
+    })
+    outputOptions(output, 'ZipPreLoaded', suspendWhenHidden=FALSE)
+    outputOptions(output, 'ZipPreLoaded', priority=20)
+
+##---------------
+## Upload & Preprocessing
+##---------------
+
+   ##---------------
    ## Preprocessing : init parameters depending on macrocommand file
    ##---------------
    initPreprocessingParams <- function(macropcmdfile) {
@@ -76,18 +198,18 @@
                v_options <- c("fid","1r"); names(v_options) <- c('FID','1r spectrum');
                updateSelectInput(session, "spectype", choices = v_options, selected=trim(procpar$Type))
             }
-            if (! is.null(procpar$LB)) { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
-            if (! is.null(procpar$GB)) { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
-            if (! is.null(procpar$ZF)) {
-                updateCheckboxInput(session, "zerofilling", value = ifelse( as.numeric(procpar$ZF)>0, 1, 0));
+            if (! is.null(procpar$LB))      { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
+            if (! is.null(procpar$GB))      { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
+            if (! is.null(procpar$PHC1))    { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
+            if (! is.null(procpar$ZNEG))    { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
+            if (! is.null(procpar$TSP))     { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
+            if (! is.null(procpar$O1PARAM)) { updateCheckboxInput(session, "o1param", value = ifelse( procpar$O1PARAM=="TRUE", 0, 1)); }
+            if (! is.null(procpar$ZF))      { updateCheckboxInput(session, "zerofilling", value = ifelse( as.numeric(procpar$ZF)>0, 1, 0));
                 if (as.numeric(procpar$ZF)>0) {
                     v_options <- c('2','4'); names(v_options) <- c("x2","x4");
                     updateSelectInput(session, "zffac", choices = v_options, selected=as.numeric(procpar$ZF))
                 }
             }
-            if (! is.null(procpar$PHC1)) { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
-            if (! is.null(procpar$ZNEG)) { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
-            if (! is.null(procpar$TSP)) { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
        }
    }
 
@@ -158,91 +280,6 @@
        })
        return(ret)
    }
-
-   ##---------------
-   ## Output: Watch the logfile in realtime
-   ##---------------
-   renderWatcher <- function (flg,type, height) {
-         if (flg==0) return(NULL)
-         urlwatcher <- paste0(conf$WatcherURL, sessionViewer,'/',type,'/',digest(runif(1, 1, 10)))
-         if (nchar(conf$PROXY_URL_ROOT)>0) urlwatcher <- paste0(conf$PROXY_URL_ROOT,'/',urlwatcher)
-         return(HTML(paste0('<iframe id="ifwatcher" name="ifwatcher" src=',urlwatcher,' frameborder="0" style="overflow: hidden; height: ',height,'px; width: 100%; border: 0px;" width="100%" onload="this.contentWindow.document.documentElement.scrollTop=1000"></iframe>')))
-   }
-
-   ##---------------
-   ## Output: Update the 'Reference spectrum' SelectBox
-   ##---------------
-   updateRefSpecSelect <- function () {
-         samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
-         v_options <- c(0, 1:dim(samples)[1] )
-         names(v_options) <- c('Auto reference',.C(samples[,2]))
-         updateSelectInput(session, "RefSpecSelect", choices = v_options, selected=0)
-   }
-
-   ##---------------
-   ## started: launched when all is started (ui & server)
-   ##---------------
-   output$started <- reactive({
-         values$started
-         return(1)
-   })
-
-   ##---------------
-   ## SessInit: Init the session
-   ##---------------
-   output$SessInit <- reactive({
-         values$sessinit
-         repeat {
-             if ( is.null(sessionViewer) ) {
-                values$reload <- 0
-                break
-             }
-             if ( file.exists(file.path(conf$DATASETS,sessionViewer)) ) {
-                outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
-                INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
-                if (file.exists(INI.filename)) {
-                   procParams <<- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
-                } else {
-                   procParams <<- Spec1r.Procpar
-                   generate_INI_file(procParams)
-                }
-                values$reload <- 1
-                updateRefSpecSelect()
-                break
-             }
-             outData <- file.path(tempdir(),sessionViewer)
-             if ( file.exists(file.path(outData,'userfiles')) ) {
-                outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
-                if ( ! file.exists(outDataViewer) ) dir.create(outDataViewer)
-                system( paste("chmod 777 ",outDataViewer) )
-                file.copy(file.path(outData,"userfiles"), file.path(outDataViewer,"userfiles"))
-                V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
-                NameZip <<- V[1]
-                ext <- tolower(gsub("^.*\\.", "", NameZip))
-                RawZip <<- file.path(outData,paste0('raw.',ext))
-                outDir <<- outData
-                values$ziploaded <- 1
-                values$reload <- 0
-                break
-             }
-             values$reload <- 0
-             break
-         }
-         return(values$sessinit)
-   })
-   outputOptions(output, 'SessInit', suspendWhenHidden=FALSE)
-   outputOptions(output, 'SessInit', priority=1)
-
-   output$ZipPreLoaded <- reactive({
-         if (values$ziploaded>0) {
-            if (file.exists(file.path(outDir,conf$Rnmr1D_PPCMD))) initPreprocessingParams(file.path(outDir,conf$Rnmr1D_PPCMD))
-            updateTextInput(session, "namezip", value = NameZip)
-            shinyjs::disable("vendor")
-         }
-         return( values$ziploaded )
-   })
-   outputOptions(output, 'ZipPreLoaded', suspendWhenHidden=FALSE)
-   outputOptions(output, 'ZipPreLoaded', priority=20)
 
    ##---------------
    ## Uploading file : Preparation
@@ -351,6 +388,10 @@
                CMD <- paste0(CMD, "ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
                CMD <- paste0(CMD, "BLPHC=",input$optimphc1,"; PHC1=",input$optimphc1, "; FP=0; ")
                CMD <- paste0(CMD, "TSP=",input$zeroref)
+               if (conf$O1_PARAM_PATCH==1 && input$o1param==1) {
+                   procParams$O1PARAM <<- FALSE
+                   CMD <- paste0(CMD, "; O1PARAM=FALSE")
+               }
             }
             write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), paste0(CMD,"\n"), "wt")
             values$error <- 0
@@ -399,25 +440,6 @@
    })
    outputOptions(output, 'fileProcessed', suspendWhenHidden=FALSE)
    outputOptions(output, 'fileProcessed', priority=10)
-
-   ##---------------
-   ## Output: Watch the logfile in realtime
-   ##---------------
-   ## Watcher 1: Preprocessing
-   output$watcher <- renderUI({
-        values$jobrun
-        values$error
-        if (is.null(procJobName)) return (NULL)
-        if (isolate(input$goButton)>1 && procJobName != "preprocess") return (NULL)
-        renderWatcher(values$jobrun || values$error, 'init', 600)
-   })
-   outputOptions(output, 'watcher', suspendWhenHidden=FALSE)
-   outputOptions(output, 'watcher', priority=5)
-
-   ## Watcher 1b: Preprocessing
-   output$watcher1b <- renderUI({
-        renderWatcher(1,'view',600)
-   })
 
    ##---------------
    ## Output: Provides some information about loaded spectra

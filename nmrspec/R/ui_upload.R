@@ -14,7 +14,7 @@ ui_desc <- column(12,
 ##---------------
 ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.SessReload==0",
     column(4,
-        selectInput("vendor", "Instrument/Vendor/Format:",  c("Select the input format"="sinput", "nmrML v1.0.rc1"="nmrml", "Bruker (TopSpin/X-winnmr)" = "bruker", "Varian/Agilent (VNMRJ)" = "varian", "Jeol (JDF/DELTA)" = "jeol"), selected = "sinput"),
+        selectInput("vendor", "Instrument/Vendor/Format:",  c("-- Select the input format --"="sinput", "nmrML v1.0.rc1"="nmrml", "Bruker (TopSpin/X-winnmr)" = "bruker", "Varian/Agilent (VNMRJ)" = "varian", "Jeol (JDF/DELTA)" = "jeol"), selected = "sinput"),
         conditionalPanel(condition="output.FormatSelected==1",
              selectInput("spectype", "Spectra type:", 
                           c("1r spectrum" = "1r", "FID" = "fid"), selected = "fid"),
@@ -56,7 +56,10 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
             ),
             checkboxInput("optimphc1", "first order phase setting", FALSE),
             checkboxInput("rabot", "Zeroing of Negative Values", FALSE),
-            checkboxInput("zeroref", "TSP/TMS/DSS", FALSE)
+            checkboxInput("zeroref", "TSP/TMS/DSS", FALSE),
+            conditionalPanel(condition="output.patchO1param==1",
+                  checkboxInput("o1param", "ignore the parameter of the spectral region center (O1)", FALSE)
+            )
         )
     ),
     column(8,
