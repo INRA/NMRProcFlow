@@ -58,7 +58,10 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
             checkboxInput("rabot", "Zeroing of Negative Values", FALSE),
             checkboxInput("zeroref", "TSP/TMS/DSS", FALSE),
             conditionalPanel(condition="output.patchO1param==1",
-                  checkboxInput("o1param", "ignore the parameter of the spectral region center (O1)", FALSE)
+                  checkboxInput("o1param", "ignore the parameter of the spectral region center (O1)", FALSE),
+                  conditionalPanel(condition="input.o1param==1",
+                        numericInput("o1ratio", "Fractionnal value of the Sweep Width:", 0.28, min = 0.1, max = 0.5, step=0.1)
+                  )
             )
         )
     ),

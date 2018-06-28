@@ -85,10 +85,10 @@ if (!$conf->error) {
   $arr_select[]='<span id="sub_level_select"></span>';
 }
 ?>
-<table width=100%>
+<table width=100% style="padding: 0px 0px 0px 0px;">
 <tr><td><img src="<?php echo $urlroot; ?>/images/img_00.gif" width=1 height=256></td>
 <td><div id="MAINSPEC" class="ui-nopad">
-<table class="ui-nopad">
+<table class="ui-nopad" style="padding: 0px 0px 0px 0px;">
 <tr class="ui-nopad"><td class="ui-nopad" style="text-align:left;">
 <div id="DSPEC" class="ui-nopad" style="width:100%;">
   <img id="spec" border=0 src="<?php echo $urlroot; ?>/images/img_00.gif" width=1044 height=10><br/>
@@ -126,7 +126,7 @@ if (!$conf->error) {
    Spectrum.params = "&color=<?php echo $color_id; ?>";
    Spectrum.params = Spectrum.params + "&level=<?php echo $level_id; ?>";
    Spectrum.params = Spectrum.params + "&IMGHEIGHT=<?php echo $IMGHEIGHT; ?>";
-   Spectrum.params = Spectrum.params + "&IMGSIZE="+( $( document ).width() - 100 );
+   Spectrum.params = Spectrum.params + "&IMGSIZE="+( $( document ).width() - 60 );
 
    var h = $(window).height(), w = $(window).width();
    var self=Spectrum;
@@ -149,7 +149,7 @@ if (!$conf->error) {
    $(window).bind('resizeEnd', function() {
         var nh = $(window).height(), nw = $(window).width();
         if (w != nw) {
-           spectrum_view('IMGSIZE='+( $( window ).width() - 100 ))
+           spectrum_view('IMGSIZE='+( $( window ).width() - 60 ))
         }
         h = nh; w = nw;
    });

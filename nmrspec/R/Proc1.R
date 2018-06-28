@@ -203,7 +203,9 @@
             if (! is.null(procpar$PHC1))    { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
             if (! is.null(procpar$ZNEG))    { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
             if (! is.null(procpar$TSP))     { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
-            if (! is.null(procpar$O1PARAM)) { updateCheckboxInput(session, "o1param", value = ifelse( procpar$O1PARAM=="TRUE", 0, 1)); }
+            if (! is.null(procpar$O1RATIO)) { updateCheckboxInput(session, "o1param", value = ifelse( as.numeric(procpar$O1RATIO)>0, 1, 0));
+                if (as.numeric(procpar$O1RATIO)>0) updateNumericInput(session, "o1ratio", value = as.numeric(procpar$O1RATIO));
+            }
             if (! is.null(procpar$ZF))      { updateCheckboxInput(session, "zerofilling", value = ifelse( as.numeric(procpar$ZF)>0, 1, 0));
                 if (as.numeric(procpar$ZF)>0) {
                     v_options <- c('2','4'); names(v_options) <- c("x2","x4");
@@ -389,8 +391,9 @@
                CMD <- paste0(CMD, "BLPHC=",input$optimphc1,"; PHC1=",input$optimphc1, "; FP=0; ")
                CMD <- paste0(CMD, "TSP=",input$zeroref)
                if (conf$O1_PARAM_PATCH==1 && input$o1param==1) {
-                   procParams$O1PARAM <<- FALSE
-                   CMD <- paste0(CMD, "; O1PARAM=FALSE")
+                   procParams$TSP <<- FALSE
+                   procParams$O1RATIO <<- as.numeric(input$o1ratio)
+                   CMD <- paste0(CMD, "; O1RATIO=",input$o1ratio)
                }
             }
             write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), paste0(CMD,"\n"), "wt")
