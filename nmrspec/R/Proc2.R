@@ -113,20 +113,21 @@
        }
    })
 
+   ##---------------
+   ## headerMode - Enable / Disable the banner and the main tabs
+   ##---------------
    observe ({
-         input$removeHeader
-         if (input$removeHeader==TRUE && isolate({ values$load })==1 ) {
-             updateButton(session, "removeHeader", icon = icon("angle-double-down"), value = TRUE)
+         input$headerMode
+         if (input$headerMode==TRUE && isolate({ values$load })==1 ) {
+             updateButton(session, "headerMode", icon = icon("angle-double-down"), value = TRUE)
              runjs( "document.getElementById('conditionedPanels').style.display = 'none'; document.getElementById('lHeader').style.display = 'none';" )
-             removeTooltip(session, "removeHeader")
-             #addTooltip(session, "removeHeader", "Enable / Disable the banner and the main tabs", options = list(container = "body") )
+             removeTooltip(session, "headerMode")
              hideTab(inputId = "conditionedPanels", target = "Load")
          }
-         if (input$removeHeader==FALSE && isolate({ values$load })==1 ) {
-             updateButton(session, "removeHeader", icon = icon("angle-double-up"), value = FALSE)
+         if (input$headerMode==FALSE && isolate({ values$load })==1 ) {
+             updateButton(session, "headerMode", icon = icon("angle-double-up"), value = FALSE)
              runjs( "document.getElementById('conditionedPanels').style.display = 'block';  document.getElementById('lHeader').style.display = 'block';" )
-             #removeTooltip(session, "removeHeader")
-             addTooltip(session, "removeHeader", "Enable / Disable the banner and the main tabs", options = list(container = "body") )
+             addTooltip(session, "headerMode", "Enable / Disable the banner and the main tabs", options = list(container = "body") )
              showTab(inputId = "conditionedPanels", target = "Load")
          }
    })

@@ -127,8 +127,6 @@
          values$reload
          isolate({
              if (values$reload==1) {
-                 #INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
-                 #procParams <<- Parse.INI(INI.filename, INI.list=list(), section="PROCPARAMS")
                  if (! file.exists(file.path(outDataViewer,"userfiles"))) {
                     outDir <<- outDataViewer
                     NameZip <<- 'noname.zip'
