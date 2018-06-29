@@ -3,7 +3,7 @@ ui_header <- conditionalPanel( condition = 'output.panelHeader==1',withTags(
   table(tr(td(style="width: 5px;",""),
            td(style="width: 30px;", img(src="images/nmrpf_logo.png", height = 32, width = 32)),
            td(style="width: 5px;",""), 
-           td(htmlOutput("title"))), width="100%", style="background-color: #337ab7; color: #fff;")
+           td(htmlOutput("title"))), width="100%", style="background-color: #337ab7; color: #fff;", id="lHeader")
 ))
 
 ui_padding <- column(12, style="font-size: 5px;", tags$img(src="images/img_00.gif", height = 3, width = 100))

@@ -113,6 +113,24 @@
        }
    })
 
+   observe ({
+         input$removeHeader
+         if (input$removeHeader==TRUE && isolate({ values$load })==1 ) {
+             updateButton(session, "removeHeader", icon = icon("angle-double-down"), value = TRUE)
+             runjs( "document.getElementById('conditionedPanels').style.display = 'none'; document.getElementById('lHeader').style.display = 'none';" )
+             removeTooltip(session, "removeHeader")
+             #addTooltip(session, "removeHeader", "Enable / Disable the banner and the main tabs", options = list(container = "body") )
+             hideTab(inputId = "conditionedPanels", target = "Load")
+         }
+         if (input$removeHeader==FALSE && isolate({ values$load })==1 ) {
+             updateButton(session, "removeHeader", icon = icon("angle-double-up"), value = FALSE)
+             runjs( "document.getElementById('conditionedPanels').style.display = 'block';  document.getElementById('lHeader').style.display = 'block';" )
+             #removeTooltip(session, "removeHeader")
+             addTooltip(session, "removeHeader", "Enable / Disable the banner and the main tabs", options = list(container = "body") )
+             showTab(inputId = "conditionedPanels", target = "Load")
+         }
+   })
+
    ##---------------
    ## capMode - switch On/Off
    ##---------------

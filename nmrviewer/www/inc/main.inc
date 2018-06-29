@@ -21,11 +21,12 @@
  */
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" style="overflow-y: hidden;">
 <head>
   <meta charset="utf-8" />
   <TITLE>NMR Spectra viewer</TITLE>
   <link rel="stylesheet" href="<?php echo $urlroot; ?>/css/redmond/jquery-ui.min.css">
+  <link rel="stylesheet" href="<?php echo $urlroot; ?>/css/style.css">
   <script language=JavaScript src="<?php echo $urlroot; ?>/js/jquery-1.9.1.min.js" type="text/javascript"></script>
   <script language=JavaScript src="<?php echo $urlroot; ?>/js/jquery-ui-1.10.1.min.js" type="text/javascript"></script>
   <script language=JavaScript src="<?php echo $urlroot; ?>/js/spectrum.js" type="text/javascript"></script>
