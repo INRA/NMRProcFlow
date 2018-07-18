@@ -1,5 +1,16 @@
 FROM ubuntu:16.04
 
+# Metadata
+LABEL base.image="nmrprocflow:latest"
+LABEL version="1.2.28"
+LABEL software="NMRProcFlow"
+LABEL software.version="1.2.28"
+LABEL description="An user-friendly tool dedicated to 1D NMR spectra processing (1H & 13C) for metabolomics"
+LABEL website="https://nmrprocflow.org/"
+LABEL documentation="https://nmrprocflow.org/"
+LABEL license="http://gplv3.fsf.org/"
+LABEL tags="metabolomics"
+
 MAINTAINER "Daniel Jacob" daniel.jacob@u-bordeaux.fr
 
 # Install modules
