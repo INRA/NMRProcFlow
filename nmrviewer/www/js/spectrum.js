@@ -58,10 +58,11 @@ var ObjImage = function () {
    this.params    = '';
    this.callback  = function(){};
 
-   // IMAGE size & margins (pixels)
+   // IMAGE type, size & margins (pixels)
+   this.itype   = '';
    this.iwidth  = 800;
    this.iheight = 256;
-   this.x1     = 70; /* 60 with gunplot 4.6 patchlevel 4 */
+   this.x1     = 70;  /*60 with gunplot 4.6 patchlevel 4 */
    this.x2     = 793;
    this.y1     = 12;
    this.y2     = 232;
@@ -232,6 +233,18 @@ var ObjImage = function () {
        }).done(function ( response ) {
             document.getElementById(self.div).innerHTML = response;
             eval($(response).find("script").text());
+            //element=document.getElementById(self.div);
+            //var scriptElements = element.getElementsByTagName('script');
+            //for (i = 0; i < scriptElements.length; i ++) {
+            //   var scriptElement = document.createElement('script');
+            //   scriptElement.type = 'text/javascript';
+            //   if (!scriptElements[i].src) {
+            //       scriptElement.innerHTML = scriptElements[i].innerHTML;
+            //   } else {
+            //       scriptElement.src = scriptElements[i].src;
+            //   }
+            //   document.head.appendChild(scriptElement);
+            //}
             self.hide_waitdiv();
             setTimeout(self.resizeIframe,500);
             self.callback();

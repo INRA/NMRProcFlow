@@ -27,6 +27,7 @@ class nmrproc_view extends nmrproc_conf {
     var $sublevel = '';     # samplecode in the group id : 0 for all
     var $stacked  = 0;      # plot spectra as Stacked spectra (1) or Unstacked (0)
     var $legend   = 0;      # spectra legend: boolean true for display
+    var $imgtype = '';      # Gnuplot output type
     var $sepfield = '';     # Delimiter within the nomenclature (samplecodes of factor groups)
     var $fieldval = '';     # List of fields within the nomenclature (positions delimited by comma)  on which will be based the spectra grouping.
     var $spectype = 0;      # Type of information (not used yet)
@@ -86,6 +87,7 @@ class nmrproc_view extends nmrproc_conf {
            }
            fclose($handle);
         }
+        if (strlen($this->imgtype)==0) $this->imgtype=$this->IMGTYPE;
         $this->PPM1 = $this->val1 ? $this->val1 : $this->PPM_MIN;
         $this->PPM2 = $this->val2 ? $this->val2 : $this->PPM_MAX;
         $this->MEXTRACT = $this->UNPACK_BIN;
@@ -115,6 +117,21 @@ class nmrproc_view extends nmrproc_conf {
         # New Image along with its javascript initialization
         $width_px = $img_width.'px';
         $height_px = $img_height.'px';
+## CANVAS - Javascript if ($this->imgtype == 'JS')
+##         `cp /usr/share/gnuplot5/gnuplot/5.0/js/canvastext.js $TMP`;
+##         `cp /usr/share/gnuplot5/gnuplot/5.0/js/gnuplot_common.js $TMP`;
+##         echo<<<EOT
+## <div id='myimg'><!-- $spec_img - $PPM1,$PPM2  -->
+## <script src="$TMPurl/canvastext.js"></script>
+## <script src="$TMPurl/gnuplot_common.js"></script>
+## <script src="$TMPurl/$spec_img"></script>
+## <canvas id="imgplot" width="$width_px" height="$height_px"></canvas>
+## <script type="text/javascript" defer="defer">
+## imgplot();
+## Spectrum.init($img_width,$img_height,$leftbox_offset,$img_width-5,14,$img_height-26,$PPM1,$PPM2,$VMIN,$VMAX,1);
+## </script>
+## </div>
+## EOT;
         echo<<<EOT
 <div id='myimg'><!-- $spec_img - $PPM1,$PPM2  -->
 <img id="spec" src="$TMPurl/$spec_img" border="0" width="$width_px" height="$height_px">
@@ -160,16 +177,6 @@ EOT;
         list( $datadir, $sepfield, $fieldval ) = array( $this->DATADIR, $this->sepfield, $this->fieldval );
         $filename="$datadir/samples.csv";
 
-        # Get normalization factor for each samples
-        $Tnormfac = array();
-        $fcalib="$datadir/normsamples.csv";
-        if (($handle = fopen($fcalib, "r")) !== FALSE) {
-           while (($line = fgetcsv($handle, 1000, ";")) !== FALSE) {
-                $Tnormfac[$line[0]] = $line[1];
-           }
-           fclose($handle);
-        }
-
         # Check if the chosen 'level' exists, then put into $level_name
         $level_name="";
         if ($this->level>0) {
@@ -200,12 +207,18 @@ EOT;
                     $select = strlen($level_name) ? 0 : 1;
                     if (strlen($level_name) && $PREM==$level_name) $select = 1;
                  }
-                 $normfac = array_key_exists($line[1], $Tnormfac) ? $Tnormfac[$line[1]] : 1.0 ;
-                 $list_idx[]=array( $PREM, $line[1], $line_id, $select, $normfac );
+                 $list_idx[]=array( $PREM, $line[1], $line_id, $select );
                  $line_id++;
             }
             fclose($handle);
             usort($list_idx,"__cmp_speckey");
+            
+            $TMP=$this->TMP;
+            $filename="$TMP/index.csv";
+            if (file_exists($filename)) unlink($filename);
+            foreach ($list_idx as $idx => $arr)
+                if ($arr[3]==1) file_put_contents("$filename", $arr[2].",", FILE_APPEND);
+            file_put_contents("$filename", "0", FILE_APPEND);
         }
         return $list_idx;
     }
@@ -246,28 +259,41 @@ EOT;
         $int_fac=1.0;
         $RES=$this->IMGHEIGHT-40;
         $cnt=0;
+        $PLOTFILE="$TMP/subspec.bin";
 
         # Preparation if spectra
 
         if (count($list)>0) {
 
             # count the number of items within the chosen factor
+            $all_items=0;
+            $cntsel=0;
             $arr_items=array();
-            foreach ($list as $idx => $arr) { $arr_items[] = $arr[0]; }
+            foreach ($list as $idx => $arr) { $arr_items[] = $arr[0]; $all_items++; if ($arr[3]==1) $cntsel++; }
             $fac_items=count(array_unique($arr_items));
 
+            $t1 = microtime(true);
+
             # Extract each part of spectra into separate binary files ($TMP/subspec*.bin);
-            $CMD=$this->MEXTRACT ." $PACKED $TMP/subspec" . ' -min '.$this->PPM1.' -max '.$this->PPM2;
+            $CMD=$this->MEXTRACT ." $PACKED -outfile $PLOTFILE -x -indfile $TMP/index.csv -min ".$this->PPM1.' -max '.$this->PPM2;
             `echo "$CMD" >>$TMP/debug`;
             list( $record_line, $min_line, $max_line ) = $this->Exec_cmd($CMD,"$TMP/bin4gp.log");
+
+            # Ymin & Ymax based on all spectra in order to preserve the Y scale between factor levels
+            if ($this->imgtype != 'SD' && $this->stacked==0 && $cntsel<$all_items) {
+               $CMD=$this->MEXTRACT ." $PACKED -min ".$this->PPM1.' -max '.$this->PPM2;
+               `echo "$CMD" >>$TMP/debug`;
+               list( $record_line, $min_line, $max_line ) = $this->Exec_cmd($CMD,"$TMP/bin4gp.log");
+            }
+
             $record = trim(`echo '$record_line' | cut -d'=' -f2  | cut -d 'x' -f1`);
-            $record .= 'x1';
             $this->hPLOT['YMIN'] = trim(`echo '$min_line' | cut -d'=' -f2`);
             $this->hPLOT['YMAX'] = round(trim(`echo '$max_line' | cut -d'=' -f2`),2);
             if ($this->hPLOT['YMAX']>$this->hPLOT['IMAX']) {
                 $this->hPLOT['IMAX']=$this->hPLOT['YMAX'];
                 $this->save_within_session('IMAX',$this->hPLOT['IMAX'],1);
             }
+
             if ($this->stacked>0) {
                list( $MIN, $MAX, $IMAX, $SMAX) = array( $this->hPLOT['YMIN'], $this->hPLOT['YMAX'], $this->hPLOT['IMAX'], $this->SMAX );
                $ymin=$MIN; $ymax=$MAX;
@@ -281,18 +307,21 @@ EOT;
                $this->hPLOT['YMAX'] += $offset_val*$cnt;
                if ($cnt>1) { $int_fac=0.25; } else { $int_fac=0.8; }
                $this->hPLOT['YMAX'] *= 0.5;
+               $CMD=$this->MEXTRACT ." $PACKED -outfile $PLOTFILE  -x -indfile $TMP/index.csv -intfac $int_fac -offset $offset_val -min ".$this->PPM1.' -max '.$this->PPM2;
+               `echo "$CMD" >>$TMP/debug`;
+               list( $record_line, $min_line, $max_line ) = $this->Exec_cmd($CMD,"$TMP/bin4gp.log");
             }
+            $elapsed = round(microtime(true) - $t1,3);
+            `echo "elapsed time = $elapsed" >> $TMP/bin4gp.log`; # for debugging
         }
 
-        # Generate the corresponding gnuplot 'plot' statement
+        # Generate the corresponding gnuplot 'plot' statement (NEW2: Full Matrix with X scale => double size)
         foreach ($list as $idx => $arr) {
             $PREM = $arr[0];
             $sample = $arr[1];
             $COL=$arr[2];
             $SEL=$arr[3];
-            $FAC=$arr[4];
             $TITLE='';
-            $PLOTFILE="$TMP/subspec$COL.bin";
             if ("$PREM" != "$PREVAR" && $this->level==0) {
                 if ($fac_items<=10 || $this->legend==1) $TITLE="$PREM";
                 $VARCOL++;
@@ -302,9 +331,16 @@ EOT;
             $PREVSPL=$sample;
             if ($SEL==0) continue;
             if ($this->level>0) $VARCOL++;
-            if (strlen($PLOT)) $PLOT .= ', ';
             $COLOR=$this->gnuplot_colors[($VARCOL-2)%count($this->gnuplot_colors)];
-            $PLOT .="\"$PLOTFILE\" binary record=$record using 1:(\$2*$int_fac*$FAC + $offset_val*$SPEC) title \"$TITLE\" with lines lt rgb \"$COLOR\"";
+            if (strlen($PLOT)) {
+                  $PLOT .= ", \\\n \"\"";
+            } else {
+                  $PLOT ="\"$PLOTFILE\"";
+            }
+            $PLOT .= " binary record=($record) format=\"%float32%float32\"";
+            if ($SPEC>0) $PLOT .= " skip=$record*8*$SPEC";
+            $PLOT .=" u 1:2 title \"$TITLE\" w lines lt rgb \"$COLOR\"";
+#--
             $SPEC++;
         }
 
@@ -378,28 +414,31 @@ EOT;
         list($TMP,$SPEC) = array ( $this->TMP, $this->hPLOT['SPEC'] );
         if ($SPEC == 0) return 1;
 
-        #$spec_img  = $this->color.'_'.$this->IMGSIZE.'_'.$this->genKEY().'.svg'; ## SVG 
-        $spec_img  = $this->color.'_'.$this->IMGSIZE.'_'.$this->genKEY().'.png';
-        $spec_log  = "$TMP/gnuplot.log";
-        $spec_cmd  = "$TMP/gnuplot.cmd";
-
-        if ($this->FLGALL) $spec_img=$this->FULL_SPEC;
-        $this->hPLOT['IMG'] = $spec_img;
-
         list( $PPM1, $PPM2, $GNUPLOT, $img_width, $img_height, $PLOT, $PLOT_SUP, $MIN, $MAX, $IMAX, $SMAX ) = array(
-              $this->PPM1, $this->PPM2, $this->GNUPLOT, $this->IMGSIZE, $this->IMGHEIGHT,
+              $this->PPM1, $this->PPM2, $this->GNUPLOT, $this->IMGSIZE, $this->IMGHEIGHT, 
               $this->hPLOT['PLOT'], $this->hPLOT['PLOT_SUP'],
               $this->hPLOT['YMIN'], $this->hPLOT['YMAX'], $this->hPLOT['IMAX'], $this->SMAX );
 
         # Zoom in Y scale
-        $ymin = $this->stacked==0 ? $MIN : 0 ;
         $ymax = $MAX;
         $UMAX = pow(10, $this->slider_factor*($SMAX-100)/99)*$IMAX;
         if ($this->SMAX>0 && $UMAX<$MAX) $ymax=$UMAX;
+        $ymin = $this->stacked==0 ? max($MIN, -$ymax/20) : 0 ;
 
-        #set terminal svg  enhanced mouse font "Arial,8" size $img_width,$img_height; ## SVG 
+        if ($this->imgtype == 'SD')   { $terminal='png font arial 8'; $gridcol= '#D2D4D4'; $ext='.png'; }
+        if ($this->imgtype == 'MD')   { $terminal='png truecolor interlace enhanced font arial 8'; $gridcol= '#D2D4D4'; $ext='.png'; }
+        if ($this->imgtype == 'HD')   { $terminal='pngcairo font "Arial,8"'; $gridcol='#323333'; $ext='.png'; }
+        if ($this->imgtype == 'SVG')  { $terminal='svg  enhanced mouse font "Arial,8"'; $gridcol= '#D2D4D4'; $ext='.svg'; }
+        #if ($this->imgtype == 'JS')   { $terminal="canvas name 'imgplot'"; $gridcol= '#D2D4D4'; $ext='.js'; }
+
+        $spec_log  = "$TMP/gnuplot.log";
+        $spec_cmd  = "$TMP/gnuplot.cmd";
+        $spec_img  = $this->imgtype.'_'.$this->color.'_'.$this->IMGSIZE.'_'.$this->genKEY().$ext;
+        if ($this->FLGALL) $spec_img=$this->FULL_SPEC;
+        $this->hPLOT['IMG'] = $spec_img;
+        
         $gnuplot = <<<EOT
-        set terminal pngcairo  font "Arial,8" size $img_width,$img_height;
+        set terminal $terminal size $img_width,$img_height;
         set origin 0.0, 0.0;
         set output "$TMP/$spec_img";
         set lmargin 10;
@@ -410,7 +449,8 @@ EOT;
         set xrange [$PPM2:$PPM1];
         unset autoscale y;
         set yrange [$ymin:$ymax];
-        set grid;
+        set style line 12 lc rgb '$gridcol' lt 0 lw 1;
+        set grid back ls 12;
         $PLOT_SUP
         plot $PLOT;
 EOT;
@@ -418,13 +458,16 @@ EOT;
         if (($handle = fopen($spec_cmd, "w")) == TRUE) {
             $fwrite = fwrite($handle, $gnuplot);
             fclose($handle);
+            $t1 = microtime(true);
+            #$status = $this->System_cmd("cat $TMP/subspec.bin | $GNUPLOT $spec_cmd",$spec_log);
             $status = $this->System_cmd("$GNUPLOT $spec_cmd",$spec_log);
+            $elapsed = round(microtime(true) - $t1,3);
             if ( ! file_exists("$TMP/$spec_img") || $status != 0 ) {
                 ## echo '<PRE>'.`cat $spec_log`.'</PRE>';
                 echo '<PRE>loading ...</PRE>';
                 return 2;
             }
-            `echo "$MIN, $MAX - $ymin, $ymax" >> $spec_log`; # for debugging
+            `echo "$MIN, $MAX - $ymin, $ymax, elapsed time = $elapsed" >> $spec_log`; # for debugging
         }
     }
 

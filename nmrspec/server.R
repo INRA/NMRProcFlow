@@ -25,6 +25,7 @@ shinyServer(function(input, output, session) {
     ErrMsg <- ''                # Error Message
     MsgStyle <- 'danger'        # Style of Message Box
     ArrayProc <- rep(0, NBPROC) # Init the status of each process type
+    ImgTermVal <- 1             # Gnuplot Output type (0=> SD, 1=>MD, 2=>HD)
 
     ERROR <- reactiveValues(MsgErrLog = '', MsgErrLoad='', MsgErrProc='', MsgUpload='' )
     values <- reactiveValues()

@@ -68,6 +68,14 @@ var get_spectrum_range = function() {
      } while (0)
 }
 
+var set_spectrum_imgtype = function(type) {
+     do {
+        if( ! $("#ifspecview").get(0) ) break;
+        $("#ifspecview").get(0).contentWindow.set_spectrum_imgtype(type);
+     } while (0)
+     refresh_spectrum();
+}
+
 var replace_by_NL = function(id) {
     $('#'+id).val(function(i, v) { //index, current value
         return v.replace(/;/g,'\n');

@@ -34,7 +34,7 @@
      body { font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif"; font-size: 62.5%; }
      .ui-noselect {-webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
      .ui-nopad { vertical-align:top; margin:0px 0px 0px 0px; padding=0px; }
-     .ui-button-text-only .ui-button-text { padding-right: 0.4em; padding-left: 0.4em; }
+     .ui-button-text-only .ui-button-text { padding-right: 0.4em; padding-left: 0.2em; }
      .ui-widget select, .ui-widget button { min-height: 20px; }
 }
   </style>
@@ -43,7 +43,7 @@
 
 <?php if (!$conf->error) { echo<<<EOT
   \$( "bZout" ).button()
-               .click( function( event ) { Spectrum.AJ_XMS(); })
+                  .click( function( event ) { Spectrum.AJ_XMS(); })
                .attr('title', 'Return to the full width of ppm');
   \$( "bZprev" ).button()
                   .click( function( event ) { Spectrum.AJ_XMS('prev=1'); })
@@ -107,13 +107,13 @@ if (!$conf->error) {
 <td>
 <table width="100%"><tr><td>
 <table align="left" style="min-width: 700px;"><tr>
-<td width="20%"><bZout>zoom out</bZout><bZprev>previous</bZprev></td>
+<td width="20%"><bZout>Zoom out</bZout><bZprev>Previous</bZprev></td>
 <td align="center"><div id="info" class="ui-widget"><?php if (!$conf->error) echo DS_html_elems($arr_select); ?></div></td>
 <td><input type="checkbox" id="check"><label for="check">Force the display of the legend</label></td>
 <td width="15%"><input type="checkbox" name="stack" id="stack"><label for="stack">Stacked spectra</label></td>
 <td style="width:200px;" align="center"><div id="right" class="ui-widget">-</div></td>
 </tr></table>
-</td><td align="right"><bBefore>&#60;-</bBefore><bAfter>-&#62;</bAfter></td><td style="width:100px;">&nbsp;</td></tr></table>
+</td><td align="right"><bBefore>&#60;-</bBefore><bAfter>-&#62;</bAfter></td><td style="width:20px;">&nbsp;</td></tr></table>
 </td></tr>
 <tr><td></td><td><div id="annotation"></div></td></tr>
 </table>
@@ -123,11 +123,12 @@ if (!$conf->error) {
 <div id="selppm" name="selppm" style="display:none;"></div>
 <script language=JavaScript type="text/javascript">
    var Spectrum = new ObjImage();
-   Spectrum.AJ_PROG ='<?php echo $VIEW_AJAX; ?>';
-   Spectrum.params = "&color=<?php echo $color_id; ?>";
-   Spectrum.params = Spectrum.params + "&level=<?php echo $level_id; ?>";
-   Spectrum.params = Spectrum.params + "&IMGHEIGHT=<?php echo $IMGHEIGHT; ?>";
-   Spectrum.params = Spectrum.params + "&IMGSIZE="+( $( document ).width() - 60 );
+       Spectrum.itype = 'MD'; // Medium Definition
+       Spectrum.AJ_PROG ='<?php echo $VIEW_AJAX; ?>';
+       Spectrum.params = "&color=<?php echo $color_id; ?>";
+       Spectrum.params = Spectrum.params + "&level=<?php echo $level_id; ?>";
+       Spectrum.params = Spectrum.params + "&IMGHEIGHT=<?php echo $IMGHEIGHT; ?>";
+       Spectrum.params = Spectrum.params + "&IMGSIZE="+( $( document ).width() - 60 );
 
    var h = $(window).height(), w = $(window).width();
    var self=Spectrum;
@@ -156,6 +157,9 @@ if (!$conf->error) {
    });
    var set_spectrum_imgheight = function(imgheight) {
        Spectrum.iheight=imgheight;
+   }
+   var set_spectrum_imgtype = function(imgtype) {
+       Spectrum.itype=imgtype;
    }
  
 // -- Begin: addOn for capturing a ppm range
@@ -213,6 +217,7 @@ if (!$conf->error) {
        Spectrum.params = Spectrum.params + '&sublevel=' + $('#sub_level option:selected').text();
        Spectrum.params = Spectrum.params + '&IMGSIZE=' + Spectrum.iwidth;
        Spectrum.params = Spectrum.params + '&IMGHEIGHT=' + Spectrum.iheight;
+       Spectrum.params = Spectrum.params + '&IMGTYPE=' + Spectrum.itype;
        Spectrum.params = Spectrum.params + '&SMAX=' + $( "#slider-vertical" ).slider( "value" );
        if (params) Spectrum.params = Spectrum.params + '&' + params;
        if ( $('#check').is(':checked') ) Spectrum.params = Spectrum.params + '&legend=1';

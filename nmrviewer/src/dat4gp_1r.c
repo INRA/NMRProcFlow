@@ -1,26 +1,28 @@
-/* bin4gp_1r.c - DJ - mars 2015 - INRA */
-
+/* dat4gp_1r.c - DJ - oct 2018 - INRA */
+/* Data Matrix For Gnuplot - 1r files */
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-/*#include <unistd.h>*/
 #include <fcntl.h>
 #include <math.h>
 #include <sys/resource.h>
 #include <sys/time.h>
-#include <omp.h>
 
-#define PROG "bin4gp_1r"
-#define VERSION "1.1"
+#define PROG "dat4gp_1r"
+#define VERSION "1.0"
 #define STACKSIZE     128L * 1024L * 1024L   /* min stack size = 128 Mb */
 
 int DEBUG=0;
 int PTSMAX=2048;
-
+int PPMSCALE=0;
 double ppm_min=-0.05;
 double ppm_max=9.5;
 double intfac=1.0;
 double intoffset=0.0;
+char *outfile;
+int outflg=0;
+char *indfile;
+int indflg=0;
 char *sep;
 
 typedef struct {
@@ -32,10 +34,13 @@ typedef struct {
 
 int help(ret)
 {
-    fprintf(stderr,"\nusage: %s packfile binfile [options]\n",PROG);
+    fprintf(stderr,"\nusage: %s packfile [options]\n",PROG);
     fprintf(stderr,"options are:\n");
     fprintf(stderr,"  -h                   This help\n");
     fprintf(stderr,"  -d                   some DEBUG information (stderr)\n");
+    fprintf(stderr,"  -x                   include the ppm values, implying a double size output file\n");
+    fprintf(stderr,"  -outfile filename    specify the output binary file - otherwise no output will occur\n");
+    fprintf(stderr,"  -indfile filename    specify the spectra indexes in the order in which they are to be taken; otherwise the order will not change\n");
     fprintf(stderr,"  -intfac num          value of intensity factor - defaut equal to 1\n");
     fprintf(stderr,"  -offset num          value of intensity offset - defaut equal to 0\n");
     fprintf(stderr,"  -min  num            spectral windows to consider (min); default value = %f\n",ppm_min);
@@ -102,6 +107,16 @@ int get_parameter(int argc, char **argv)
         { help(0); return 1;}
     else if(streq(*argv,"-d"))
         { DEBUG=1; return 1; }
+    else if(streq(*argv,"-x"))
+        { PPMSCALE=1; return 1; }
+    else if(streq(*argv,"-outfile"))
+        {if(argc>1) { outfile=argv[1]; outflg=1; }
+        return 2;
+        }
+    else if(streq(*argv,"-indfile"))
+        {if(argc>1) { indfile=argv[1]; indflg=1; }
+        return 2;
+        }
     else if(streq(*argv,"-intfac"))
         {if((argc>1) && numeric(argv[1])) intfac=atof(argv[1]);
         return 2;
@@ -152,17 +167,13 @@ int main(argc,argv)
     int     argc;
     char    *argv[];
 {
-    char    *file_in, *file_out;
-    FILE    *fin;
-//    char    binfile[1024]="";
-//    char    *sid = malloc (sizeof (*sid) * 8);
-//    FILE    *fin,*fout;
-    char    *ext = malloc (sizeof (*ext) * 8);
+    char    *file_in;
+    FILE    *fin,*fout;
     int     i, j, k, n, p, nstart, nstop, count, kmin, kmax, size, sizerec;
     long    foffset;
     double  xmin, xmax, ymin, ymax, delta_ppm;
     double t,start,stop;
-    float   fvalue, min_val, max_val;
+    static float  fvalue, min_val, max_val;
     double  **VV, **BB;
 
     fprintf(stderr,"%s   version %s\n",PROG,VERSION);
@@ -172,15 +183,14 @@ int main(argc,argv)
         argv++;
         get_parameter(argc,argv);
     }
-    if (argc<3 ) {
+    if (argc<2 ) {
         fprintf(stderr,"%s\n","Syntaxe incorrect");
         help(1);
     }
 
     file_in  = argv[1];
-    file_out = argv[2];
 
-    argc -= 3; argv +=3;
+    argc -= 2; argv +=2;
     while(argc>0) {
          i=get_parameter(argc,argv);
          argv += i; argc -= i;
@@ -190,11 +200,12 @@ int main(argc,argv)
    /*if (inc_rlimit() != 0) exit(1);*/
 
 /* ------- Lecture des donnees -----------------------------------------------*/
-start = get_time();
+    start = get_time();
+
     data_info   inforec;
     fin = fopen(file_in, "rb");
     fread(&inforec,sizeof(inforec),1,fin);
-    fprintf(stderr,"Min = %f,  Max = %f, Nb Cols = %d, Nb Lines = %d\n",inforec.pmin,inforec.pmax,inforec.size_c,inforec.size_l);
+    fprintf(stderr,"-- Min = %f,  Max = %f, Nb Cols = %d, Nb Lines = %d\n",inforec.pmin,inforec.pmax,inforec.size_c,inforec.size_l);
     sizerec=(unsigned)(inforec.size_c) * sizeof(double);
     delta_ppm=(inforec.pmax - inforec.pmin)/(inforec.size_l-1);
     nstart = (inforec.pmax - ppm_max)/delta_ppm + 1;
@@ -202,32 +213,28 @@ start = get_time();
     nstop = nstop > inforec.size_l ? inforec.size_l : nstop;
     foffset =  (long)(nstart * sizerec);
     count = nstop - nstart + 1 ;
-    fprintf(stderr,"Nstart = %d, Nstop = %d, Count = %d, Sizerec = %d, Offset = %d bytes\n",nstart, nstop, count, sizerec, foffset);
+    fprintf(stderr,"-- Nstart = %d, Nstop = %d, Count = %d, Sizerec = %d, Offset = %d bytes\n",nstart, nstop, count, sizerec, foffset);
     if( (fseek(fin,foffset,SEEK_CUR))!= 0) {
          printf("Error\n");
          exit(0);
     }
-stop = get_time();
-
     double ppm (int n) { return inforec.pmax - (double)(nstart + n - 1)*delta_ppm; }
-    fprintf(stderr,"ppm(%d) = %f, ppm(%d) = %f, delta ppm = %f \n",nstart,ppm(1),nstop,ppm(count-1),delta_ppm);
-    fprintf(stderr,"Time1 = %f\n",stop-start);
+    fprintf(stderr,"-- ppm(%d) = %f, ppm(%d) = %f, delta ppm = %f \n",nstart,ppm(1),nstop,ppm(count-1),delta_ppm);
 
-start = get_time();
     VV = matrix2(count+1,inforec.size_c);
     for (i=1; i<count; i++) if (fread(VV[i],(long)sizerec,1,fin) == 0) { i--; break; }
     count=i;
     close(fin);
-stop = get_time();
-    fprintf(stderr,"OK read data: %d bytes\n",(count+1)*sizerec);
-    fprintf(stderr,"Time2 = %f\n",stop-start);
 
-    BB = matrix2(2*PTSMAX,inforec.size_c);
+    stop = get_time();
+    fprintf(stderr,"-- Data reading OK: %d bytes - Time1 = %f\n",(count+1)*sizerec,stop-start);
 
     //Extract a small part just for graph
-start = get_time();
+    start = get_time();
+
+    BB = matrix2(2*PTSMAX,inforec.size_c);
     size = (int)(count/PTSMAX) + 1;
-    fprintf(stderr,"Count = %d, Pts = %d, step size = %d\n",count,PTSMAX,size);
+    fprintf(stderr,"-- Count = %d, Pts = %d, step size = %d\n",count,PTSMAX,size);
     n=inforec.size_c-1;
     p=1;
     for (i=1; i<count; i+=size) {
@@ -247,36 +254,44 @@ start = get_time();
            }
     }
     p--;
-stop = get_time();
-    fprintf(stderr,"OK Extract\n");
-    fprintf(stderr,"Time3 = %f\n",stop-start);
 
-    // populate output binary files : one per spectrum
-start = get_time();
-    strcpy(ext,".bin");
+    stop = get_time();
+    fprintf(stderr,"-- Data extracting OK - Time2 = %f\n",stop-start);
+
+    // populate the output binary file
+    start = get_time();
+
     min_val=0; max_val=0;
-    #pragma omp parallel for private(i,j,fvalue)
-    for (j=2; j<=n; j++) {
-        FILE    *fout;
-        char  binfile[1024]="";
-        char    *sid = malloc (sizeof (*sid) * 8);
-        strcpy(binfile,file_out);
-        sprintf(sid,"%d",j-1);
-        strcat(binfile,sid);
-        strcat(binfile,ext);
-        fprintf(stderr,"%d: file = %s (%d)\n",j,binfile,omp_get_thread_num());
-        fout = fopen(binfile,"wb");
-        for (i=1; i<=p; i++) {
-            fvalue = (float)(BB[i][1]); fwrite(&fvalue,sizeof(float),1,fout);
-            fvalue = (float)(BB[i][j]*intfac+intoffset*(j-2)); fwrite(&fvalue,sizeof(float),1,fout);
-            if (fvalue<min_val) min_val=fvalue;
-            if (fvalue>max_val) max_val=fvalue;
-        }
-        close(fout);
+    if (outflg==1) fout = fopen(outfile,"wb");
+
+    // Read the jth row 
+    void fwrite_row (int j, int n) {
+           for (int i=1; i<=p; i++) {
+               if (PPMSCALE) { fvalue = (float)(BB[i][1]); if (outflg==1) fwrite(&fvalue,sizeof(float),1,fout); }
+               fvalue = (float)(BB[i][j]*intfac+intoffset*n); if (outflg==1) fwrite(&fvalue,sizeof(float),1,fout);
+               if (fvalue<min_val) min_val=fvalue;
+               if (fvalue>max_val) max_val=fvalue;
+           }
     }
-stop = get_time();
-    fprintf(stderr,"Time4 = %f\n",stop-start);
-    
+
+    if (indflg==0) {
+       for (j=2; j<=n; j++) fwrite_row (j, j-2);
+    } else {
+       FILE *fp;
+       fp = fopen(indfile, "r");
+       n=0;
+       do {
+           fscanf(fp, "%d,", &k); if (k==0) break;
+           fwrite_row (k+1, n);
+           n++;
+       } while(k != 0);
+       fclose(fp);
+    }
+    if (outflg==1) close(fout);
+
+    stop = get_time();
+    fprintf(stderr,"-- Data writing OK - Time3 = %f\n",stop-start);
+
     fprintf(stdout,"record=%dx%d\n",p,n);
     fprintf(stdout,"min=%f\n",min_val);
     fprintf(stdout,"max=%f\n",max_val);

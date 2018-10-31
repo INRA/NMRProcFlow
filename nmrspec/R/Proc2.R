@@ -133,7 +133,25 @@
    })
 
    ##---------------
-   ## capMode - switch On/Off
+   ## imgTerm - Switch Small/High Definition
+   ##---------------
+   observe ({
+         input$imgTerm
+         if (input$imgTerm==0) return(NULL)
+         qlabels <- c('MD', 'HD', 'SD')
+         if (ImgTermVal<(length(qlabels)-1)) {
+             ImgTermVal <<- ImgTermVal + 1
+             updateButton(session, "imgTerm", icon=NULL, label=qlabels[ImgTermVal])
+             runjs( paste0("set_spectrum_imgtype('",qlabels[ImgTermVal],"');") )
+         } else {
+             ImgTermVal <<- 0
+             updateButton(session, "imgTerm", icon=NULL, label=qlabels[length(qlabels)])
+             runjs( paste0("set_spectrum_imgtype('",qlabels[length(qlabels)],"');") )
+         }
+   })
+
+   ##---------------
+   ## GNUPLOT Output type - Set Terminal
    ##---------------
    observe ({
          input$capMode

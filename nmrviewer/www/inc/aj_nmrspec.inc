@@ -21,7 +21,7 @@
 */
 
 
-$start = time();
+$start = microtime(true);
 
 # View previous selection
 if ($conf->prev==1 && $conf->echo_previous_img()==1) exit();
@@ -43,18 +43,21 @@ $conf->get_PLOT_line($list_spec);
 
 # Build the GNUPLOT instructions for bucket zones
 $conf->get_Buckets();
-$t1 = time();
+$t1 = microtime(true);
 
 # Generate the spectra image and send it as output
 $status = $conf->generate_Spectra_image();
-$t2 = time();
+$t2 =  microtime(true);
 
 if ($status==0) {
     $conf->echo_img($conf->hPLOT['IMG']);
     $elapsed1 = round($t1 - $start,3);
     $elapsed2 = round($t2 - $t1,3);
-    $total    = round(time() - $start,3);
-    #echo "</br>T1 = $elapsed1 - T2 = $elapsed2 - Total = $total<br/>";
+    $total    = round(microtime(true) - $start,3);
+    $spec_log  = $conf->TMP."/gnuplot.log";
+    $img_type  = $conf->IMGTYPE;
+    $img_size  = round(filesize($conf->TMP."/".$conf->hPLOT['IMG'])/1024,3);
+    `echo "$img_type: generate_Spectra_image: BIN4GP = $elapsed1 - GNUPLOT = $elapsed2 - Total = $total - Size = $img_size Ko" >> $spec_log`; # for debugging
 }
 
 
