@@ -118,7 +118,8 @@ submit_Rscript <- function(outDir, outDataViewer, cmdR)
    delete_file(conf$semapFileErr)
    delete_file(conf$ProgressFile)
 
-   system( paste("nohup /bin/sh ",cmdfile, " 2>>",LOGFILE," 1>>",LOGFILE,"& echo $! > ",pidfile, sep=""))
+   RET <- system( paste("nohup /bin/sh ",cmdfile, " 2>>",LOGFILE," 1>>",LOGFILE,"& echo $! > ",pidfile,"; echo $?", sep=""), intern=TRUE )
+   RET
 }
 
 #----

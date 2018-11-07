@@ -246,7 +246,7 @@ ui_proc_export <- column(12,
             tags$strong('PPM range of the Reference:', class="textlabs"),tags$br(), inputTextarea("ppmnrefint", supclass="single", nrows=1, ncols=18, value=""),
             bsTooltip("ppmnrefint", "select the PPM range of the reference signal to normalize the integration (if relevant)", "bottom", options = list(container = "body")),
             tags$br(), tags$br(),
-            conditionalPanel(condition="input.eptype=='epdata'",                   
+            conditionalPanel(condition="input.eptype=='epdata'",
                    downloadButton("exportBS", "Export Data Matrix" ),
                    bsTooltip("exportBS", "Download the data matrix along with samplecodes and factors", "bottom", options = list(container = "body"))
             ),

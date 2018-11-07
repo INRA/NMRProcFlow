@@ -289,6 +289,7 @@
     output$exportBS <- downloadHandler(
          filename = function() { paste0('data_',gsub("\\..*$", "", NameZip), DS_ext() ) },
          content = function(file) {
+             runjs( "document.getElementById('Exportmsg').style.display = 'block';" )
               # get the PPM range of the reference
               if (trim(input$ppmnrefint)=="") {
                   zoneref <- NA
@@ -298,6 +299,7 @@
               # get the PPM range of the noise
               zonenoise <- as.numeric(simplify2array(strsplit(trim(input$ppmsnrnoise), " ")))
               write.table(get_Data_matrix(outDataViewer, zoneref, zonenoise), file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
+             runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }
     )
 
@@ -307,9 +309,11 @@
     output$exportBUC <- downloadHandler(
          filename = function() { paste0('buckets_',gsub("\\..*$", "", NameZip), DS_ext() ) },
          content = function(file) {
+             runjs( "document.getElementById('Exportmsg').style.display = 'block';" )
               bucketfile <- file.path(outDataViewer,conf$BUCKET_LIST)
               if ( file.exists(bucketfile) )
                   write.table(get_Buckets_table(bucketfile), file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
+             runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }
     )
 
@@ -319,12 +323,14 @@
     output$exportSNR <- downloadHandler(
          filename = function() { paste0('snr_',gsub("\\..*$", "", NameZip), DS_ext() ) },
          content = function(file) {
+             runjs( "document.getElementById('Exportmsg').style.display = 'block';" )
               specMat <- get_specMat()
               bucketfile <- file.path(outDataViewer,conf$BUCKET_LIST)
               zone <- as.numeric(simplify2array(strsplit(trim(input$ppmsnrnoise), " ")))
               if ( file.exists(bucketfile) )
                   write.table(get_SNR_dataset(specMat, bucketfile, c(min(zone), max(zone)), ratio=TRUE),
                               file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
+             runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }
     )
 
@@ -334,6 +340,7 @@
     output$exportXLSX <- downloadHandler(
          filename = function() { paste0('WB_',gsub("\\..*$", "", NameZip), '.xlsx' ) },
          content = function(file) {
+             runjs( "document.getElementById('Exportmsg').style.display = 'block';" )
              # get the PPM range of the reference
               if (trim(input$ppmnrefint)=="") {
                   zoneref <- NA
@@ -355,6 +362,7 @@
 
              # Save the Workbook
              saveWorkbook(wb, file, overwrite = TRUE)
+             runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }
     )
 
@@ -364,6 +372,7 @@
     output$exportSpec <- downloadHandler(
          filename = function() { paste0(gsub("\\..*$", "", NameZip), DS_ext() ) },
          content = function(file) {
+             runjs( "document.getElementById('Exportmsg').style.display = 'block';" )
               specMat <- get_specMat()
               if (input$exportFormat == "json") {
                   samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
@@ -386,6 +395,7 @@
                  if ( file.exists(samplesFile) )
                     write.table(get_Spectra_Data(specMat, samplesFile), file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
               }
+             runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }
     )
 

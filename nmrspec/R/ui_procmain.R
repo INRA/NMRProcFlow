@@ -11,6 +11,7 @@ ui_viewer <- column(12, htmlOutput("nmrviewer"), htmlOutput("captoggle"), htmlOu
 ## Rnmr1D Watcher
 ##---------------
 ui_proc_wait <- conditionalPanel(condition="output.Processing==1", column(12, tags$div( id="loadmessage") ))
+ui_export_wait <- tags$div( id="Exportmsg", style="display: none;")
 ui_proc_watcher <- bsModal("modalWatcher2", "Job Watcher","process", size="large", wellPanel(htmlOutput("watcher2")) )
 
 
@@ -61,6 +62,7 @@ ui_proc_buttons <- column(4,
 ## Tabs Panel
 ##---------------
 ui_proc_tabs <- column(12, conditionalPanel(condition="output.Processing==0",
+     ui_export_wait,
      splitLayout(cellWidths = c("5%","74%", "20%"),
          column(1, tags$img(src="images/img_00.gif", height = 100, width = 1)),
          column(12, bsAlert("ErrAlertProc"), ui_proctabPanel ),

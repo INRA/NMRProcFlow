@@ -662,7 +662,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    # Processing parameters filename
    PROCFILE <- paste(param$PDATA_DIR,"/procs",sep="")
    if (!file.exists(PROCFILE)) 
-       stop("Invalide data type : Acquisition parameter File (", PROCFILE, ") does not exist\n")
+       stop("Invalide data type : Processing parameter File (", PROCFILE, ") does not exist\n")
 
    # Read Acquisition parameters
    ACQ     <- readLines(ACQFILE)
@@ -726,7 +726,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    param$ZEROFILLING <- FALSE
    param$LINEBROADENING <- FALSE
 
-   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signal, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
+   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, data=NULL, int=signal, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
 
    spec
 }
@@ -1031,12 +1031,21 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    spec
 }
 
+Spec1r.nullSpec <- function ()
+{
+   list( path=NULL, param=NULL, acq=NULL, proc=NULL, fid=NULL, data=NULL, int=NULL, dppm=NULL, pmin=NULL, pmax=NULL, ppm=NULL )
+}
+
 ### FID Processing - Main routine
 #--    DIR        : absolute path of the Bruker/Varian directory
 #--    procparams : list of processing parameters, see the  default parameter list 'Spec1rFromFID.params'
 ###
 .CALL <- function ( Input, param=Spec1r.Procpar )
 {
+
+   spec <- Spec1r.nullSpec()
+
+try({
 
    logfile <- param$LOGFILE
    if(param$DEBUG)
@@ -1112,14 +1121,12 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
               spec$int[ spec$int < V ] <- V
           }
       }
-
-      # Define spec list as a Spectrum object
-      class(spec) = "Spectrum"
-      # Ouput spec object
-
       break
    }
 
+}, TRUE)
+
+   # Ouput spec object
    flush.console()
    spec
 

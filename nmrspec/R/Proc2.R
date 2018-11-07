@@ -133,7 +133,7 @@
    })
 
    ##---------------
-   ## imgTerm - Switch Small/High Definition
+   ## GNUPLOT Output type - Set Terminal
    ##---------------
    observe ({
          input$imgTerm
@@ -151,7 +151,7 @@
    })
 
    ##---------------
-   ## GNUPLOT Output type - Set Terminal
+   ## Capture Mode - Switch ON/OFF
    ##---------------
    observe ({
          input$capMode
@@ -164,6 +164,9 @@
          }
    })
 
+   ##---------------
+   ## UNDO Last processing
+   ##---------------
    observe ({
          input$jobstatus
          input$yes_undo
@@ -176,6 +179,9 @@
          })
    })
 
+   ##---------------
+   ## UNDO Last bucketing
+   ##---------------
    observe ({
          input$jobstatus
          input$yes_unBuc

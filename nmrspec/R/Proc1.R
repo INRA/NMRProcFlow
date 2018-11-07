@@ -224,7 +224,7 @@
    ##---------------
    submit_job_preProcess <- function(procParams) {
        ret <- 1
-       ErrMsg <<- "ERROR: Some information regarding raw data are not consistent. <br> Please, click the on 'Reset' button to retry."
+       ErrMsg <<- "ERROR: "
        tryCatch({ repeat {
              # Check if is an archive file
              ext <- tolower(gsub("^.*\\.", "", RawZip))
@@ -247,7 +247,7 @@
                  write_textlines(LOGFILE, paste0(paste(ERRORLIST[,1], collapse="\n"),"\n") )
              }
              if ( RET == 0 ) {
-                 ErrMsg <<- "ERROR: Some errors occur while attempting to generate metadata files. <br> Please, click the on 'Reset' button to retry."
+                 ErrMsg <<- "ERROR: Some errors occur while attempting to generate metadata files. <br> Please, click the on 'Log' button to see.<br>"
                  write_textlines(file.path(outDataViewer,conf$semapFileErr), ErrMsg)
                  write_textlines(file.path(outDataViewer,conf$semapFileOut),"1\n")
                  ret <- 0
@@ -269,7 +269,13 @@
 
              # Launch Rnmr1D ...
              cmdR <- paste(conf$Rscript_exec,"Rnmr1D -d -i ", as.character(outDir), "  -o ", as.character(outDataViewer), sep="")
-             submit_Rscript(outDir, outDataViewer, cmdR)
+             RET <- submit_Rscript(outDir, outDataViewer, cmdR)
+             if (RET!=0) {
+                 ErrMsg <<- "ERROR: error occured while launching"
+                 write_textlines(file.path(outDataViewer,conf$semapFileErr), ErrMsg)
+                 write_textlines(file.path(outDataViewer,conf$semapFileOut),"1\n")
+                 ret <- 0
+             }
              break
        }}, error=function(e) {
             ret <- 0

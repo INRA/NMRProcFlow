@@ -96,7 +96,7 @@ Write.LOG(LOGFILE, paste0("Rnmr1D:  -- Nb Spectra = ",dim(LIST)[1]," -- Nb Cores
 n <- 0
 init_counter(ProgressFile, dim(LIST)[1])
 tryCatch({
-    specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind) %dopar% {
+    specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %dopar% {
          ACQDIR <- LIST[x,1]
          NAMEDIR <- ifelse( procParams$VENDOR=='bruker', basename(dirname(ACQDIR)), basename(ACQDIR) )
          # Init the log filename
@@ -111,14 +111,17 @@ tryCatch({
 
          # Add to the Supevisor Log file
          fileLog<-file(LOGFILE,"at")
-         writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3],"\n-----\n"), fileLog)
+         if (! is.null(spec$acq)) {
+             writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3],"\n-----\n"), fileLog)
+         }
+         else {
+             writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3]," !!! FAILED !!!\n-----\n"), fileLog)
+         }
          if (file.exists(procParams$LOGFILE) && opts$debug) {
             infoLines <- readLines(procParams$LOGFILE)
-            writeLines( paste0( paste(as.list(infoLines), collapse="\n"),"\n\n" ), fileLog)
+            writeLines( paste0( paste(as.list(infoLines), collapse="\n"),"\n" ), fileLog)
          }
-         if (! file.exists(procParams$LOGFILE)) {
-            writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," !!! FAILED !!!\n-----\n"), fileLog)
-         }
+         if (is.null(spec$acq)) writeLines( paste0( geterrmessage(),"\n" ), fileLog)
          close(fileLog)
 
          if (dim(LIST)[1]>1) {
@@ -137,6 +140,25 @@ tryCatch({
        # Ensure that the specList array is in the same order than both  samples and IDS arrays
        L <- simplify2array(sapply( order(simplify2array(specList[1,])), function(x) { specList[2,x] } ) )
        specList <- L
+    }
+
+    # Get all spectra that are correcly processed
+    N <- dim(LIST)[1]
+    idsOK <- NULL
+    for(i in 1:N) {
+       if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
+       if (! is.null(spec$acq) ) idsOK <- c( idsOK, i )
+    }
+    if (length(idsOK)<N) {
+       specList <- specList[,idsOK]
+       samples <- samples[idsOK, ]
+       LIST <- LIST[idsOK, ]
+       write.table(samples, file=file.path(DATADIR,'samples.csv'), sep=';', row.names=F, col.names=F, quote=F)
+       write.table(LIST, file=file.path(DATADIR,'rawids.csv'), sep=';', row.names=F, col.names=F, quote=F)
+       Write.LOG(LOGFILE, paste0("Rnmr1D:  ", N-length(idsOK)," ERRORS FOUND! \n"))
+       fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+       writeLines(paste0(N-length(idsOK)," error(s) found while preprocessing  \n") , fh)
+       close(fh)
     }
 
     Write.LOG(LOGFILE, "Rnmr1D:  Generate the final matrix of spectra...\n")
