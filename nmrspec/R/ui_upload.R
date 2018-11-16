@@ -1,5 +1,12 @@
 # Load Frame
 
+bsModalNoClose <-function(...) {
+  b = bsModal(...)
+  b[[2]]$`data-backdrop` = "static"
+  b[[2]]$`data-keyboard` = "false"
+  return(b)
+}
+
 ##---------------
 ## Description
 ##---------------
@@ -78,7 +85,8 @@ ui_ErrLoad <- conditionalPanel(condition="output.fileUploaded==1", column(6, bsA
 ##---------------
 
 ui_load_wait <- conditionalPanel(condition="output.fileUploaded==1 && output.fileProcessed==0", column(12, tags$div( id="loadmessage") ) )
-ui_load_watcher <- bsModal("modalWatcher1", "Log Watcher","goButton", size="large", wellPanel(htmlOutput("watcher")) )
+ui_load_watcher <- bsModalNoClose("modalWatcher1", "Log Watcher","goButton", size="large", wellPanel(htmlOutput("watcher")),
+                                   tags$head(tags$style("#modalWatcher1 .modal-footer{display:none} ")))
 
 
 ##---------------

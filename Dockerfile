@@ -44,7 +44,8 @@ ENV LC_ALL=en_US.UTF-8 \
 RUN \
   # Download and install shiny server
     wget --no-verbose http://download3.rstudio.org/ubuntu-14.04/x86_64/VERSION -O "version.txt" && \
-    VERSION=$(cat version.txt)  && \
+    #VERSION=$(cat version.txt)  && \
+    VERSION=1.5.9.923 && \
     wget --no-verbose "http://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
     gdebi -n ss-latest.deb && \
     rm -f version.txt ss-latest.deb && \

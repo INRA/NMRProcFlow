@@ -46,6 +46,14 @@ if [ $NB -gt 0 ]; then
    for d in `find ${DATADIR}/_* -type d`; do s=`basename $d`; grep $s ${DATADIR}/conf/accesslist; done
 fi
 
+
+MAXSESSION=`cat $INI | grep MAXSESSION | cut -d'=' -f2 | tr -d "\n"`
+echo -n "Limits the maximum number of sessions to $MAXSESSION..."
+CONF=/etc/shiny-server/shiny-server.conf
+grep -E '.*simple_scheduler [0-9]+;' $CONF 1>/dev/null 2>/dev/null
+[ $? -eq 0 ] && sed -i -e "s/simple_scheduler [0-9]\+;/simple_scheduler $MAXSESSION;/" $CONF
+echo "OK"
+
 prog=shiny-server
 logfile=/var/log/${prog}.log
 lockfile=/var/run/${prog}.pid
@@ -53,7 +61,7 @@ lockfile=/var/run/${prog}.pid
 # Make sure the directory for individual app logs exists
 mkdir -p /var/log/shiny-server
 chown shiny.shiny /var/log/shiny-server
-
+ 
 echo -n "Starting shiny-server:"
 exec $prog --daemon "--pidfile=$lockfile" >> $logfile 2>&1 &
 if [ $? -eq 0 ]; then

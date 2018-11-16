@@ -170,8 +170,9 @@
    observe ({
          input$jobstatus
          input$yes_undo
+         values$reload
          isolate({
-              if (procJobName == "process" && input$jobstatus == "Ended") {
+              if ( values$reload || (procJobName == "process" && input$jobstatus == "Ended")) {
                  nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
                  bsUndoLabel <- ifelse(nbStackedProc>0, paste0(' (',as.character(nbStackedProc),')'), '')
                  updateButton(session, "undo", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")

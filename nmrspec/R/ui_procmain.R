@@ -12,7 +12,8 @@ ui_viewer <- column(12, htmlOutput("nmrviewer"), htmlOutput("captoggle"), htmlOu
 ##---------------
 ui_proc_wait <- conditionalPanel(condition="output.Processing==1", column(12, tags$div( id="loadmessage") ))
 ui_export_wait <- tags$div( id="Exportmsg", style="display: none;")
-ui_proc_watcher <- bsModal("modalWatcher2", "Job Watcher","process", size="large", wellPanel(htmlOutput("watcher2")) )
+ui_proc_watcher <- bsModalNoClose("modalWatcher2", "Job Watcher","process", size="large", wellPanel(htmlOutput("watcher2")),
+                                          tags$head(tags$style("#modalWatcher2 .modal-footer{display:none} ")))
 
 
 ##---------------

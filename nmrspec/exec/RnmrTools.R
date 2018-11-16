@@ -529,15 +529,14 @@ WhittakerSmooth <- function(x,w,lambda,differences=1)
   x=matrix(x,nrow = 1, ncol=length(x))
   L=length(x)
   E=spMatrix(L,L,i=seq(1,L),j=seq(1,L),rep(1,L))
-  D=as(diff(E,1,differences),"dgCMatrix")
-  W=as(spMatrix(L,L,i=seq(1,L),j=seq(1,L),w),"dgCMatrix")
+  D=methods::as(diff(E,1,differences),"dgCMatrix")
+  W=methods::as(spMatrix(L,L,i=seq(1,L),j=seq(1,L),w),"dgCMatrix")
   background=solve((W+lambda*t(D)%*%D),t((w*x)));
   return(as.vector(background))
 }
  
 airPLS <- function(x,lambda=100,porder=1, itermax=8)
 {
-  
   x = as.vector(x)
   m = length(x)
   w = rep(1,m)
@@ -636,6 +635,29 @@ dohCluster <- function (X, peakList, refInd = 1, maxShift = 50, acceptLostPeak =
 }
 
 #------------------------------
+# Reference spectrum determination
+#------------------------------
+FindRef <- function (peakList)
+{
+    opts <- list(chunkSize=2)
+    disS <- foreach(refInd = 1:length(peakList), .combine = 'rbind', .options.nws=opts) %dopar% {
+        V <- rep(NA, length(peakList))
+        for (tarInd in 1:length(peakList)) if (refInd != tarInd) {
+            V[tarInd] = 0
+            for (i in 1:length(peakList[[tarInd]])) V[tarInd] = V[tarInd] + min(abs(peakList[[tarInd]][i] - peakList[[refInd]]))
+        }
+        V
+    }
+    sumDis = double(length(peakList))
+    for (refInd in 1:length(peakList)) {
+        disS[refInd, refInd] = 0
+        sumDis[refInd] = sum(disS[refInd, ])
+    }
+    orderSumdis = order(sumDis)
+    return(list(refInd = orderSumdis[1], orderSpec = orderSumdis))
+}
+
+#------------------------------
 # Spectra alignment - see https://cran.r-project.org/web/packages/speaq/vignettes/speaq.pdf
 #------------------------------
 # Input parameters
@@ -662,12 +684,12 @@ CluPA <- function(data, reference=reference, nDivRange, scales = seq(1, 16, 2), 
   ## Reference spectrum determination
   if (reference == 0) {
      if( !is.null(ProgressFile) ) Write.LOG(LOGFILE,"Ralign1D:  --- Find the spectrum reference...");
-     #resFindRef<- speaq::findRef(peakList)
-     #refInd <- resFindRef$refInd
-     V <- bestref(data, optim.crit="WCC")
-     refInd  <- V$best.ref
-
+     startTime <- proc.time()
+     resFindRef<- FindRef(peakList)
+     refInd <- resFindRef$refInd
+     endTime <- proc.time()
      if( !is.null(ProgressFile) ) Write.LOG(LOGFILE,paste("Ralign1D:  --- The reference is: ",refInd));
+     if( !is.null(ProgressFile) ) Write.LOG(LOGFILE,paste("Ralign1D:  --- Finding time: ",(endTime[3]-startTime[3])," sec"));
   } else  {
      refInd=reference
   }

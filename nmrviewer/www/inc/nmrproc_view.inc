@@ -260,6 +260,7 @@ EOT;
         $RES=$this->IMGHEIGHT-40;
         $cnt=0;
         $PLOTFILE="$TMP/subspec.bin";
+        $PTS=2048;
 
         # Preparation if spectra
 
@@ -275,13 +276,15 @@ EOT;
             $t1 = microtime(true);
 
             # Extract each part of spectra into separate binary files ($TMP/subspec*.bin);
-            $CMD=$this->MEXTRACT ." $PACKED -outfile $PLOTFILE -x -indfile $TMP/index.csv -min ".$this->PPM1.' -max '.$this->PPM2;
+            if ($this->imgtype == 'SD') $PTS=1024;
+            $opts_extract = "-outfile $PLOTFILE  -x -indfile $TMP/index.csv";
+            $CMD=$this->MEXTRACT ." $PACKED $opts_extract -min ".$this->PPM1.' -max '.$this->PPM2.' -pts '.$PTS;
             `echo "$CMD" >>$TMP/debug`;
             list( $record_line, $min_line, $max_line ) = $this->Exec_cmd($CMD,"$TMP/bin4gp.log");
 
             # Ymin & Ymax based on all spectra in order to preserve the Y scale between factor levels
             if ($this->imgtype != 'SD' && $this->stacked==0 && $cntsel<$all_items) {
-               $CMD=$this->MEXTRACT ." $PACKED -min ".$this->PPM1.' -max '.$this->PPM2;
+               $CMD=$this->MEXTRACT ." $PACKED -min ".$this->PPM1.' -max '.$this->PPM2.' -pts '.$PTS;
                `echo "$CMD" >>$TMP/debug`;
                list( $record_line, $min_line, $max_line ) = $this->Exec_cmd($CMD,"$TMP/bin4gp.log");
             }
@@ -307,7 +310,8 @@ EOT;
                $this->hPLOT['YMAX'] += $offset_val*$cnt;
                if ($cnt>1) { $int_fac=0.25; } else { $int_fac=0.8; }
                $this->hPLOT['YMAX'] *= 0.5;
-               $CMD=$this->MEXTRACT ." $PACKED -outfile $PLOTFILE  -x -indfile $TMP/index.csv -intfac $int_fac -offset $offset_val -min ".$this->PPM1.' -max '.$this->PPM2;
+               $opts_extract_suppl = "-intfac $int_fac -offset $offset_val";
+               $CMD=$this->MEXTRACT ." $PACKED $opts_extract $opts_extract_suppl -min ".$this->PPM1.' -max '.$this->PPM2.' -pts '.$PTS;
                `echo "$CMD" >>$TMP/debug`;
                list( $record_line, $min_line, $max_line ) = $this->Exec_cmd($CMD,"$TMP/bin4gp.log");
             }
