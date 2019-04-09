@@ -92,7 +92,7 @@ shinyServer(function(input, output, session) {
         output$jreload <- renderUI({ tags$script(HTML(paste0("window.history.replaceState(null,'NMRProcFlow', '?", sessid, "');"))) })
 
         # With a valid session identifier, needless to login
-        if (condLogin || ! newSession) {
+        if (condLogin || (! newSession && file.exists(file.path(conf$DATASETS,sessid)))) {
            sessionViewer <<- sessid
            values$sessinit <- 1
            values$psession <- ifelse( file.exists(file.path(conf$DATASETS,sessid,conf$SPEC_PACKED)), 1, 0 )

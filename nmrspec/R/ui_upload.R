@@ -21,7 +21,7 @@ ui_desc <- column(12,
 ##---------------
 ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.SessReload==0",
     column(4,
-        selectInput("vendor", "Instrument/Vendor/Format:",  c("-- Select the input format --"="sinput", "nmrML v1.0.rc1"="nmrml", "Bruker (TopSpin/X-winnmr)" = "bruker", "Varian/Agilent (VNMRJ)" = "varian", "Jeol (JDF/DELTA)" = "jeol"), selected = "sinput"),
+        selectInput("vendor", "Instrument/Vendor/Format:",  c("-- Select the input format --"="sinput", "nmrML v1.0.rc1"="nmrml", "Bruker (TopSpin/X-winnmr)" = "bruker", "Varian/Agilent (VNMRJ)" = "varian", "Jeol (JDF/DELTA)" = "jeol", "RS2D (SPINit)" = "rs2d"), selected = "sinput"),
         conditionalPanel(condition="output.FormatSelected==1",
              selectInput("spectype", "Spectra type:", 
                           c("1r spectrum" = "1r", "FID" = "fid"), selected = "fid"),

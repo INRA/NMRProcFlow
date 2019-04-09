@@ -43,7 +43,7 @@
 
    observeEvent ( input$vendor, {
        v_options <- c("fid"); names(v_options) <- c('FID'); v_select<-'fid'
-       if ( input$vendor=="bruker" ) {
+       if ( input$vendor %in% c("bruker", "rs2d") ) {
             v_options[length(v_options)+1] <- '1r'; names(v_options)[length(v_options)] <- '1r spectrum';
             v_select<-'fid'
        }
@@ -88,9 +88,9 @@
                 outDataViewer <<- file.path(conf$DATASETS,sessionViewer)
                 INI.filename <- paste0(outDataViewer,'/',conf$Rnmr1D_INI)
                 if (file.exists(INI.filename)) {
-                   procParams <<- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
+                   procParams <<- Parse.INI(INI.filename, INI.list=Spec1rProcpar, section="PROCPARAMS")
                 } else {
-                   procParams <<- Spec1r.Procpar
+                   procParams <<- Spec1rProcpar
                    generate_INI_file(procParams)
                 }
                 values$reload <- 1
@@ -188,8 +188,8 @@
             }
             names(parvals) <- parnames;  procpar <- data.frame(t(parvals), stringsAsFactors=FALSE)
             if (! is.null(procpar$Vendor)) {
-               v_options <- c('bruker', 'varian','jeol', 'nmrml')
-               names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1')
+               v_options <- c('bruker', 'varian','jeol', 'nmrml', 'rs2d')
+               names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1', 'RS2D SPINit Format')
                v_select<-tolower(trim(procpar$Vendor))
                updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
             }
@@ -199,6 +199,7 @@
             }
             if (! is.null(procpar$LB))      { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
             if (! is.null(procpar$GB))      { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
+            if (! is.null(procpar$PHC0))    { updateCheckboxInput(session, "optimphc0", value = ifelse( procpar$PHC0=="TRUE", 1, 0)); }
             if (! is.null(procpar$PHC1))    { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
             if (! is.null(procpar$ZNEG))    { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
             if (! is.null(procpar$TSP))     { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
@@ -374,7 +375,7 @@
             if (is.null(RawZip) ) return (0)
             if (is.null(procJobName)) return (0)
             # Init the processing parameters
-            procParams <<- Spec1r.Procpar
+            procParams <<- Spec1rProcpar
             procParams$VENDOR <<- input$vendor
             procParams$INPUT_SIGNAL <<- input$spectype
             procParams$READ_RAW_ONLY <<- TRUE
@@ -504,10 +505,17 @@
         dataProc <- NULL
         if (file.exists(dataProcFile))  {
               dataProcAll <- as.data.frame(read.table(dataProcFile, header=TRUE, sep=';'))
-              if (procParams$VENDOR=="bruker") {
-                 dataProc <- dataProcAll[ , c("Spectrum", "PULSE", "NUC", "SOLVENT", "EXPNO", "PROCNO", "PHC0", "PHC1", "SW", "SF", "SI") ]
-              } else {
+              repeat {
+                 if (procParams$VENDOR=="bruker") {
+                    dataProc <- dataProcAll[ , c("Spectrum", "PULSE", "NUC", "SOLVENT", "EXPNO", "PROCNO", "PHC0", "PHC1", "SW", "SF", "SI") ]
+                    break
+                 }
+                 if (procParams$VENDOR=="rs2d") {
+                    dataProc <- dataProcAll[ , c("Spectrum", "PULSE", "NUC", "SOLVENT", "PROCNO", "PHC0", "PHC1", "SW", "SF", "SI") ]
+                    break
+                 }
                  dataProc <- dataProcAll[ , c("Spectrum", "PULSE", "NUC", "SOLVENT", "PHC0", "PHC1", "SW", "SF", "SI") ]
+                 break
               }
         }
         return(dataProc)

@@ -1,25 +1,55 @@
 #------------------------------------------------
-# Rnmr1D package: Build 1r spectrum from FID file (Bruker/Varian/nmrML)
-# Project: NMRProcFlow - MetaboHUB
-# (C) 2015 - D. JACOB - IMRA UMR1332 BAP
+# Rnmr1D package: Build 1r spectrum from FID file (Bruker/RS2D/Varian/nmrML)
+# Project: NMRProcFlow
+# (C) 2019 - D. JACOB - IMRA UMR1332 BAP
 #------------------------------------------------
 
-require(XML)
-require(base64enc)
-
-Spec1r.doProc <- function(Input, ...) UseMethod("Spec1r.doProc")
-
-Spec1r.doProc.default <- function(Input, ...)
+#' Spec1rDoProc
+#'
+#' \code{Spec1rDoProc} belongs to the low-level functions group - it processes only one raw spectrum at time.
+#' @param Input Full directory path of the raw spectrum
+#' @param param a Spec1rProcpar list
+#' @return spec object
+Spec1rDoProc <- function(Input, param=Spec1rProcpar)
 {
-   .CALL(Input,...)
+   .CALL(Input, param)
 }
 
-### Processing parameters
-Spec1r.Procpar.default <- list (
+
+#' Spec1rProcpar
+#'
+#' Initialize Parameter Lists by the default ones
+#' @return
+#' \itemize{
+#'   \item \code{DEBUG} : Debug - defaut value = TRUE
+#'   \item \code{LOGFILE} : Messages output file - default value = ""
+#'   \item \code{VENDOR} : Instrumental origin of the raw data (bruker, varian, jeol, rs2d) - default value = 'bruker'
+#'   \item \code{READ_RAW_ONLY} : Read Raw file only; do not carry out processing; if raw file is depending on INPUT_SIGNAL - default value = FALSE
+#'   \item \code{INPUT_SIGNAL} : What type of input signal: 'fid' or '1r' - default value = 'fid'
+#'   \item \code{PDATA_DIR} : subdirectory containing the 1r file (bruker's format only) - default value = 'pdata/1'
+#'   \item \code{LB} : Exponantial Line Broadening parameter - default value = 0.3
+#'   \item \code{GB} : Gaussian Line Broadening parameter - default value = 0
+#'   \item \code{REVTIME} : Reverse time points - default value = FALSE
+#'   \item \code{BLPHC} : Intensity offset correction - default value = FALSE
+#'   \item \code{SOLVPPM} : ppm of the solvent (D20 by default) - default value = 4.8
+#'   \item \code{ZEROFILLING} : Zero Filling - - default value = FALSE
+#'   \item \code{ZFFAC} : Max factor for Zero Filling - default value = 4
+#'   \item \code{LINEBROADENING} : Line Broading - default value = TRUE
+#'   \item \code{TSP} : PPM referencing - default value = FALSE
+#'   \item \code{RABOT} : Zeroing of Negative Values - default value = FALSE
+#'   \item \code{OPTPHC0} : Zero order phase optimization - default value = TRUE
+#'   \item \code{OPTPHC1} : First order phase optimization - default value = FALSE
+#'   \item \code{ALGO2} : alternative algorithm for phase optimization - default value = FALSE
+#'   \item \code{FRACPPM} : Origin point for adjustment of the first order phase (defined as a fraction of the ppm scale) - default value = 0
+#'   \item \code{INCFRACPPM1} : Incrementation value for search of optimal point for adjustment of the first order phase : step 1 - default value = 0.125
+#'   \item \code{INCFRACPPM2} : Incrementation value for search of optimal point for adjustment of the first order phase : step 2 - default value = 0.0125
+#'   \item \code{JGD_INNER} : JEOL : internal or external estimation for Group Delay - default value = TRUE
+#' }
+Spec1rProcpar <- list (
 
 ### General Parameters
     DEBUG=TRUE,                # Debug 
-    LOGFILE=stderr(),          # Messages output file
+    LOGFILE="",                # Messages output file
     VENDOR="bruker",           # Instrumental origin of the raw data, (bruker, varian)
     READ_RAW_ONLY=FALSE,       # Read Raw file only; do not carry out processing; if raw file is depending on INPUT_SIGNAL
     INPUT_SIGNAL="fid",        # What type of input signal: 'fid' or '1r'
@@ -49,14 +79,9 @@ Spec1r.Procpar.default <- list (
 )
 
 #--------------------------------
-# Initialize Parameter Lists by the default ones
-#--------------------------------
-Spec1r.Procpar    <- Spec1r.Procpar.default
-
-#--------------------------------
 # verbose function
 #--------------------------------
-.v <- function(..., logfile=Spec1r.Procpar$LOGFILE) cat(sprintf(...), sep='', file=logfile, append=TRUE)
+.v <- function(..., logfile=Spec1rProcpar$LOGFILE) cat(sprintf(...), sep='', file=logfile, append=TRUE)
 
 #--------------------------------
 # READ FID && Acquisition Parameters
@@ -96,8 +121,22 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    acqval
 }
 
+#### Retrieve a parameter value from RS2D acquisition parameters
+#--  internal routine
+#--  ACQ: list of acquisition parameters of the acqus file
+#--  paramStr: name of the parameter
+.rs2d.get_param <- function (ACQ,paramStr,type="numeric")
+{
+   regexpStr <- paste("^",paramStr,"=",sep="")
+   acqval <- gsub("^[^=]+= ?","" ,ACQ[which(simplify2array(regexpr(regexpStr,ACQ))>0)])
+   if (type=="numeric")
+       acqval <-as.numeric(acqval)
+   acqval
+}
+
 ### Estime Group Delay
 #-- fid : free induction decay - Complex data type
+
 .estime_grpdelay <- function( fid )
 {
    P <- sqrt(  Re(fid)^2 + Im(fid)^2 )
@@ -125,11 +164,11 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    # FID filename
    FIDFILE <- "fid"
    if (!file.exists(FIDFILE)) 
-       stop("Invalide data type : File ", FIDFILE, " does not exist\n")
+       stop("FID File ", FIDFILE, " does not exist\n")
    # Acquisition parameters filename
    ACQFILE <- "acqus"
    if (!file.exists(ACQFILE)) 
-       stop("Invalide data type : Acquisition parameter File (", ACQFILE, ") does not exist\n")
+       stop("Acquisition parameter File (", ACQFILE, ") does not exist\n")
 
    ACQ     <- readLines(ACQFILE)
    PROBE   <- .bruker.get_param(ACQ,"PROBHD",type="string")
@@ -202,9 +241,77 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, 
                 PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, TEMP=TEMP, NUC=NUC, 
-                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS,
+                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, OFFSET=O1/SFO1,
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
+   spec <- list( path=DIR, acq=acq, fid=fid )
+
+   spec
+}
+
+#### Read FID data and the main parameters needed to generate the real spectrum
+#--  internal routine
+#-- DIR: RS2D directory containing the FID
+.read.FID.rs2d <- function(DIR)
+{
+   cur_dir <- getwd()
+   setwd(DIR)
+
+   # FID filename
+   FIDFILE <- "data.dat"
+   if (!file.exists(FIDFILE)) 
+       stop("DATA File ", FIDFILE, " does not exist\n")
+   # Acquisition parameters filename
+   ACQFILE <- "header.xml"
+   if (!file.exists(ACQFILE)) 
+       stop("Acquisition parameter File (", ACQFILE, ") does not exist\n")
+   ACQ <- NULL
+   tree <- xmlTreeParse(ACQFILE)
+   root <- xmlRoot(tree)
+   xmlParams <- xmlElementsByTagName(root, "entry", recursive = TRUE)
+   for(i in 1:length(xmlParams)) {
+      L <- xmlToList(xmlElementsByTagName(xmlParams[[i]], "value", recursive = FALSE)[[1]])
+      ACQ <- c(ACQ,paste0(L$name,"=",L$value))
+   }
+
+   PROBE   <- .rs2d.get_param(ACQ,"PROBES",type="string")
+   SOLVENT <- .rs2d.get_param(ACQ,"SOLVENT",type="string")
+   PULSE   <- .rs2d.get_param(ACQ,"SEQUENCE_NAME",type="string")
+   TEMP    <- .rs2d.get_param(ACQ,"SAMPLE_TEMPERATURE")
+   RELAXDELAY  <- .rs2d.get_param(ACQ,"Last delay")
+   PULSEWIDTH <- .rs2d.get_param(ACQ,"P1.width")*1e6
+   SPINNINGRATE <- .rs2d.get_param(ACQ,"SPIN_RATE")
+   NUMBEROFSCANS <- .rs2d.get_param(ACQ,"NUMBER_OF_AVERAGES")
+   DUMMYSCANS <- .rs2d.get_param(ACQ,"DUMMY_SCAN")
+   NUC     <- .rs2d.get_param(ACQ,"OBSERVED_NUCLEUS",type="string")
+   TD      <- .rs2d.get_param(ACQ,"Nb Point")
+   SFO1    <- .rs2d.get_param(ACQ,"OBSERVED_FREQUENCY")/1e6
+   SWH     <- .rs2d.get_param(ACQ,"SPECTRAL_WIDTH")
+   SW      <- SWH/SFO1
+   O1      <- .rs2d.get_param(ACQ,"OFFSET_FREQ_1")
+   OFFSET  <- .rs2d.get_param(ACQ,"SR")/SFO1
+   LOCKPPM <- 0
+   LCKSTATE <- ifelse( .rs2d.get_param(ACQ,"LOCK",type="string")=='true', TRUE, FALSE )
+   ENDIAN  <-  "big"
+   INSTRUMENT <- paste("RS2D",.rs2d.get_param(ACQ,"MODEL_NAME",type="string"))
+   SOFTWARE <-  gsub(" \\[.+\\]","", .rs2d.get_param(ACQ,"SOFTWARE_VERSION",type="string"))
+
+   NP <- 2*TD
+   to.read = file(FIDFILE,"rb")
+   signal<-readBin(to.read, what="double", n=NP, size=4L, endian = ENDIAN)
+   close(to.read)
+   setwd(cur_dir)
+   
+   rawR <- signal[seq(from = 1, to = NP, by = 2)]
+   rawI <- signal[seq(from = 2, to = NP, by = 2)]
+   fid <- complex(real=rawR, imaginary=rawI)
+   TD <- length(fid)
+
+   acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN="RS2D", ORIGPATH=DIR, 
+                PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, TEMP=TEMP, NUC=NUC, OFFSET=OFFSET,
+                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, LOCKPPM=LOCKPPM, LCKSTATE=LCKSTATE,
+                RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
+                TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=0 )
    spec <- list( path=DIR, acq=acq, fid=fid )
 
    spec
@@ -221,11 +328,11 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    # FID filename
    FIDFILE <- "fid"
    if (!file.exists(FIDFILE)) 
-       stop("Invalide data type : File ", FIDFILE, " does not exist\n")
+       stop("FID File ", FIDFILE, " does not exist\n")
    # Acquisition parameters filename
    ACQFILE <- "procpar"
    if (!file.exists(ACQFILE)) 
-       stop("Invalide data type : Acquisition parameter File (", ACQFILE, ") does not exist\n")
+       stop("Acquisition parameter File (", ACQFILE, ") does not exist\n")
 
    ACQ  <- readLines(ACQFILE)
    SWH  <-  .varian.get_param(ACQ,"sw")
@@ -320,7 +427,6 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 #-- FILE: JEOL JDF file containing the FID
 .read.FID.jeol <- function(FILE)
 {
-
    if (!file.exists(FILE))
        stop("File ", FILE, " does not exist\n")
 
@@ -543,7 +649,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    acq$TD <- length(fid)
 
    # Group Delay : Internal or External
-   if (Spec1r.Procpar$JGD_INNER) {
+   if (Spec1rProcpar$JGD_INNER) {
       GRPDLY <- 0
       factors <- eval(parse(text=paste0("c(",gsub(" +",",",procpar$factors$value),")")))
       orders <- eval(parse(text=paste0("c(",gsub(" +",",",procpar$orders$value),")")))
@@ -635,7 +741,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT,
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH, TEMP=TEMP, NUC=NUC,
-                NUMBEROFSCANS='-', DUMMYSCANS='-', TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
+                NUMBEROFSCANS='-', DUMMYSCANS='-', TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, OFFSET=O1/SFO1, GRPDLY=GRPDLY )
    spec <- list( path=filename, acq=acq, fid=fid )
 
    spec
@@ -644,25 +750,25 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 #### Read 1r data and the main parameters needed to generate the real spectrum
 #--  internal routine
 #-- DIR: bruker directory containing the 1r
-.read.1r.bruker <- function(DIR, param=Spec1r.Procpar) {
-
+.read.1r.bruker <- function(DIR, param=Spec1rProcpar)
+{
    cur_dir <- getwd()
    setwd(DIR)
    
    # Acquisition parameters filename
    ACQFILE <- "acqus"
    if (!file.exists(ACQFILE)) 
-       stop("Invalide data type : Acquisition parameter File (", ACQFILE, ") does not exist\n")
+       stop("Acquisition parameter File (", ACQFILE, ") does not exist\n")
 
    # 1r filename
    SPECFILE <- paste(param$PDATA_DIR,"/1r",sep="")
    if (!file.exists(SPECFILE))
-       stop("Invalide data type : File (", SPECFILE, ") does not exist\n")
+       stop("1r File (", SPECFILE, ") does not exist\n")
 
    # Processing parameters filename
    PROCFILE <- paste(param$PDATA_DIR,"/procs",sep="")
    if (!file.exists(PROCFILE)) 
-       stop("Invalide data type : Processing parameter File (", PROCFILE, ") does not exist\n")
+       stop("Processing parameter File (", PROCFILE, ") does not exist\n")
 
    # Read Acquisition parameters
    ACQ     <- readLines(ACQFILE)
@@ -726,13 +832,100 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    param$ZEROFILLING <- FALSE
    param$LINEBROADENING <- FALSE
 
-   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, data=NULL, int=signal, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
+   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signal, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
+
+   spec
+}
+
+#### Read 1r data and the main parameters
+#--  internal routine
+#-- DIR: rs2d directory containing the experience
+.read.1r.rs2d <- function(DIR, param=Spec1rProcpar)
+{
+   cur_dir <- getwd()
+   RAWDIR <- file.path(DIR,param$PDATA_DIR)
+   if (!file.exists(RAWDIR))
+       stop("Invalide folder : ", RAWDIR, " does not exist\n")
+
+   setwd(RAWDIR)
+   
+   # FID filename
+   FIDFILE <- "data.dat"
+   if (!file.exists(FIDFILE)) 
+       stop("DATA File ", FIDFILE, " does not exist\n")
+   # Acquisition parameters filename
+   ACQFILE <- "header.xml"
+   if (!file.exists(ACQFILE)) 
+       stop("Acquisition parameter File (", ACQFILE, ") does not exist\n")
+   ACQ <- NULL
+   tree <- xmlTreeParse(ACQFILE)
+   root <- xmlRoot(tree)
+   xmlParams <- xmlElementsByTagName(root, "entry", recursive = TRUE)
+   for(i in 1:length(xmlParams)) {
+      L <- xmlToList(xmlElementsByTagName(xmlParams[[i]], "value", recursive = FALSE)[[1]])
+      ACQ <- c(ACQ,paste0(L$name,"=",L$value))
+   }
+
+   PROBE   <- .rs2d.get_param(ACQ,"PROBES",type="string")
+   SOLVENT <- .rs2d.get_param(ACQ,"SOLVENT",type="string")
+   PULSE   <- .rs2d.get_param(ACQ,"SEQUENCE_NAME",type="string")
+   TEMP    <- .rs2d.get_param(ACQ,"SAMPLE_TEMPERATURE")
+   RELAXDELAY  <- .rs2d.get_param(ACQ,"Last delay")
+   PULSEWIDTH <- .rs2d.get_param(ACQ,"P1.width")*1e6
+   SPINNINGRATE <- .rs2d.get_param(ACQ,"SPIN_RATE")
+   NUMBEROFSCANS <- .rs2d.get_param(ACQ,"NUMBER_OF_AVERAGES")
+   DUMMYSCANS <- .rs2d.get_param(ACQ,"DUMMY_SCAN")
+   NUC     <- .rs2d.get_param(ACQ,"OBSERVED_NUCLEUS",type="string")
+   TD      <- .rs2d.get_param(ACQ,"Nb Point")
+   SFO1    <- .rs2d.get_param(ACQ,"OBSERVED_FREQUENCY")/1e6
+   SWH     <- .rs2d.get_param(ACQ,"SPECTRAL_WIDTH")
+   SW      <- SWH/SFO1
+   O1      <- .rs2d.get_param(ACQ,"OFFSET_FREQ_1")
+   OFFSET  <- .rs2d.get_param(ACQ,"SR")/SFO1
+   LOCKPPM <- 0
+   LCKSTATE <- ifelse( .rs2d.get_param(ACQ,"LOCK",type="string")=='true', TRUE, FALSE )
+   ENDIAN  <-  "big"
+   INSTRUMENT <- paste("RS2D",.rs2d.get_param(ACQ,"MODEL_NAME",type="string"))
+   SOFTWARE <-  gsub(" \\[.+\\]","", .rs2d.get_param(ACQ,"SOFTWARE_VERSION",type="string"))
+   GRPDLY <- 0
+
+   # Read Processing parameters
+   SI <- TD
+   PHC0 <-  .rs2d.get_param(ACQ,"PHASE_0")
+   PHC1 <-  .rs2d.get_param(ACQ,"PHASE_1")
+
+   # Read the 1r spectrum
+   NP <- 2*TD
+   to.read = file(FIDFILE,"rb")
+   signal<-readBin(to.read, what="double", n=NP, size=4L, endian = ENDIAN)
+   close(to.read)
+   setwd(cur_dir)
+
+   rawR <- signal[seq(from = 1, to = NP, by = 2)]
+   rawI <- signal[seq(from = 2, to = NP, by = 2)]
+
+   dppm <- SW/(SI-1)
+   pmin <- OFFSET - SW/2
+   pmax <- OFFSET + SW/2
+   ppm <- seq(from=pmin, to=pmax, by=dppm)
+
+   acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN="RS2D", ORIGPATH=RAWDIR, 
+                PROBE=PROBE, PULSE=PULSE, NUC=NUC, SOLVENT=SOLVENT, TEMP=TEMP, 
+                RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
+                TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
+
+   proc <- list( phc0=PHC0, phc1=PHC1, SI=SI )
+
+   param$ZEROFILLING <- FALSE
+   param$LINEBROADENING <- FALSE
+
+   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=rev(rawR), dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
 
    spec
 }
 
 ### Group Delay correction
-.groupDelay_correction <- function(spec, param=Spec1r.Procpar)
+.groupDelay_correction <- function(spec, param=Spec1rProcpar)
 {
     fid <- spec$fid
     if (spec$acq$GRPDLY>0) {
@@ -752,12 +945,12 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
        
        i <- complex(real=0,imaginary=1)
        p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-       Spectrum <- fft(fid)
+       Spectrum <- stats::fft(fid)
        Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
        Spectrum <- Spectrum * exp(i*spec$acq$GRPDLY*2*pi*Omega)
        p <- length(seq1); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
        Spectrum <- c( Spectrum[seq1], Spectrum[seq2] )
-       fid <- fft(Spectrum, inverse = TRUE)
+       fid <- stats::fft(Spectrum, inverse = TRUE)
     }
     fid
 }
@@ -768,7 +961,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
 #### Apply some preprocessing: zero_filling, line broading
 #--  Generate real and imaginary parts
-.preprocess <- function(spec, param=Spec1r.Procpar)
+.preprocess <- function(spec, param=Spec1rProcpar)
 {
     logfile <- param$LOGFILE
 
@@ -798,73 +991,77 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
        spec$fid <- c( spec$fid, rep(complex(real=0, imaginary=0), (tdp2-td)) )
        td <- length(spec$fid)
     }
-    spec$fid0 <- .groupDelay_correction(spec, param)
 
+    transform2spec <- function(fid) {
+       ### FFT of FID
+       if(param$DEBUG) .v("\tFFT ...", logfile=logfile)
+       Spectrum <- stats::fft(fid)
+       if(param$DEBUG) .v("OK\n", logfile=logfile)
+       ### Rotation
+       td <- length(Spectrum); p <- td/2
+       spec.p <- c( Spectrum[(p+1):td], Spectrum[1:p] )
+       param$REVTIME <- param$REVTIME || ( length(grep("VARIAN",toupper(spec$acq$INSTRUMENT)))>0 || length(grep("JEOL",toupper(spec$acq$INSTRUMENT)))>0)
+       if ( param$REVTIME ) {
+          rawspec <- spec.p[rev(1:td)]
+       } else {
+          rawspec <- spec.p
+       }
+       rawspec
+    }
+
+    # Compute the spectrum in freq. domain before zero filling
+    spec$fid0 <- .groupDelay_correction(spec, param)
+    rawspec <- transform2spec(spec$fid0)
+    spec$data0 <- rawspec
+   
     ### Zero filling
     if (param$ZEROFILLING) {
        TDMAX <- min(param$ZFFAC*td,131072)
        if(param$DEBUG) .v("\tZero Filling (x%d)\n", round(TDMAX/td), logfile=logfile)
        while ((td/TDMAX) < 1 ) {
-          td=length(spec$fid)
+          td <- length(spec$fid)
           spec$fid <- c( spec$fid, rep(complex(real=0, imaginary=0), td) )
-          td=length(spec$fid)
+          td <- length(spec$fid)
        }
-       td=length(spec$fid)
+       td <- length(spec$fid)
+
+       ### Group Delay correction if needed
+       if (spec$acq$GRPDLY>0) {
+          if(param$DEBUG) .v("\tApplied GRPDLY ...", logfile=logfile)
+          spec$fid <- .groupDelay_correction(spec, param)
+          if(param$DEBUG) .v("OK\n", logfile=logfile)
+       }
+       # Compute the spectrum in freq. domain after zero filling
+       rawspec <- transform2spec(spec$fid)
+
+    } else {
+       if(param$DEBUG) .v("\tApplied GRPDLY ...OK\n", logfile=logfile)
+       spec$fid <- spec$fid0
     }
     if (param$DEBUG) .v("\tSI = %d\n", td, logfile=logfile)
 
-    ### Group Delay correction if needed
-    if (spec$acq$GRPDLY>0) {
-       if(param$DEBUG) .v("\tApplied GRPDLY ...", logfile=logfile)
-       spec$fid <- .groupDelay_correction(spec, param)
-       if(param$DEBUG) .v("OK\n", logfile=logfile)
-    }
-
-    ### FFT of FID
-    if(param$DEBUG) .v("\tFFT ...", logfile=logfile)
-    Spectrum <- fft(spec$fid)
-    if(param$DEBUG) .v("OK\n", logfile=logfile)
-
-    ### Rotation
-    p <- td/2
-    spec.p <- c( Spectrum[(p+1):td], Spectrum[1:p] )
-    param$REVTIME <- param$REVTIME || ( length(grep("VARIAN",toupper(spec$acq$INSTRUMENT)))>0 || length(grep("JEOL",toupper(spec$acq$INSTRUMENT)))>0)
-    if ( param$REVTIME ) {
-       rawspec <- spec.p[rev(1:td)]
-    } else {
-       rawspec <- spec.p
-    }
     param$SI <- length(rawspec)
-
-    proc <- list( phc0=0, phc1=0, RMS=0, SI=length(rawspec) )
+    proc <- list( phc0=0, phc1=0, RMS=0, SI=length(rawspec), CFRACPPM=param$CFRACPPM)
 
     # PPM Calibration
     m <- proc$SI
     SW <- spec$acq$SW
     SWH <- spec$acq$SWH
     if (param$O1RATIO==1) {
-        O1 <- spec$acq$O1
+        offset <- spec$acq$OFFSET
     } else {
-        O1 <- SWH*param$O1RATIO
+        offset <- SW*param$O1RATIO
     }
     spec$dppm <- SW/(m-1)
     spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
     
     repeat {
-       if (toupper(spec$acq$INSTRUMENT) %in% c("JEOL","VARIAN")) {
-          if (param$O1RATIO==1) {
-              spec$pmin <- spec$acq$OFFSET - SW/2
-          } else {
-              spec$pmin <- SW*param$O1RATIO - SW/2
-          }
-          break
-       }
        if (spec$acq$NUC %in% c('1H','H1') ) {
-          spec$pmin <- (O1/SWH-0.5)*SW
+          spec$pmin <- offset - SW/2
           break
        }
        if (spec$acq$NUC == '13C') {
-          spec$pmin <- (O1/SWH-0.5)*SW
+          spec$pmin <- offset - SW/2
           break
        }
        break
@@ -873,7 +1070,6 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
     spec$ppm <- seq(from=spec$pmin, to=spec$pmax, by=spec$dppm)
 
     ### Save into the spec object instance
-    spec$acq$TD <- length(rawspec)
     spec$data <- rawspec
     spec$param <- param
     spec$proc <- proc
@@ -902,9 +1098,9 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    }
 
    if (spec$param$ALGO2==FALSE && spec$acq$NUC %in% c('1H','H1')) {
-      V <- spec$data
+      V <- spec$data0; SI <- length(V)
       x0 <- (spec$param$SOLVPPM+abs(spec$pmin))/spec$acq$SW
-      V[ round(spec$proc$SI*(x0-0.3/spec$acq$SW)):round(spec$proc$SI*(x0+0.3/spec$acq$SW)) ] <- 0+0i
+      V[ round(SI*(x0-0.3/spec$acq$SW)):round(SI*(x0+0.3/spec$acq$SW)) ] <- 0+0i
       lparams <- list(re=Re(V),im=Im(V), phc0=0, phc1=0, alpha=0, p=0.95, blphc=spec$param$BLPHC)
       best1 <- C_optim_phc(-pi, pi, lparams, 0, 1e-7)
       best2 <- C_optim_phc(0, 2*pi, lparams, 0, 1e-7)
@@ -931,6 +1127,12 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
 
 .optimphase1 <- function(spec)
 {
+   fmidzero <- function(V) {
+      SI <- length(V)
+      x0 <- (spec$param$SOLVPPM+abs(spec$pmin))/spec$acq$SW
+      V[ round(SI*(x0-0.3/spec$acq$SW)):round(SI*(x0+0.3/spec$acq$SW)) ] <- 0+0i
+      return(V)
+   }
    spec1r_cal <- function(flg=0,midzero=0) {
       if (flg==0) { 
           fid <- spec$fid0
@@ -938,13 +1140,10 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
           fid <- spec$fid
       }
       m <- length(fid)
-      Spectrum <- fft(fid)
+      Spectrum <- stats::fft(fid)
       p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
       V <- c( Spectrum[seq1], Spectrum[seq2] )
-      if (midzero==1) {
-          N <- length(fid); SW <- spec$acq$SW
-          V[ round(N*(0.5-0.3/SW)):round(N*(0.5+0.3/SW)) ] <- 0+0i
-      }
+      if (midzero==1) V <- fmidzero(V)
       return(V)
    }
 
@@ -974,17 +1173,17 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    }
 
    # Compute criterim for phc1=0
-   spec1r <- spec1r_cal(flg=1,midzero=1)
+   spec1r <- fmidzero(spec$data0) # spec1r_cal(flg=1,midzero=1)
    blphc <-  ifelse( spec$param$BLPHC, 1, 0)
    best0 <- C_optim_phc(0, 0, list(re=Re(spec1r),im=Im(spec1r), phc0=spec$proc$phc0, phc1=0, alpha=0, p=0.95, blphc=blphc), -1, 0)
 
    # Optimisation of the first order phase
    if (spec$param$FRACPPM>0) {
-      spec1r <- spec1r_cal(flg=1,midzero=1)
+      spec1r <- fmidzero(spec$data0) # spec1r_cal(flg=1,midzero=1)
       opt <- OptimAlpha(spec$param$FRACPPM, spec$param$FRACPPM, 0)
    } else {
       # Step 1: Fast exploration of full space for alpha
-      spec1r <- spec1r_cal(flg=0,midzero=1)
+      spec1r <- fmidzero(spec$data0) # spec1r_cal(flg=0,midzero=1)
       opt <- OptimAlpha(0.125, 0.875, spec$param$INCFRACPPM1)
       # Step 2: Exploration of the optimial local space for alpha
       opt <- OptimAlpha(opt$fracppm-0.0625, opt$fracppm+0.0625, spec$param$INCFRACPPM1)
@@ -1017,7 +1216,7 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    # Calibration based on TSP
    if (spec$param$TSP) {
       x0 <- abs(spec$pmin)/SW
-      n1 <- round(m*(x0-0.3/SW)); n2 <- round(m*(x0+0.3/SW))
+      n1 <- round(m*(x0-0.4/SW)); n2 <- round(m*(x0+0.2/SW))
       range <- c(n1:n2)
       if (max(spec$int[ range ])>10*C_estime_sd(spec$int,128)) {
           n0 <- which(spec$int[ range ] == max(spec$int[ range ])) + n1 - 2
@@ -1031,21 +1230,12 @@ Spec1r.Procpar    <- Spec1r.Procpar.default
    spec
 }
 
-Spec1r.nullSpec <- function ()
-{
-   list( path=NULL, param=NULL, acq=NULL, proc=NULL, fid=NULL, data=NULL, int=NULL, dppm=NULL, pmin=NULL, pmax=NULL, ppm=NULL )
-}
-
 ### FID Processing - Main routine
 #--    DIR        : absolute path of the Bruker/Varian directory
 #--    procparams : list of processing parameters, see the  default parameter list 'Spec1rFromFID.params'
 ###
-.CALL <- function ( Input, param=Spec1r.Procpar )
+.CALL <- function ( Input, param=Spec1rProcpar )
 {
-
-   spec <- Spec1r.nullSpec()
-
-try({
 
    logfile <- param$LOGFILE
    if(param$DEBUG)
@@ -1067,6 +1257,14 @@ try({
       }
       if (param$VENDOR == "bruker" && param$INPUT_SIGNAL == "1r") {
          spec <- .read.1r.bruker(Input,param)
+         break
+      }
+      if (param$VENDOR == "rs2d" && param$INPUT_SIGNAL == "fid") {
+         spec <- .read.FID.rs2d(Input)
+         break
+      }
+      if (param$VENDOR == "rs2d" && param$INPUT_SIGNAL == "1r") {
+         spec <- .read.1r.rs2d(Input,param)
          break
       }
       if (param$VENDOR == "varian"){
@@ -1104,9 +1302,11 @@ try({
               spec <- .optimphase1(spec)
               if(param$DEBUG) .v("OK\n",logfile=logfile)
           }
+          spec$fid0 <- NULL
 
           # Get real spectrum
           spec$int <- ajustBL(Re(spec$data),0)
+          spec$data <- spec$data0 <- NULL
 
           # PPM calibration based on TSP
           if (param$TSP) {
@@ -1117,26 +1317,163 @@ try({
 
           # Zeroing of Negative Values
           if (param$RABOT) {
-              V <- quantile( spec$int[ spec$int < 0 ], 0.25 )
+              V <- stats::quantile( spec$int[ spec$int < 0 ], 0.25 )
               spec$int[ spec$int < V ] <- V
           }
       }
+
+      # Define spec list as a Spectrum object
+      class(spec) = "Spectrum"
+      # Ouput spec object
+
       break
    }
 
-}, TRUE)
-
-   # Ouput spec object
-   flush.console()
+   utils::flush.console()
    spec
 
 }
 
+## .Finalize
+# Get a list as output with the finalized spectra data ready to be plotted
+# Inputs:
+#   spec   : object obtained from the .CALL() function  (i.e. Spect1r.doProc() as external call)
+#   ratio  : ratio between the max intensity of the plot, and the max intensity of the spectrum; default value = 1
+#   ppm    : ppm window of the plot; default = all the spectrum
+# Outputs:
+#   x,y : spectra data (ppm, intensity)
+#   xlim, ylim : limits (ranges) of ppm(xlim) and intensity (ylim)
+#   tille : origin path of the spectra
+Finalize <- function(spec, ppm = c(spec$ppm[1], spec$ppm[spec$proc$SI]), ratio=1, reverse=TRUE)
+{
+   if (spec$param$TSP) spec <- .ppm_calibration(spec)
+
+   # Get real spectrum
+   spec.int <- spec$int
+   if (spec$param$RABOT) {
+       V <- stats::quantile( spec.int[ spec.int < 0 ], 0.25 )
+       spec.int[ spec.int < V ] <- V
+       spec.int <- ajustBL(spec.int,0)
+   }
+
+   # Graphic
+   i1<-which(spec$ppm>=ppm[1])[1]
+   i2<-length(which(spec$ppm<=ppm[2]))
+   ymax <- max( spec.int[i1:i2]/ratio )
+   ymin <- min( spec.int[spec.int<0], 0.0 )
+   #ymin <- ifelse(ymin>0.0, 0.0, max(1.1*ymin,-0.5*ymax))
+   title <- paste( basename(dirname(spec$path)),basename(spec$path),sep="/")
+   ppmlim <- ppm
+   if(reverse==TRUE) ppmlim <- rev(ppm)
+   list( x=spec$ppm[i1:i2], y=spec.int[i1:i2], xlim=ppmlim, ylim=c(ymin,ymax), title=title )
+}
+
+### Default print for the 'Spectrum' object
+printSpectrum = function(obj)
+{
+   cat(" Dir. Path = ", obj$path, "\n")
+   if (obj$acq$INSTRUMENT == 'bruker') {
+      cat(" Spectrometer = ", obj$acq$ORIGIN, "\n")
+      cat(" SOFTWARE     = ", obj$acq$SOFTWARE, "\n")
+      cat(" ORIGPATH     = ", obj$acq$ORIGPATH, "\n")
+   } else {
+      cat(" Spectrometer = ", obj$acq$INSTRUMENT, "\n")
+   }
+   cat(" PROBE     = ", obj$acq$PROBE, "\n",
+        "PULSE     = ", obj$acq$PULSE, "\n",
+        "SOLVENT   = ", obj$acq$SOLVENT, "\n",
+        "GRPDLY    = ", obj$acq$GRPDLY, "\n",
+        "TD        = ", obj$acq$TD, "\n",
+        "SI        = ", obj$proc$SI, "\n",
+        "SW        = ", obj$acq$SW, "\n",
+        "SWH       = ", obj$acq$SWH, "\n",
+        "SFO1      = ", obj$acq$SFO1, "\n",
+        "O1        = ", obj$acq$O1, "\n",
+        "-- phc0   = ", obj$phc0, "\n",
+        "-- phc1   = ", obj$phc1, "\n",
+        "ppm_min   = ", obj$pmin, "\n",
+        "ppm_max   = ", obj$pmax, "\n",
+        "delta_ppm = ", obj$dppm, "\n")
+   cat("\n")
+}
+
+### Plot the 'Spectrum' object
+#   ratio  : ratio between the max intensity of the plot, and the max intensity of the spectrum; default value = 1
+#   ppm    : ppm window of the plot; default = all the spectrum
+#   active : 0 => Open a new graphic window; 1 => put in the active graphic window (replace the content)
+plotSpectrum = function(obj, ppm = c(obj$ppm[1], obj$ppm[obj$proc$SI]), ratio=1, title="", 
+                         reverse=TRUE, active=FALSE, col="blue", overlay=FALSE, ovlCol="green" )
+{
+   g <- Finalize(obj, ppm, ratio=ratio)
+   if (nchar(title)==0) title <- g$title
+   if (overlay) {
+      graphics::lines( g$x, g$y, col=ovlCol )
+   } else {
+      if (active==FALSE) grDevices::dev.new()
+      graphics::plot( cbind( g$x, g$y), type="l", xlim=g$xlim, ylim=g$ylim, col=col, xlab="ppm", ylab="intensities", main=title)
+      graphics::abline(h=0,v=0, col="red")
+   }
+
+}
+
+writeSpec = function(spec, outdir, mode="bin", name="1r")
+{
+   ENDIAN <- "little"
+   SIZE <- 4
+   if (nchar(outdir)==0) stop("Error: outdir missing. You need to specify the output directory\n")
+   binfile <- paste(outdir,name,sep='/')
+
+   if (spec$param$TSP) spec <- .ppm_calibration(spec)
+
+   # Get real spectrum
+   spec.int <- spec$int
+   if (spec$param$RABOT) {
+       V <- stats::quantile( spec.int[ spec.int < 0 ], 0.25 )
+       spec.int[ spec.int < V ] <- V
+       spec.int <- ajustBL(spec.int,0)
+   }
+   zz <- file(binfile, "wb")
+   writeBin(as.integer(rev(spec.int)), zz, size=SIZE, endian=ENDIAN)
+   close(zz)
+
+   procfile <- paste(outdir,'procs',sep='/')
+   proclist <- c(
+       '##TITLE= Processing parameters, POSTPROC		Rnmr1D v1.2',
+       '##ORIGIN= Bruker BioSpin GmbH',
+       '@@ *** Processing parameters in the same format as generated by Bruker TopSpin software (procs) ***',
+       '##@BYTORDP= 0',
+       '##@DTYPP= 0',
+       paste('##@LB= ', spec$proc$LB, sep=''),
+       paste('##@GB= ', spec$proc$GB, sep=''),
+       '##@MC2= 0',
+       paste('##@OFFSET= ', spec$pmax, sep=''),
+       paste('##@PHC0= ', spec$phc0, sep=''),
+       paste('##@PHC1= ', spec$phc1*2*pi, sep=''),
+       '##@PH_mod= 1',
+       paste('##@SF= ', spec$acq$SFO1, sep=''),
+       paste('##@SI= ', spec$proc$SI, sep=''),
+       '##@SSB= 0',
+       paste('##@SW_p= ', spec$acq$SWH, sep=''),
+       paste('##@TDeff= ', spec$proc$SI, sep=''),
+       '##@WDW= 1',
+       paste('##@YMAX_p= ', max(spec$int), sep=''),
+       paste('##@YMIN_p= ', min(spec$int), sep=''),
+       '@@ *** Additionnal parameters ***',
+       '##@USER= djacob',
+       '##@EMAIL= djacob65@gmail.com',
+       '##@BLC_mod= Automatic baseline recognition',
+       paste('##@SOLVENT_mod= ', spec$proc$ZERO_SOLVENT_METH, sep=''),
+       paste('##@GRPDELAY= ', spec$acq$GRPDLY, sep='')
+   )
+   utils::write.table(proclist, file=procfile, sep='', row.names=F, col.names=F, quote=F)
+   system(paste("sed -i -e 's/^##@/##\\$/g' ", procfile, sep=''))
+}
 
 ### Write a Matrix of Spectrum in a binary mode (PACK format)
 #   specMat : the Matrix of Spectrum : 1 row <=> 1 spectrum, 1 column <=> a same value of ppm
 #   ppm_min, ppm_max :  the ppm range of the spectra
 #   filepack : the full path of binary file
+#' @export writeSpecMatrix
 writeSpecMatrix = function(specMat, ppm_min, ppm_max, filepack)
 {
    C_write_pack(specMat, ppm_min, ppm_max, filepack)
@@ -1148,12 +1485,14 @@ writeSpecMatrix = function(specMat, ppm_min, ppm_max, filepack)
 #         int: the Matrix of Spectrum : 1 row <=> 1 spectrum, 1 column <=> a same value of ppm
 #         nspec & size : respectively the number of spectra and their size points
 #         ppm_min & ppm_max : respectively the minimum and the maximum of the PPM range
+#' @export readSpecMatrix
 readSpecMatrix = function(filepack)
 {
    C_read_pack(filepack)
 }
 
 
+#' @export spec_ref
 spec_ref= function (specMat, selected=NULL)
 {
    if (is.null(selected)) {
@@ -1163,6 +1502,7 @@ spec_ref= function (specMat, selected=NULL)
    }
 }
 
+#' @export spec_ref_interval
 spec_ref_interval= function (specMat, istart, iend, selected=NULL)
 {
    if (is.null(selected)) {
@@ -1172,6 +1512,7 @@ spec_ref_interval= function (specMat, istart, iend, selected=NULL)
    }
 }
 
+#' @export segment_shifts
 segment_shifts = function (specMat, idx_vref, decal_max, istart, iend, selected=NULL)
 {
    if (is.null(selected)) {
@@ -1181,6 +1522,7 @@ segment_shifts = function (specMat, idx_vref, decal_max, istart, iend, selected=
    }
 }
 
+#' @export align_segment
 align_segment = function (specMat, shifts, istart, iend, selected=NULL)
 {
    if (is.null(selected)) {

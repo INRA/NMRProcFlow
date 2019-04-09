@@ -61,7 +61,7 @@ Write.LOG(LOGFILE, "Rnmr1D:  --- READING and CONVERTING ---\n", mode="at")
 #source("/srv/shiny-server/exec/libspec/libspec.R")
 
 # Read the parameters in the INI file
-procParams <- Parse.INI(INI.filename, INI.list=Spec1r.Procpar, section="PROCPARAMS")
+procParams <- Parse.INI(INI.filename, INI.list=Spec1rProcpar, section="PROCPARAMS")
 env.list <- Parse.INI(INI.filename, INI.list=list(), section="ENV")
 
 Write.LOG(LOGFILE, paste0("Rnmr1D:  Instrument/Vendor/Format = ", procParams$VENDOR, "\n"))
@@ -95,42 +95,56 @@ Write.LOG(LOGFILE, paste0("Rnmr1D:  -- Nb Spectra = ",dim(LIST)[1]," -- Nb Cores
 
 n <- 0
 init_counter(ProgressFile, dim(LIST)[1])
-tryCatch({
-    specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %dopar% {
-         ACQDIR <- LIST[x,1]
-         NAMEDIR <- ifelse( procParams$VENDOR=='bruker', basename(dirname(ACQDIR)), basename(ACQDIR) )
-         # Init the log filename
-         procParams$LOGFILE <- paste0(RAWDIR,'/',NAMEDIR,'.log')
-         procParams$PDATA_DIR <- file.path('pdata',LIST[x,3])
-         if (file.exists(procParams$LOGFILE)) unlink(procParams$LOGFILE)
-         spec <- Spec1r.doProc(Input=ACQDIR,param=procParams)
+specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %dopar% {
+     ACQDIR <- LIST[x,1]
+     NAMEDIR <- ifelse( procParams$VENDOR=='bruker', basename(dirname(ACQDIR)), basename(ACQDIR) )
+     PDATA_DIR <- ifelse( procParams$VENDOR=='rs2d', 'Proc', 'pdata' )
+     # Init the log filename
+     procParams$LOGFILE <- paste0(RAWDIR,'/',NAMEDIR,'.log')
+     procParams$PDATA_DIR <- file.path(PDATA_DIR,LIST[x,3])
+     if (file.exists(procParams$LOGFILE)) unlink(procParams$LOGFILE)
+     errMsg <- NULL
+     tryCatch({
+         spec <- Spec1rDoProc(Input=ACQDIR,param=procParams)
          if (procParams$INPUT_SIGNAL=='1r') Sys.sleep(0.3)
-
+         
          n <- n + 1
          inc_counter(ProgressFile, x)
-
+         
          # Add to the Supevisor Log file
          fileLog<-file(LOGFILE,"at")
-         if (! is.null(spec$acq)) {
-             writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3],"\n-----\n"), fileLog)
-         }
-         else {
-             writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3]," !!! FAILED !!!\n-----\n"), fileLog)
-         }
          if (file.exists(procParams$LOGFILE) && opts$debug) {
             infoLines <- readLines(procParams$LOGFILE)
             writeLines( paste0( paste(as.list(infoLines), collapse="\n"),"\n" ), fileLog)
          }
          if (is.null(spec$acq)) writeLines( paste0( geterrmessage(),"\n" ), fileLog)
+         if (! is.null(spec$acq)) {
+             writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3]," - OK\n-----\n"), fileLog)
+         }
+         else {
+             writeLines(paste0("[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3]," !!! FAILED !!!\n-----\n"), fileLog)
+         }
          close(fileLog)
-
+         if (procParams$INPUT_SIGNAL=='1r') Sys.sleep(0.3)
+         
          if (dim(LIST)[1]>1) {
              list( x, spec )
          } else {
              spec
          }
-    }
-    gc()
+     }, error=function(e) {
+         Sys.sleep(0.3)
+         inc_counter(ProgressFile, x)
+         fileLog<-file(LOGFILE,"at")
+         writeLines(paste0("\n[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3]," !!! FAILED !!!\n",e), fileLog)
+         close(fileLog)
+         return(list(x, list(path=NULL, param=procParams, acq=NULL, proc=NULL, fid=NULL, int=NULL, dppm=NULL, pmin=NULL, pmax=NULL, ppm=NULL)))
+     })
+}
+
+gc()
+
+tryCatch({
 
     c <- get_counter(ProgressFile)
     if (c$value < c$size) Write.LOG(LOGFILE, "Rnmr1D:  ERROR! \n")
@@ -212,38 +226,37 @@ tryCatch({
     # Raw IDs : expno & procno 
     IDS <- cbind(basename(dirname(as.vector(LIST[,1]))), LIST[, c(2:3)])
     if (N>1) {
-       if (specList[,1]$acq$INSTRUMENT=="Bruker") {
-          PARS <- t(sapply(c(1:N), function(x) { c( samples[x, 1], samples[x, 2], IDS[x,c(2:3)],
-                    specList[,x]$acq$PULSE, specList[,x]$acq$NUC, specList[,x]$acq$SOLVENT, specList[,x]$acq$GRPDLY, 
-                    specList[,x]$proc$phc0, specList[,x]$proc$phc1,
-                    specList[,x]$acq$SFO1, specList[,x]$proc$SI, specList[,x]$acq$SW, specList[,x]$acq$SWH, 
-                    specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
+          PARS <- t(sapply( c(1:N), function(x) {
+                    c( specList[,x]$acq$PULSE, specList[,x]$acq$NUC,   specList[,x]$acq$SOLVENT,    specList[,x]$acq$GRPDLY, 
+                       specList[,x]$proc$phc0, specList[,x]$proc$phc1, specList[,x]$acq$SFO1,       specList[,x]$proc$SI, 
+                       specList[,x]$acq$SW,    specList[,x]$acq$SWH,   specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
           }))
-         colnames(PARS) <- c("Spectrum", "Samplecode", "EXPNO", "PROCNO", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
-       } else {
-          PARS <- t(sapply(c(1:N), function(x) { c( samples[x, 1], samples[x, 2], 
-                    specList[,x]$acq$PULSE, specList[,x]$acq$NUC, specList[,x]$acq$SOLVENT,
-                    specList[,x]$acq$GRPDLY, specList[,x]$proc$phc0, specList[,x]$proc$phc1,
-                    specList[,x]$acq$SFO1, specList[,x]$proc$SI, specList[,x]$acq$SW, specList[,x]$acq$SWH, 
-                    specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
-          }))
-         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
-       }
-       Write.LOG('nuc.txt', specList[,1]$acq$NUC)
+         Write.LOG('nuc.txt', specList[,1]$acq$NUC)
     } else {
-       if (spec$acq$INSTRUMENT=="Bruker") {
-          PARS <- t( c( samples[1, 1], samples[1, 2], IDS[1,c(2:3)],
-                    spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$acq$GRPDLY, spec$proc$phc0, spec$proc$phc1,
-                    spec$acq$SFO1, spec$proc$SI, specList$acq$SW, spec$acq$SWH, spec$acq$RELAXDELAY, spec$acq$O1))
-         colnames(PARS) <- c("Spectrum", "Samplecode", "EXPNO", "PROCNO", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
-       } else {
-          PARS <- t( c( samples[1, 1], samples[1, 2],
-                    spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$acq$GRPDLY, spec$proc$phc0, spec$proc$phc1,
-                    spec$acq$SFO1, spec$proc$SI, specList$acq$SW, spec$acq$SWH, spec$acq$RELAXDELAY, spec$acq$O1))
-         colnames(PARS) <- c("Spectrum", "Samplecode", "PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
-       }
-       Write.LOG('nuc.txt', spec$acq$NUC)
+          PARS <- t( c( spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$acq$GRPDLY, spec$proc$phc0,      spec$proc$phc1,
+                        spec$acq$SFO1,  spec$proc$SI, specList$acq$SW,  spec$acq$SWH,    spec$acq$RELAXDELAY, spec$acq$O1) )
+          Write.LOG('nuc.txt', spec$acq$NUC)
     }
+    LABELS <- c("PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )
+
+    if (N>1) { INSTRUMENT <- toupper(specList[,1]$acq$INSTRUMENT) }
+    else     { INSTRUMENT <- toupper(spec$acq$INSTRUMENT) }
+
+    if (regexpr('BRUKER', INSTRUMENT)>0) {
+       if (N>1) { PARS <- cbind( IDS[,c(2:3)], PARS ) } else { PARS <- c( IDS[1,c(2:3)], PARS ) }
+       LABELS <- c("EXPNO", "PROCNO", LABELS)
+    }
+    if (regexpr('RS2D', INSTRUMENT)>0) {
+       if (N>1) { PARS <- cbind( IDS[,3], PARS ) } else { PARS <- c( IDS[1,3], PARS ) }
+       LABELS <- c("PROCNO", LABELS)
+    }
+    if (N>1) {
+       PARS <- cbind( samples[,1], samples[,2], PARS )
+    } else {
+       PARS <- c( samples[1, 1], samples[1, 2], PARS )
+       PARS <- t(as.vector(PARS))
+    }
+    colnames(PARS) <- c("Spectrum", "Samplecode", LABELS )
     write.table(PARS, file='list_pars.csv', sep=";", row.names=F, col.names=T, quote=F)
 
     Write.LOG('origin.txt', paste(procParams$VENDOR, procParams$INPUT_SIGNAL, sep="\n"))
@@ -289,9 +302,9 @@ tryCatch({
     # the Supevisor Log file
     LOGFILE <- paste0(DATADIR,'/', conf$LOGFILE)
     Write.LOG(LOGFILE, "No processing\n", mode="at")
-
 }, error=function(e) {
    fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
    writeLines(paste0("ERROR: ",e) , fh)
    close(fh)
 })
+

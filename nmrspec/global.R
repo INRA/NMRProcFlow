@@ -9,6 +9,7 @@ library(openxlsx)
 
 # R options: See https://rdrr.io/r/base/options.html
 
+source("exec/generateMetadata.R")
 source("exec/RnmrTools.R")
 
 conffile <- "conf/global.ini"
@@ -21,7 +22,7 @@ if (conf$CORES==0) {
    conf$CORES <- detectCores()
 }
 
-MAXZIPSIZE <- 200
+MAXZIPSIZE <- 500
 if (is.numeric(conf$MAXZIPSIZE) && as.numeric(conf$MAXZIPSIZE)>0) {
     MAXZIPSIZE <- as.numeric(conf$MAXZIPSIZE)
 }
