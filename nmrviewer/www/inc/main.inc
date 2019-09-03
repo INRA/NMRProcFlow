@@ -231,6 +231,10 @@ if (!$conf->error) {
        Spectrum.view();
    }
 
+   var spectrum_reset = function () {
+       Spectrum.AJ_XMS();
+   }
+
    var slider_view = function () {
        $( "#slider-vertical" ).slider({
            orientation: "vertical",

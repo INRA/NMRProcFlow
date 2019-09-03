@@ -6,12 +6,6 @@
    })
    outputOptions(output, "panelHeader", suspendWhenHidden = FALSE)
 
-   output$patchO1param <- reactive({
-       values$header
-       conf$O1_PARAM_PATCH==1
-   })
-   outputOptions(output, "patchO1param", suspendWhenHidden = FALSE)
-
    observeEvent( values$psession, {
        if (values$psession==1) {
           showTab(inputId = "conditionedPanels", target = "Processing", select=TRUE)
@@ -200,14 +194,20 @@
             if (! is.null(procpar$LB))      { updateNumericInput(session, "LB", value = as.numeric(procpar$LB)); }
             if (! is.null(procpar$GB))      { updateNumericInput(session, "GB", value = as.numeric(procpar$GB)); }
             if (! is.null(procpar$PHC0))    { updateCheckboxInput(session, "optimphc0", value = ifelse( procpar$PHC0=="TRUE", 1, 0)); }
-            if (! is.null(procpar$PHC1))    { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); }
+            if (! is.null(procpar$PHC1))    { updateCheckboxInput(session, "optimphc1", value = ifelse( procpar$PHC1=="TRUE", 1, 0)); 
+                if (! is.null(procpar$CRIT1) && as.numeric(procpar$CRIT1) %in% c(1,2,3)) {
+                    updateCheckboxInput(session, "CRITSTEP1", value = as.numeric(procpar$CRIT1));
+                    v_options <- c('0','1'); names(v_options) <- c("Negative values", "Absolute Positive");
+                    updateSelectInput(session, "CRITSTEP1", choices = v_options, selected=as.numeric(procpar$CRIT1))
+                }
+            }
             if (! is.null(procpar$ZNEG))    { updateCheckboxInput(session, "rabot", value = ifelse( procpar$ZNEG=="TRUE", 1, 0)); }
             if (! is.null(procpar$TSP))     { updateCheckboxInput(session, "zeroref", value = ifelse( procpar$TSP=="TRUE", 1, 0)); }
             if (! is.null(procpar$O1RATIO)) { updateCheckboxInput(session, "o1param", value = ifelse( as.numeric(procpar$O1RATIO)>0, 1, 0));
                 if (as.numeric(procpar$O1RATIO)>0) updateNumericInput(session, "o1ratio", value = as.numeric(procpar$O1RATIO));
             }
             if (! is.null(procpar$ZF))      { updateCheckboxInput(session, "zerofilling", value = ifelse( as.numeric(procpar$ZF)>0, 1, 0));
-                if (as.numeric(procpar$ZF)>0) {
+                if (as.numeric(procpar$ZF)>0 && as.numeric(procpar$ZF) %in% c(2,4)) {
                     v_options <- c('2','4'); names(v_options) <- c("x2","x4");
                     updateSelectInput(session, "zffac", choices = v_options, selected=as.numeric(procpar$ZF))
                 }
@@ -223,7 +223,7 @@
    ##---------------
    ## Preprocessing : Launch Rnmr1D package
    ##---------------
-   submit_job_preProcess <- function(procParams) {
+   submit_job_preProcess <- function() {
        ret <- 1
        ErrMsg <<- "ERROR: "
        tryCatch({ repeat {
@@ -269,7 +269,7 @@
              generate_INI_file(procParams)
 
              # Launch Rnmr1D ...
-             cmdR <- paste(conf$Rscript_exec,"Rnmr1D -d -i ", as.character(outDir), "  -o ", as.character(outDataViewer), sep="")
+             cmdR <- paste(conf$Rscript_exec,"Rnmr1D -i ", as.character(outDir), "  -o ", as.character(outDataViewer), sep="")
              RET <- submit_Rscript(outDir, outDataViewer, cmdR)
              if (RET!=0) {
                  ErrMsg <<- "ERROR: error occured while launching"
@@ -381,33 +381,41 @@
             procParams$READ_RAW_ONLY <<- TRUE
             CMD <- paste0("#%% Vendor=",input$vendor,"; Type=",input$spectype,"; ")
             if (input$spectype=="fid") {
-               procParams$READ_RAW_ONLY <<- FALSE
-               procParams$LB <<- as.numeric(input$LB)
-               procParams$GB <<- as.numeric(input$GB)
-               procParams$REVTIME <<- ifelse(input$vendor == 'varian' || input$vendor == 'jeol', TRUE, FALSE)
-               procParams$ZEROFILLING <<- ifelse(input$zerofilling==1, TRUE, FALSE)
-               procParams$ZFFAC <<- as.numeric(input$zffac)
-               procParams$OPTPHC0 <<- TRUE
-               procParams$OPTPHC1 <<- ifelse(input$optimphc1==1, TRUE, FALSE)
-               procParams$BLPHC <<- ifelse(input$optimphc1==1, TRUE, FALSE)
-               procParams$RABOT <<- ifelse(input$rabot==1, TRUE, FALSE)
-               procParams$TSP <<- ifelse(input$zeroref==1, TRUE, FALSE)
-               CMD <- paste0(CMD, "LB=",input$LB,"; GB=",input$GB, "; ")
-               CMD <- paste0(CMD, "ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
-               CMD <- paste0(CMD, "BLPHC=",input$optimphc1,"; PHC1=",input$optimphc1, "; FP=0; ")
-               CMD <- paste0(CMD, "TSP=",input$zeroref)
-               if (conf$O1_PARAM_PATCH==1 && input$o1param==1) {
-                   procParams$TSP <<- FALSE
-                   procParams$O1RATIO <<- as.numeric(input$o1ratio)
-                   CMD <- paste0(CMD, "; O1RATIO=",input$o1ratio)
-               }
+                procParams$READ_RAW_ONLY <<- FALSE
+                procParams$LB <<- as.numeric(input$LB)
+                procParams$GB <<- as.numeric(input$GB)
+                procParams$OC <<- FALSE
+                procParams$JGD_INNER <<- TRUE
+                procParams$OPTPHC0 <<- ifelse(input$optimphc1==0, TRUE, FALSE) # TRUE
+                procParams$OPTPHC1 <<- ifelse(input$optimphc1==1, TRUE, FALSE)
+                procParams$CRITSTEP1 <<- as.numeric(input$CRITSTEP1)
+                procParams$OPTCRIT1 <<- 2
+                procParams$BLPHC <<- 50
+                procParams$KSIG <<- 2
+                procParams$GAMMA <<- 0.005
+                procParams$RATIOPOSNEGMIN <<- 0.45
+                procParams$REVPPM <<- ifelse(input$vendor == 'varian' || input$vendor == 'jeol', TRUE, FALSE)
+                procParams$ZEROFILLING <<- ifelse(input$zerofilling==1, TRUE, FALSE)
+                procParams$ZFFAC <<- as.numeric(input$zffac)
+                procParams$RABOT <<- ifelse(input$rabot==1, TRUE, FALSE)
+                procParams$TSP <<- ifelse(input$zeroref==1, TRUE, FALSE)
+                CMD <- paste0(CMD, "LB=",input$LB,"; GB=",input$GB, "; " )
+                CMD <- paste0(CMD, "ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
+                CMD <- paste0(CMD, "PHC1=",input$optimphc1, "; ")
+                CMD <- paste0(CMD, "CRIT1=",input$CRITSTEP1, "; ")
+                CMD <- paste0(CMD, "TSP=",input$zeroref)
+                if (input$o1param==1) {
+                    procParams$TSP <<- FALSE
+                    procParams$O1RATIO <<- as.numeric(input$o1ratio)
+                    CMD <- paste0(CMD, "; O1RATIO=",input$o1ratio)
+                }
             }
             write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), paste0(CMD,"\n"), "wt")
             values$error <- 0
             ERROR$MsgErrLoad <- ''
             closeAlert(session, "ErrAlertLoadId")
             # Launch Rnmr1D package
-            if (submit_job_preProcess(procParams)==1) {
+            if (submit_job_preProcess()==1) {
                 procJobName <<- 'preprocess'
                 values$jobrun <- 1
                 ERROR$MsgErrLoad <- ''

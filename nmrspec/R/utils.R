@@ -2,6 +2,9 @@
 zonelist1 <- c('zones2_list.in')
 zonelist2 <- c('zones3_list.in', 'zones4_list.in', 'zones5_list.in', 'vsb_list.in')
 
+.toM <- function(x) { M <- matrix(as.numeric(t(x)), nrow=dim(x)[2], ncol=dim(x)[1]); M <- t(M); 
+                     colnames(M) <- colnames(x); rownames(M) <- rownames(x); M }
+
 #----
 # Write Text lines 'msg' into file 'filetext'
 #----
@@ -134,21 +137,20 @@ get_specMat <- function()
    return(specMat)
 }
 
-
 #----
 # Get the bucket list where SNR < snrlevel
 #----
 get_Buckets_upperSNR <- function(buckets, outsnr, snrlevel)
 {
-     bucnames <- gsub("^(\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
+     bucnames <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
      if (dim(outsnr)[1]>3) {
-        # SNR threshold is appled on the 3rd quartile (1=>0%, 2=>25%, 3=>50%, 4=>75%, 5=>100%)
-        SNRavg <- simplify2array(lapply( as.list(outsnr[, bucnames]), function(v) { quantile(as.numeric(v)) } ))[4, ]
+        # SNR threshold is applied on the 3rd quantile (1=>0%, 2=>25%, 3=>50%, 4=>75%, 5=>100%)
+        SNRavg <- apply(.toM(outsnr[, bucnames]), 2, quantile)[4,]
         BUCsel <- names(SNRavg[ SNRavg>snrlevel ])
      } else {
         BUCsel <- bucnames
      }
-     BUCsel <- BUCsel[grep("\\.1", BUCsel, invert=TRUE)]
+     BUCsel <- BUCsel[grep("\\.1$", BUCsel, invert=TRUE)]
      BUCsel
 }
 

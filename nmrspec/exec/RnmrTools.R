@@ -11,6 +11,8 @@ options(show.error.locations = TRUE)
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 .N <- function(x) { as.numeric(as.vector(x)) }
 .C <- function(x) { as.vector(x) }
+.toM <- function(x) { M <- matrix(as.numeric(x), nrow=dim(x)[1], ncol=dim(x)[2]); 
+                     colnames(M) <- colnames(x); rownames(M) <- rownames(x); M }
 
 # Init counter
 init_counter <- function(ProgressFile, n) {
@@ -363,34 +365,33 @@ RCalib1D <- function(specMat, PPM_NOISE_AREA, zoneref, ppmref)
 {
    i1<-length(which(specMat$ppm>max(zoneref)))
    i2<-which(specMat$ppm<=min(zoneref))[1]
+   PPM_MIN <- -1000
+   PPM_MAX <- 1000
 
    # PPM calibration of each spectrum
+   Tdecal <- NULL
    for ( i in 1:specMat$nspec ) {
        i0 <- i1 + which(specMat$int[i, i1:i2]==max(specMat$int[i, i1:i2])) - 1
        ppm0 <- specMat$ppm_max - (i0-1)*specMat$dppm
        dppmref <- ppm0 - ppmref
-       decal <- 0
-       # sig <- fitdistr(specMat$int[i, length(which(specMat$ppm>PPM_NOISE_AREA[2])):(which(specMat$ppm<=PPM_NOISE_AREA[1])[1])], "normal")$estimate[2]
-       sig <- C_estime_sd(specMat$int[i, 1:specMat$size],128)
-       if (abs(dppmref) > specMat$dppm) {
-           decal <- trunc(dppmref/specMat$dppm)
-           dppmref <- dppmref - decal*specMat$dppm
-       }
-       if (abs(dppmref) > 0.5*specMat$dppm) {
-           decal <- decal + trunc(2*dppmref/specMat$dppm)
-           dppmref <- dppmref - trunc(2*dppmref/specMat$dppm)*specMat$dppm
-       }
-       if (decal==0) next
-
-       if (decal<0) {
-          specMat$int[i, 1:(specMat$size-abs(decal))] <- specMat$int[i,(1+abs(decal)):specMat$size]
-          specMat$int[i, (specMat$size-abs(decal)+1):specMat$size] <- rnorm(length((specMat$size-abs(decal)+1):specMat$size), mean=specMat$int[i,specMat$size-abs(decal)-1], sd=sig)
-       }
-       if (decal>0) {
-          specMat$int[i,(1+abs(decal)):specMat$size] <- specMat$int[i, 1:(specMat$size-abs(decal))]
-          specMat$int[i, 1:abs(decal)] <- rnorm(length(1:abs(decal)), mean=specMat$int[i,abs(decal)+1], sd=sig)
-       }
+       Tdecal <- c(Tdecal, dppmref)
+       PPM_MIN <- max(PPM_MIN, specMat$ppm_min-dppmref)
+       PPM_MAX <- min(PPM_MAX, specMat$ppm_max-dppmref)
    }
+   N <- length(seq(from=PPM_MIN, to=PPM_MAX, by=specMat$dppm))
+   M <- NULL
+   for(i in 1:specMat$nspec) {
+       ppm <- specMat$ppm - Tdecal[i]
+       P <- ppm>PPM_MIN & ppm<=PPM_MAX
+       V <- specMat$int[i,P]
+       if (length(V)<N) { V <- c(V, rep(0,N-length(V)) ) }
+       if (length(V)>N) { V <- V[1:N] }
+       M <- rbind(M, V)
+   }
+   specMat$int <- M
+   specMat$ppm_min <- PPM_MIN
+   specMat$ppm_max <- PPM_MAX
+   specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
    return(specMat)
 }
 
@@ -725,8 +726,8 @@ RWarp1D <- function(specMat, zone, idxSref=0, warpcrit=c("WCC","RMS"), Selected=
 
    ref    <- M[refid, ]
    ssampl <- M[ c(1:nspec)[-refid], ]
-   #out    <- ptw(ref, ssampl, warp.type = "individual", mode = "forward", optim.crit=warpcrit)
-   out    <- ptw(ref, ssampl, warp.type = "global", mode = "forward", init.coef = c(0, 1, 0), optim.crit=warpcrit)
+   out    <- ptw(ref, ssampl, warp.type = "individual", mode = "forward", optim.crit=warpcrit)
+   #out    <- ptw(ref, ssampl, warp.type = "global", mode = "forward", init.coef = c(0, 1, 0), optim.crit=warpcrit)
    M      <- out$warped.sample
    M[is.na(M)] <- 0
    if( is.null(Selected)) specMat$int[ c(1:nspec)[-refid],c(i1:i2)] <- M else specMat$int[ Selected[-refid],c(i1:i2)] <- M
@@ -864,7 +865,7 @@ check_MacroCmdFile <- function(CMD.filename) {
       CMD <- CMDTEXT[ grep( "^[^#]", CMDTEXT ) ]
       CMD <- gsub("^ ", "", gsub(" $", "", gsub(" +", ";", CMD)))
       L <- unique(sort(gsub(";.*$","", CMD)))
-      L <- L[ grep( "^[^0-9]", L)]
+      L <- L[ grep( "^[^0-9-]", L)]
       ret <- ifelse( sum(L %in% allowKW)==length(L), 1, 0 )
    }, error=function(e) {
        ret <- 0
@@ -1157,7 +1158,7 @@ get_Buckets_table <- function(bucketfile)
       # Read the buckets
       buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
       colnames(buckets) <- c("center", "width")
-      buckets$name <- gsub("^(\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
+      buckets$name <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
       buckets$min <- buckets[,1]-0.5*buckets[,2]
       buckets$max <- buckets[,1]+0.5*buckets[,2]
      
@@ -1208,7 +1209,7 @@ get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA
       factorsFile <- file.path(dirname(bucketfile),"factors")
       factors <- read.table(factorsFile, header=F, sep=";", stringsAsFactors=FALSE)
       # write the data table
-      bucnames <- gsub("^(\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
+      bucnames <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
       outdata <- cbind( samples[, -1], buckets_IntVal )
       colnames(outdata) <- c( factors[,2], bucnames )
    }
@@ -1243,7 +1244,7 @@ get_SNR_dataset <- function(specMat, bucketfile, zone_noise, ratio=TRUE)
       Vnoise <- abs( C_noise_estimate(specMat$int, i1, i2, flg) )
       MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
       # write the data table
-      bucnames <- gsub("^(\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
+      bucnames <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
       if (ratio) {
          outdata <- cbind( samples[, -1], MaxVals/(2*Vnoise))
          colnames(outdata) <- c( factors[,2], bucnames )
@@ -1251,7 +1252,8 @@ get_SNR_dataset <- function(specMat, bucketfile, zone_noise, ratio=TRUE)
          outdata <- cbind( samples[, -1], Vnoise, MaxVals )
          colnames(outdata) <- c( factors[,2], 'Noise', bucnames )
       }
-      outdata <- data.frame(outdata, stringsAsFactors=FALSE)
+      
+      #outdata <- data.frame(outdata, stringsAsFactors=FALSE)
    }
    return(outdata)
 }

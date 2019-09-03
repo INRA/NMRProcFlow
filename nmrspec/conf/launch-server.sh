@@ -72,6 +72,12 @@ fi
 
 set -e
 
+# Cache issues with Apache EnableSendfile option enabled within a VirtualBox VM (vboxsf )
+# See https://stackoverflow.com/questions/6921670/prevent-virtualbox-guest-from-delivering-cached-files
+# Very annoying during the development phase
+[ $DEV -eq 1 ] && sed -i -e "s/^EnableSendfile .*$/EnableSendfile off/" /etc/apache2/apache2.conf
+[ $DEV -eq 1 ] && sed -i -e "s/^EnableMMAP .*$/EnableMMAP Off/" /etc/apache2/apache2.conf
+
 # Apache gets grumpy about PID files pre-existing
 rm -f /var/run/apache2/apache2.pid
 

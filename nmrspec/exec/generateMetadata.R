@@ -1,3 +1,8 @@
+# ID generateMetadata.R
+# Copyright (C) 2017-2019 INRA
+# Authors: D. Jacob
+#
+
 #' generateMetadata
 #'
 #' \code{generateMetadata} Generate the metadata from the list of raw spectra namely the samples, the experimental factors and the list of selected raw spectra. Depending on whether the sample matrix is supplied as input or not, 
@@ -120,6 +125,7 @@ generate_Metadata_Bruker_fid <- function(RAWDIR, procParams)
       M <-  MS[, c(1,2) ]
    }
    if (nr==1 && class(M)=="character") M <- as.matrix(t(M))
+   if (nr>1 && length(unique(sort(M[,2])))==1) M[,2] <- M[,1]
 
    metadata$ERRORLIST <- ERRORLIST
    if (OKRAW==1) {

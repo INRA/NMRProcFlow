@@ -87,6 +87,20 @@ Write.LOG(LOGFILE,paste0("Rbuc1D:  Bucketing method = ",procParams$BUCMETH));
 MAXBUCKETS<-2000
 NOISE_FAC <- 3
 
+check_Vnoise <- function(specMat, PPM_NOISE_AREA)
+{
+   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+   Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
+   ret <- FALSE
+   if (length(which(abs(Vnoise)==Inf))>0 || sum(is.nan(Vnoise))>0 || sum(Vnoise==0)>0) {
+      fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+      writeLines(paste0("ERROR: ", "Noise estimation failed : Check if the ppm range for noise is correct") , fh)
+      close(fh)
+      ret <- TRUE
+   }
+   ret
+}
+
 #------------------------------
 # Uniforme Buckets
 #------------------------------
@@ -109,12 +123,12 @@ repeat {
    } else {
        PPM_NOISE_AREA <- c(min(zone), max(zone))
    }
+   if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
+   
    idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
-
    Vref <- spec_ref(specMat$int)
    ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
    Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
-
    bucsize <- procParams$UNIF_R
    Write.LOG(LOGFILE,paste("Rbuc1D:  PPM Resolution = ",bucsize))
 
@@ -138,7 +152,7 @@ repeat {
    Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(M)[1]))
 
    f_append <- ifelse (file.exists(bucketfile) && procParams$BUCAPPEND==TRUE, TRUE, FALSE )
-   write.table(M[ M[,1]>0, ], file=bucketfile, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
+   write.table(M, file=bucketfile, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
 
    # remove the PPM ranges file
    unlink(zonesfile)
@@ -173,6 +187,7 @@ repeat {
    # Indicate that it will be needed to save the new spectra matrix
    fWriteSpec <- TRUE
 
+   Write.LOG(LOGFILE,"Rbuc1D:  OK")
    Write.LOG(LOGFILE,"Rbuc1D: ")
    break
 }
@@ -199,8 +214,9 @@ repeat {
    } else {
        PPM_NOISE_AREA <- c(min(zone), max(zone))
    }
-   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+   if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
 
+   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
    Vref <- spec_ref(specMat$int)
    ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
    Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
@@ -243,7 +259,7 @@ repeat {
 
    M <- cbind( (buckets_zones[,1] + buckets_zones[,2])/2, abs(buckets_zones[,1] - buckets_zones[,2]))
    f_append <- ifelse (file.exists(bucketfile) && procParams$BUCAPPEND==TRUE, TRUE, FALSE )
-   write.table(M[ M[,1]>0, ], file=bucketfile, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
+   write.table(M, file=bucketfile, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
 
    # remove the PPM ranges file
    unlink(zonesfile)

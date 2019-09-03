@@ -87,6 +87,12 @@ class nmrproc_view extends nmrproc_conf {
            }
            fclose($handle);
         }
+        if (($handle = fopen($this->DATADIR."/ppmrange.txt", "r")) !== FALSE) {
+           $data = fgetcsv($handle, 1000, ";");
+           fclose($handle);
+           $this->PPM_MIN = $data[1];
+           $this->PPM_MAX = $data[0];
+        }
         if (strlen($this->imgtype)==0) $this->imgtype=$this->IMGTYPE;
         $this->PPM1 = $this->val1 ? $this->val1 : $this->PPM_MIN;
         $this->PPM2 = $this->val2 ? $this->val2 : $this->PPM_MAX;

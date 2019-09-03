@@ -22,7 +22,7 @@ ui_proc_process <- column(12,
               column(3,
                   tags$strong('Range of the PPM reference:', class="textlabs"),tags$br(), inputTextarea("ppmrefrange", supclass="single", nrows=1, ncols=18, value=""),
                   numericInput("ppmref", "PPM value of the center of resonance:", 0, min = 0, max = 12, step=0.1),
-                  tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange4", supclass="single", nrows=1, ncols=18, value="10.5 10.2"),
+                  tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange4", supclass="single noise", nrows=1, ncols=18, value="10.5 10.2"),
                   bsTooltip("ppmnoiserange4", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
               )
          ),
@@ -41,7 +41,7 @@ ui_proc_process <- column(12,
               # Select Correction type & Noise area
               column(4,
                   selectInput("bctype", "Type of Correction", c("Global Correction" = "1", "Local Correction" = "4", "q-NMR" = "3"), selected = "1"),
-                  tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange", supclass="single", nrows=1, ncols=18, value="10.5 10.2"),
+                  tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange", supclass="single noise", nrows=1, ncols=18, value="10.5 10.2"),
                   bsTooltip("ppmnoiserange", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
 
               ),
@@ -85,7 +85,7 @@ ui_proc_process <- column(12,
                      conditionalPanel(condition="input.alignmeth==3",
                          numericInput("resclupa", "Resolution (ppm)", 0.03, min = 0.02, max = 1, step=0.01),
                          numericInput("snrpiclev", "SNR threshold:", 5, min = 0, max = 10, step=1),
-                         tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange3", supclass="single", nrows=1, ncols=18, value="10.5 10.2"),
+                         tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange3", supclass="single noise", nrows=1, ncols=18, value="10.5 10.2"),
                          bsTooltip("ppmnoiserange3", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
                      )
               ),
@@ -151,7 +151,7 @@ ui_proc_bucket <- column(12,
          conditionalPanel(condition="input.bucmeth=='ERVA'", numericInput("erva_r", "Resolution Factor:", 0.005, min = 0.001, max = 0.01, step=0.001)),
          conditionalPanel(condition="input.bucmeth=='uniforme' || input.bucmeth=='ERVA' || input.bucmeth=='AIBIN'", 
              numericInput("snrbuclev", "SNR threshold:", 3, min = 0, max = 10, step=1),
-             tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange2", supclass="single", nrows=1, ncols=18, value="10.5 10.2"),
+             tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange2", supclass="single noise", nrows=1, ncols=18, value="10.5 10.2"),
              bsTooltip("ppmnoiserange2", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
          ),
          conditionalPanel(condition="input.bucmeth!='bucreset'",
@@ -234,7 +234,7 @@ ui_proc_export <- column(12,
             numericInput("snrlevel", "SNR threshold:", 3, min = 0, max = 10, step=1)
          ),
          conditionalPanel(condition="input.eptype=='epdata' || input.eptype=='epsnr' || input.eptype=='epxlsx'",
-            tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmsnrnoise", supclass="single", nrows=1, ncols=18, value="10.5 10.2"),
+            tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmsnrnoise", supclass="single noise", nrows=1, ncols=18, value="10.5 10.2"),
             bsTooltip("ppmsnrnoise", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
          )
      ),

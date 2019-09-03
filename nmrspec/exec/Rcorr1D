@@ -75,6 +75,20 @@ CMD.filename <- file.path(DATADIR,conf$Rnmr1D_PCMD)
 Write.LOG(LOGFILE,"Rcorr1D: ")
 fWriteSpec <- FALSE
 
+check_Vnoise <- function(specMat, PPM_NOISE_AREA)
+{
+   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+   Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
+   ret <- FALSE
+   if (length(which(abs(Vnoise)==Inf))>0 || sum(is.nan(Vnoise))>0 || sum(Vnoise==0)>0) {
+      fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+      writeLines(paste0("ERROR: ", "Noise estimation failed : Check if the ppm range for noise is correct") , fh)
+      close(fh)
+      ret <- TRUE
+   }
+   ret
+}
+
 tryCatch({
 
 #------------------------------
@@ -91,7 +105,9 @@ repeat {
    } else {
        PPM_NOISE_AREA <- c(min(zone), max(zone))
    }
-   Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"));
+   if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
+
+   Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"))
 
    # get the PPM range
    zone <- as.numeric(simplify2array(strsplit(procParams$PPM_RANGE, " ")))
@@ -101,13 +117,15 @@ repeat {
    zoneref <- c(min(zone), max(zone))
 
    ppmref <- procParams$PPM_REF
-   Write.LOG(LOGFILE,paste("Rcorr1D:  PPM REF =",ppmref,", Zone Ref = (",min(zoneref),",",max(zoneref),")"));
+   Write.LOG(LOGFILE,paste("Rcorr1D:  PPM REF =",ppmref,", Zone Ref = (",min(zoneref),",",max(zoneref),")"))
    Write.LOG(LOGFILE,"Rcorr1D: ")
 
    CMDINFO <- paste("#\n# Calibration: PPM REF =",ppmref,", Zone Ref = ( ",min(zoneref)," , ",max(zoneref)," )\n#\n")
    CMDINFO <- paste0(CMDINFO,paste("calibration",min(zoneref),max(zoneref),ppmref,min(PPM_NOISE_AREA),max(PPM_NOISE_AREA) ),"\n")
 
    specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref)
+   Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(specMat$ppm_max,";",specMat$ppm_min), mode="wt")
+   Write.LOG(LOGFILE,paste("Rcorr1D:  New PPM Range = (",specMat$ppm_min,",",specMat$ppm_max,")"))
 
    # Indicate that it will be needed to save the new spectra matrix
    fWriteSpec <- TRUE
@@ -165,6 +183,8 @@ repeat {
    } else {
        PPM_NOISE_AREA <- c(min(zone), max(zone))
    }
+   if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
+
    Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"));
 
    #zone <- as.numeric(simplify2array(strsplit(procParams$PPMBCRANGE, " ")))
@@ -218,6 +238,8 @@ repeat {
    } else {
        PPM_NOISE_AREA <- c(min(zone), max(zone))
    }
+   if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
+
    Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"));
 
    zone <- as.numeric(simplify2array(strsplit(procParams$PPMBCRANGE, " ")))

@@ -77,11 +77,6 @@ if (file.exists(CMD.filename)) {
    }
 }
 
-PPM_MIN <- env.list$PPM_MIN
-PPM_MAX <- env.list$PPM_MAX
-PPM_MIN_13C <- env.list$PPM_MIN_13C
-PPM_MAX_13C <- env.list$PPM_MAX_13C
-
 # Get the list of all Raw directories
 LIST <- read.table(file.path(DATADIR,'rawids.csv'), sep=';', stringsAsFactors=F)
 
@@ -106,14 +101,14 @@ specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %d
      errMsg <- NULL
      tryCatch({
          spec <- Spec1rDoProc(Input=ACQDIR,param=procParams)
-         if (procParams$INPUT_SIGNAL=='1r') Sys.sleep(0.3)
+         #Sys.sleep(0.3)
          
          n <- n + 1
          inc_counter(ProgressFile, x)
          
          # Add to the Supevisor Log file
          fileLog<-file(LOGFILE,"at")
-         if (file.exists(procParams$LOGFILE) && opts$debug) {
+         if (opts$debug && file.exists(procParams$LOGFILE)) {
             infoLines <- readLines(procParams$LOGFILE)
             writeLines( paste0( paste(as.list(infoLines), collapse="\n"),"\n" ), fileLog)
          }
@@ -133,7 +128,7 @@ specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %d
              spec
          }
      }, error=function(e) {
-         Sys.sleep(0.3)
+         #Sys.sleep(0.3)
          inc_counter(ProgressFile, x)
          fileLog<-file(LOGFILE,"at")
          writeLines(paste0("\n[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3]," !!! FAILED !!!\n",e), fileLog)
@@ -159,10 +154,18 @@ tryCatch({
     # Get all spectra that are correcly processed
     N <- dim(LIST)[1]
     idsOK <- NULL
+    PPM_MIN <- -1000
+    PPM_MAX <- 1000
     for(i in 1:N) {
        if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
-       if (! is.null(spec$acq) ) idsOK <- c( idsOK, i )
+       if (! is.null(spec$acq) ) {
+           idsOK <- c( idsOK, i )
+           PPM_MIN <- max(PPM_MIN, spec$pmin)
+           PPM_MAX <- min(PPM_MAX, spec$pmax)
+       }
     }
+    Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(PPM_MAX,";",PPM_MIN))
+
     if (length(idsOK)<N) {
        specList <- specList[,idsOK]
        samples <- samples[idsOK, ]
@@ -175,6 +178,7 @@ tryCatch({
        close(fh)
     }
 
+
     Write.LOG(LOGFILE, "Rnmr1D:  Generate the final matrix of spectra...\n")
 
     M <- NULL
@@ -185,7 +189,7 @@ tryCatch({
 
     for(i in 1:N) {
         if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
-        if (spec$acq$NUC == "13C") { PPM_MIN <- PPM_MIN_13C; PPM_MAX <- PPM_MAX_13C; }
+        #if (spec$acq$NUC == "13C") { PPM_MIN <- PPM_MIN_13C; PPM_MAX <- PPM_MAX_13C; }
         P <- spec$ppm>PPM_MIN & spec$ppm<=PPM_MAX
         V <- spec$int[P]
         vppm <- spec$ppm[P]
@@ -225,16 +229,17 @@ tryCatch({
 
     # Raw IDs : expno & procno 
     IDS <- cbind(basename(dirname(as.vector(LIST[,1]))), LIST[, c(2:3)])
+    toRad <- 180/pi
     if (N>1) {
           PARS <- t(sapply( c(1:N), function(x) {
-                    c( specList[,x]$acq$PULSE, specList[,x]$acq$NUC,   specList[,x]$acq$SOLVENT,    specList[,x]$acq$GRPDLY, 
-                       specList[,x]$proc$phc0, specList[,x]$proc$phc1, specList[,x]$acq$SFO1,       specList[,x]$proc$SI, 
-                       specList[,x]$acq$SW,    specList[,x]$acq$SWH,   specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
+                    c( specList[,x]$acq$PULSE, specList[,x]$acq$NUC, specList[,x]$acq$SOLVENT, specList[,x]$acq$GRPDLY, 
+                       specList[,x]$proc$phc0*toRad, specList[,x]$proc$phc1*toRad, specList[,x]$acq$SFO1, specList[,x]$proc$SI, 
+                       specList[,x]$acq$SW, specList[,x]$acq$SWH, specList[,x]$acq$RELAXDELAY, specList[,x]$acq$O1 )
           }))
          Write.LOG('nuc.txt', specList[,1]$acq$NUC)
     } else {
-          PARS <- t( c( spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$acq$GRPDLY, spec$proc$phc0,      spec$proc$phc1,
-                        spec$acq$SFO1,  spec$proc$SI, specList$acq$SW,  spec$acq$SWH,    spec$acq$RELAXDELAY, spec$acq$O1) )
+          PARS <- t( c( spec$acq$PULSE, spec$acq$NUC, spec$acq$SOLVENT, spec$acq$GRPDLY, spec$proc$phc0*toRad, spec$proc$phc1*toRad,
+                        spec$acq$SFO1, spec$proc$SI, specList$acq$SW, spec$acq$SWH, spec$acq$RELAXDELAY, spec$acq$O1) )
           Write.LOG('nuc.txt', spec$acq$NUC)
     }
     LABELS <- c("PULSE", "NUC", "SOLVENT", "GRPDLY", "PHC0","PHC1","SF","SI","SW", "SWH","RELAXDELAY","O1" )

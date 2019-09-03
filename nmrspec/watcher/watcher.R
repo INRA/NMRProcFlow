@@ -14,15 +14,13 @@ semapIn <- FALSE
 semapOut <- FALSE
 semapErr <- FALSE
 
-PROG <- ''
-SID <- ''
 meta_refresh <- ''
 html <- ''
 progress <- ''
 jscript <- ''
 
 get_jscript <- function(jvardocParent, value) {
-   return( paste0('<script>parent.document.getElementById("',jvardocParent,'").innerHTML="',value,'"; parent.jobStatusTrigger(); </script>') )
+   return( paste0('<script>parent.document.getElementById("',jvardocParent,'").innerHTML="',value,'"; parent.jobStatusTrigger();</script>') )
 }
 
 repeat {
@@ -33,10 +31,11 @@ repeat {
     # Gets Session Idenfier => SID
     opts <- strsplit(SERVER$path_info,'/')[[1]]
     opts <- opts[ opts != "" ]
-    if (length(opts)<3) break
+    if (length(opts)<4) break
     PROG <- opts[1]
     SID  <- opts[2]
     TYPE <- opts[3]
+    PROC <- opts[4]
 
     if (TYPE=='init')   LOGFILE <- conf$LOGFILE0
     if (TYPE=='view')   LOGFILE <- conf$LOGFILE0
@@ -80,6 +79,9 @@ repeat {
         fileLog <- file.path(DataViewer,LOGFILE)
         if (file.exists(fileLog)) {
            LOG <- readLines(fileLog)
+           LOG <- LOG[ grep("Spos=", LOG, invert=TRUE) ]
+           LOG <- LOG[ grep("No convergence", LOG, invert=TRUE) ]
+           LOG <- LOG[ grep("-- masking", LOG, invert=TRUE) ]
            NL <- length(LOG)
            FL <- max( NL-conf$INFOLINES, 1)
            html <- paste0(html,"<pre>", paste(as.list(LOG[c((FL):(NL))]), collapse="\n"),"</pre>" )

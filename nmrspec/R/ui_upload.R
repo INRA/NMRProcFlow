@@ -55,21 +55,36 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
     ),
     conditionalPanel(condition="input.spectype=='fid'",
         bsModal("modalAdvusers", "Pre-processing Parameters", "bsadvusers", size="large",
-            numericInput("LB", "Exp. Line Broadening:", 0.3, min = -1, max = 2, step=0.1),
-            numericInput("GB", "Gauss. Line Broadening:", 0, min = 0, max = 1, step=0.1),
-            checkboxInput("zerofilling", "Zero filling", TRUE),
-            conditionalPanel(condition="input.zerofilling==1",
-                  selectInput("zffac", "Max factor for Zero Filling:", c("x4"="4" , "x2"="2" ), selected = "2")
-            ),
-            checkboxInput("optimphc1", "first order phase setting", FALSE),
-            checkboxInput("rabot", "Zeroing of Negative Values", FALSE),
-            checkboxInput("zeroref", "TSP/TMS/DSS", FALSE),
-            conditionalPanel(condition="output.patchO1param==1",
-                  checkboxInput("o1param", "ignore the parameter of the spectral region center (O1)", FALSE),
-                  conditionalPanel(condition="input.o1param==1",
-                        numericInput("o1ratio", "Fractionnal value of the Sweep Width:", 0.28, min = 0.1, max = 0.5, step=0.1)
-                  )
-            )
+           column(5,
+               numericInput("LB", "Exp. Line Broadening:", 0.3, min = -1, max = 2, step=0.1),
+               numericInput("GB", "Gauss. Line Broadening:", 0, min = 0, max = 1, step=0.1),
+               checkboxInput("zerofilling", "Zero filling", TRUE),
+               conditionalPanel(condition="input.zerofilling==1",
+                     selectInput("zffac", "Max factor for Zero Filling:", c("x4"="4" , "x2"="2" ), selected = "2")
+               ),
+               checkboxInput("optimphc1", "first order phase setting", FALSE),
+               conditionalPanel(condition="input.optimphc1==1",
+                     selectInput("CRITSTEP1", "Criterion for first order phasing optimization:", 
+                               c("Negative values"="0", "Absolute Positive"="1"), selected = "0")
+               ),
+               checkboxInput("rabot", "Zeroing of Negative Values", FALSE),
+               checkboxInput("zeroref", "TSP/TMS/DSS", FALSE),
+               checkboxInput("o1param", "ignore the parameter of the spectral region center (O1)", FALSE),
+               conditionalPanel(condition="input.o1param==1",
+                     numericInput("o1ratio", "Fractionnal value of the Sweep Width:", 0.28, min = 0.1, max = 0.5, step=0.1)
+               )
+           ),
+           column(6, tags$p(class="textlabs", "Advices on parameter setting"), 
+                    tags$br(), tags$br(), 
+                    tags$p(class="textblock", "First, try phasing without optimizing phase 1 for a fast preprocessing. In many cases, this produces a very acceptable result for fingerprinting approach."),
+                    tags$p(class="textblock","If the resulting phasing is not acceptable, then try phasing with optimizing phase 1. The optimization can be done according to 2 criteria. Testing one and then the other in order to obtain the best result."),
+                    tags$p(class="textblock","Also consider playing with the LB parameter, either by decreasing or increasing it a little. This improves phasing in some cases."),
+                    tags$p(class="textblock", "Remember to use the'reset' button to avoid reloading the ZIP file."),
+                    tags$hr(),
+                    tags$p(class="textblock", "In order to calibrate the ppm scale when a set of spectra has not been acquired with the same locking frequency, it is possible to ignore the spectral region center parameter due to the fact it exhibes in this case large differences between spectra."),
+                    tags$p(class="textblock", "Instead, the zero will be located at the third of the sweep width."),
+                    tags$br(), tags$br()
+           )
         )
     ),
     column(8,

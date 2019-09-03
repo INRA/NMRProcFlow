@@ -1,4 +1,12 @@
+/*
+  ID libCspec.cpp
+  Copyright (C) 2017-2019 INRA
+  Authors: D. Jacob
+*/
+ 
 // See https://teuder.github.io/rcpp4everyone_en/
+// https://knausb.github.io/2017/08/header-files-in-rcpp/
+
 #include <Rcpp.h>
 #include <iostream>
 #include <fstream>
@@ -241,13 +249,23 @@ double WinMoy (SEXP v, int n1, int n2)
 SEXP Smooth (SEXP v, int n)
 {
     NumericVector specR(v);
-    int n1,n2,N;
-    N = specR.size();
+    int N = specR.size();
     NumericVector S(N);
-    for (int count=0; count<N; count++) {
-        n1 = count >= n ? count - n : 0;
-        n2 = count <= N - n - 1 ? count + n : N - 1;
-        S[count] = WinMoy(specR,n1,n2);
+    
+    double W=specR[0];
+    for (int k=1; k<N; k++) {
+        if (k<=n) {
+           W += (specR[2*k-1] + specR[2*k]);
+           S[k] = W/(2*k+1);
+        }
+        if (k>n && k<(N-n-1)) {
+           W += (specR[k+n]- specR[k-n-1]);
+           S[k] = W/(2*n+1);
+        }
+        if (k>(N-n) && k<N) {
+           W -= (specR[2*k-N]- specR[2*k-N-1]);
+           S[k] = W/(2*(N-k)-1);
+        }
     }
     return S;
 }
@@ -994,10 +1012,9 @@ SEXP ajustBL (SEXP x, int flg) {
    return(Y);
 }
 
-// C_corr_spec_re( l=list(spec1r$re, spec1r$im, phc0, phc1, alpha) )
+// C_corr_spec_re( l=list(spec1r$re, spec1r$im, phc0, phc1) )
 //   m <- length(spec1r)
-//   dm <- round(m*fracppm)
-//   Omega <- (-dm:(m-1-dm))/m
+//   Omega <- (0:(m-1))/m
 //   phi <- phc0 + phc1*2*pi*Omega
 //   Yrot <- spec1r * exp(complex(real=0,imaginary=phi)) # spectrum rotation
 
@@ -1009,16 +1026,15 @@ SEXP C_corr_spec_re (SEXP l)
    NumericVector im = as<NumericVector>(spec["im"]);
    double phc0 = as<double>(spec["phc0"]);
    double phc1 = as<double>(spec["phc1"]);
-   double alpha = as<double>(spec["alpha"]);
    int n = re.size();
-   double phi, dn;
+   double phi;
 
    NumericVector S_re(n);
    NumericVector S_im(n);
-   dn=n*alpha;
    for (int i=0; i<n; i++)
    {
-       phi = phc0 + phc1*(i-dn)/n;
+       //phi = phc0 + phc1*(i/n-0.5);
+       phi = phc0 + phc1*i/n;
        S_re[i] = cos(phi)*re[i] - sin(phi)*im[i];
        S_im[i] = cos(phi)*im[i] + sin(phi)*re[i];
 
@@ -1031,183 +1047,89 @@ SEXP C_corr_spec_re (SEXP l)
    return new_spec;
 }
 
-// fmin (l=list(spec1r$re, spec1r$im, phc0, phc1, fracppm, p=alpha), x, flg)
-// depending on flg, the x value serves to evaluate the optimization criterium for either phc0 (flg=0) or phc1(flg=0)
-//   m <- length(spec1r)
-//   dm <- round(m*fracppm)
-//   Omega <- (-dm:(m-1-dm))/m
-//   phi <- phc0 + phc1*2*pi*Omega
-//   Yrot <- spec1r * exp(complex(real=0,imaginary=phi)) # spectrum rotation
-//   Yre <- Re(Yrot)
-//   n <- round(length(Yre)/32)
-//   sv <- simplify2array(lapply( c(3:29), function(x) { sd(Yre[((x-1)*n):(x*n)]); }))
-//   mv <- simplify2array(lapply( c(3:29), function(x) { median(Yre[((x-1)*n):(x*n)]); }))
-//   Yre <- Yre - mv[which.min(sv)]
-//   n <- round(length(Yre)/24)
-//   Yre <- Yre[n:(23*n)]
-//   si <- sign(Yre)  # sign of intensities
-//   Yre[abs(Yre) >= quantile(abs(Yre), p)] <- quantile(abs(Yre), p)  # trim the values
-//   Yre <- abs(Yre) * si  # spectral trimmed values
-//   YrePos <- Yre[Yre >= 0]  # select positive intensities
-//   POSss <- sum((YrePos)^2)  # SS for positive intensities
-//   ss <- sum((Yre)^2)  #  SS for all intensities
-//   ret <- 1- POSss/ss  # criterion : SS for positive values / SS for all intensities
-//}
-
-double fmin(SEXP l, double x, int flg)
+// [[Rcpp::export]]
+double Fmin(SEXP par, SEXP re, SEXP im, int blphc, double B, int flg=0)
 {
-   List spec(l);
-   NumericVector re = as<NumericVector>(spec["re"]);
-   NumericVector im = as<NumericVector>(spec["im"]);
-   double phc0  = as<double>(spec["phc0"]);
-   double phc1  = as<double>(spec["phc1"]);
-   double alpha = as<double>(spec["alpha"]);
-   int    blphc = as<int>(spec["blphc"]);
-   double p     = as<double>(spec["p"]);
-   const size_t n = (size_t)(re.size());
+   NumericVector P(par);
+   NumericVector Re(re);
+   NumericVector Im(im);
+   double phc0  = P[0];
+   double phc1  = P[1];;
+   const size_t n = (size_t)(Re.size());
    const size_t n2 = (size_t)(n/24);
    size_t i;
+   double phi, x0, Xmin, Xmax, SS;
 
-   // depending on flg, the x value serves to evaluate the optimization criterium for either phc0 (flg=0) or phc1(flg=1)
-   if (flg==0) phc0=x;
-   if (flg==1) phc1=x;
-
-   double quant, SSpos, SStot, ysign, ytrim;
-   double phi, dn;
-
-   NumericVector X(n), Yf(n), lb(n), V(n), P(1);
-   dn=n*alpha;
+   NumericVector X(n);
    for (i=0; i<n; i++) {
-       phi = phc0 + phc1*(i-dn)/n;
-       X[i] = cos(phi)*re[i] - sin(phi)*im[i];
+       //phi = phc0 + phc1*(i/n-0.5);
+       phi = phc0 + phc1*i/n;
+       X[i] = cos(phi)*Re[i] - sin(phi)*Im[i];
    }
-   if (blphc==1) {
-      double sig = C_estime_sd(X,128);
-      lb=C_Estime_LB2(X, 1, n-1, 100, 100, 3.0*sig);
-   }
-   for (i=0; i<n; ++i) {
-     if (i>n2 || i<(n-n2))
-         if (blphc==1) {
-             Yf[i] = X[i]-lb[i];
-         } else Yf[i] = X[i];
-     else
-         Yf[i] = 0;
-     V[i]= (Yf[i] > 0 ? Yf[i]:-Yf[i]);
+   X=ajustBL (X, 0);
+
+   NumericVector lb(n);
+   if (blphc>0)
+      lb=C_Estime_LB2(X, 1, n-1, blphc, blphc, B);
+
+   Xmax=Xmin=0;
+   for (i=n2; i<(n-n2); i++) {
+      if (blphc==0 && i>n/2 && i<n) X[i]=0;
+      if (blphc>0) X[i] -= lb[i];
+      if (X[i]<Xmin) Xmin=X[i];
+      if (X[i]>Xmax) Xmax=X[i];
    }
 
-  Rcpp::Environment base("package:stats"); 
-  Rcpp::Function quantile_r = base["quantile"];
-  P[0]=p;
-  NumericVector res = quantile_r(V, _["probs"] = P);
-  quant=res[0];
-
-   SSpos=SStot=0;
-   for (i=0; i<n; ++i) {
-      ysign = Yf[i] > 0 ? 1:-1;
-      ytrim = Yf[i]*ysign > quant ? quant*ysign:Yf[i];
-      SStot += ytrim*ytrim;
-      if (Yf[i] > 0) SSpos += ytrim*ytrim;
+   SS=0;
+   for (i=n2; i<(n-n2); i++) {
+       if (flg==0) SS +=  X[i] < 0 ? pow(X[i]/Xmax,2) : 0;
+       if (flg==1) SS +=  pow(X[i]/Xmax,2);
+       if (flg==2) SS +=  X[i] < 0 ? pow((X[i]-Xmin)/Xmax,2) : pow(Xmin,2);
+       if (flg==3) SS +=  pow(abs(X[i]/Xmax),0.5);
    }
-
-   return(1 - SSpos/SStot);
+   return(SS);
 }
-
-// C_optim_phc: Adapted directly from R devel optimize.c
-// See http://docs.rexamine.com/R-devel/optimize_8c_source.html
-//
-// interval = (ax, bx)
-// l:  list(spec1r$re, spec1r$im, phc0, phc1, fracppm, p=alpha) (see fmin)
-// flg: depending on flg, the optimization criterium is evaluated for either phc0 (flg=0) or phc1(flg=0)
-// tol: tolerance
 
 // [[Rcpp::export]]
-SEXP C_optim_phc(double ax, double bx, SEXP l, int flg, double tol)
+double Fentropy(SEXP par, SEXP re, SEXP im, int blphc, double B, double gamma=5e-5)
 {
-    /*  c is the squared inverse of the golden ratio */
-    const double c = (3. - sqrt(5.)) * .5;
+   NumericVector P(par);
+   NumericVector Re(re);
+   NumericVector Im(im);
+   double phc0  = P[0];
+   double phc1  = P[1];;
+   const size_t n = (size_t)(Re.size());
+   const size_t n2 = (size_t)(n/24);
+   size_t i;
+   double phi, h, SR, SSX, E, F;
 
-    /* Local variables */
-    double a, b, d, e, p, q, r, u, v, w, x;
-    double t2, fu, fv, fw, fx, xm, eps, tol1, tol3;
+   NumericVector X(n);
+   for (i=0; i<n; i++) {
+       //phi = phc0 + phc1*(i/n-0.5);
+       phi = phc0 + phc1*i/n;
+       X[i] = cos(phi)*Re[i] - sin(phi)*Im[i];
+   }
+   X=ajustBL (X, 0);
 
-/*  eps is approximately the square root of the relative machine precision. */
-    eps = DBL_EPSILON;
-    tol1 = eps + 1.;/* the smallest 1.000... > 1 */
-    eps = sqrt(eps);
-    a = ax;
-    b = bx;
-    v = a + c * (b - a);
-    w = x = v;
-    e = d = 0.; /* -Wall */
-    fx = fmin(l,x,flg);
-    fv = fw = fx;
-    tol3 = tol / 3.;
-
-/*  main loop starts here ----------------------------------- */
-for(;;) {
-   xm = (a + b) * .5;
-   tol1 = eps * fabs(x) + tol3;
-   t2 = tol1 * 2.;
-
-   /* check stopping criterion */
-
-   if (fabs(x - xm) <= t2 - (b - a) * .5) break;
-   p = q = r = 0.;
-   if (fabs(e) > tol1) { /* fit parabola */
-       r = (x - w) * (fx - fv);
-       q = (x - v) * (fx - fw);
-       p = (x - v) * q - (x - w) * r;
-       q = (q - r) * 2.;
-       if (q > 0.) p = -p; else q = -q;
-       r = e;
-       e = d;
+   NumericVector lb(n);
+   if (blphc>0) {
+      lb=C_Estime_LB2(X, 1, n-1, blphc, blphc, B);
+      for (i=0; i<n; i++) X[i] -= lb[i];
    }
 
-   if (fabs(p) >= fabs(q * .5 * r) || p <= q * (a - x) || p >= q * (b - x)) { /* a golden-section step */
-       if (x < xm) e = b - x; else e = a - x;
-       d = c * e;
+   NumericVector D(n);
+   D = C_Derive1(X);
+
+   SR=SSX=0;
+   for (i=n2; i<(n-n2); i++) { SR += _abs(D[i]); SSX += X[i]*X[i]; }
+
+   F=E=0;
+   for (i=n2; i<(n-n2); i++) { 
+        h= _abs(D[i])/SR; 
+        E += h*log(h);
+        if (X[i]<0) F += X[i]*X[i]/SSX;
    }
-   else { /* a parabolic-interpolation step */
-       d = p / q;
-       u = x + d;
-       /* f must not be evaluated too close to ax or bx */
-       if (u - a < t2 || b - u < t2) {
-          d = tol1;
-          if (x >= xm) d = -d;
-       }
-   }
+   E = gamma*F - E;
 
-   /* f must not be evaluated too close to x */
-   if (fabs(d) >= tol1)
-       u = x + d;
-   else if (d > 0.)
-       u = x + tol1;
-   else
-       u = x - tol1;
-
-   fu = fmin(l,u,flg);
-
-   /*  update  a, b, v, w, and x */
-   if (fu <= fx) {
-       if (u < x) b = x; else a = x;
-       v = w;   w = x;   x = u;
-       fv = fw; fw = fx; fx = fu;
-   } else {
-       if (u < x) a = u; else b = u;
-       if (fu <= fw || w == x) {
-          v = w; fv = fw;
-          w = u; fw = fu;
-       }
-       else if (fu <= fv || v == x || v == w) {
-          v = u; fv = fu;
-       }
-   }
-}
-/* end of main loop */
-
-   List best = List::create(
-      _["minimum"] = x,
-      _["objective"] = fv 
-   );
-   return best;
+   return(_abs(E));
 }

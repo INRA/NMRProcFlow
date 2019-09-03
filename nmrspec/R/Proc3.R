@@ -83,6 +83,11 @@
          return( paste(conf$Rscript_exec,"Rbuc1D -p ", as.character(outDataViewer), sep="") )
     }
 
+   observe ({
+         input$tpreproc
+         runjs( paste0("document.getElementById('jobname').innerHTML = '",input$tpreproc,"';" ) )
+   })
+
     ## Processing required
     output$ProcSelect <- reactive({
          input$condProcPanels
@@ -145,7 +150,7 @@
              } else {
                  if( !file.exists(file.path(outDataViewer,conf$Rnmr1D_PCMD)) ) file.create(file.path(outDataViewer,conf$Rnmr1D_PCMD))
                  nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
-                 push_STACK(outDataViewer, c(conf$SPEC_PACKED, conf$LOGFILE, conf$Rnmr1D_PCMD, zonelist1), nbStackedProc)
+                 push_STACK(outDataViewer, c(conf$SPEC_PACKED, conf$LOGFILE, conf$PPMRANGE, conf$Rnmr1D_PCMD, zonelist1), nbStackedProc)
              }
              delete_file(conf$ERRORFILE)
 
@@ -170,8 +175,8 @@
              nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
              delete_list_file(zonelist1)
              delete_list_file(zonelist2)
-             pop_STACK(outDataViewer, c(conf$SPEC_PACKED, conf$LOGFILE, conf$Rnmr1D_PCMD, zonelist1), nbStackedProc)
-             html <- paste0('<script>refresh_spectrum();</script>')
+             pop_STACK(outDataViewer, c(conf$SPEC_PACKED, conf$LOGFILE, conf$PPMRANGE, conf$Rnmr1D_PCMD, zonelist1), nbStackedProc)
+             html <- paste0('<script>refresh_spectrum(1);</script>')
              toggleModal(session, "modalUndo", toggle = "close")
              isolate({ values$updatevent <- values$updatevent + 1; })
          }
@@ -197,7 +202,7 @@
                  delete_file(conf$BUCKET_LIST); delete_file(conf$LOGFILE2)
              }
              toggleModal(session, "modalUnBuc", toggle = "close")
-             html <- paste0('<script>refresh_spectrum();</script>')
+             html <- paste0('<script>refresh_spectrum(0);</script>')
          }
          HTML(html)
     })
@@ -329,7 +334,7 @@
               zone <- as.numeric(simplify2array(strsplit(trim(input$ppmsnrnoise), " ")))
               if ( file.exists(bucketfile) )
                   write.table(get_SNR_dataset(specMat, bucketfile, c(min(zone), max(zone)), ratio=TRUE),
-                              file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
+                                  file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
              runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }
     )
@@ -359,7 +364,6 @@
              if (input$exportTempl == 'qhnmr') {
                  write_qhnmr_wb(wb, outDataViewer, zoneref, zonenoise)
              }
-
              # Save the Workbook
              saveWorkbook(wb, file, overwrite = TRUE)
              runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
@@ -453,7 +457,7 @@
            get_CMD_content(macrofile)
            ERROR$MsgUpload <- ''
            closeAlert(session, "AlertUpLoadId")
-           procJobName <- 'Export'
+           procJobName <<- 'Export'
            RET <- submit_UploadScript(outDataViewer, macrofile)
            if (RET==0) {
                MsgStyle <<- 'info'

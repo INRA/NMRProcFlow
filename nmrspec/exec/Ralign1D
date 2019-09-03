@@ -77,6 +77,20 @@ CMDINFO <- ''
 Write.LOG(LOGFILE,"Ralign1D: ")
 fWriteSpec <- FALSE
 
+check_Vnoise <- function(specMat, PPM_NOISE_AREA)
+{
+   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+   Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
+   ret <- FALSE
+   if (length(which(abs(Vnoise)==Inf))>0 || sum(is.nan(Vnoise))>0 || sum(Vnoise==0)>0) {
+      fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+      writeLines(paste0("ERROR: ", "Noise estimation failed : Check if the ppm range for noise is correct") , fh)
+      close(fh)
+      ret <- TRUE
+   }
+   ret
+}
+
 tryCatch({
 
 #------------------------------
@@ -163,6 +177,8 @@ repeat {
        } else {
            PPM_NOISE_AREA <- c(min(zone), max(zone))
        }
+       if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
+
        CMDINFO <- paste0(CMDINFO,paste("clupa", PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], zoneref[1], zoneref[2], 
                            procParams$RESPPM, procParams$SNRBUCLEVEL, procParams$IDXSREF))
        registerDoParallel(cores=env.list$CORES)

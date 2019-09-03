@@ -5,9 +5,9 @@
    ##---------------
    ## Output: Watch the logfile in realtime
    ##---------------
-   renderWatcher <- function (flg,type, height) {
+   renderWatcher <- function (flg,type, proc, height) {
          if (flg==0) return(NULL)
-         urlwatcher <- paste0(conf$WatcherURL, sessionViewer,'/',type,'/',digest(runif(1, 1, 10)))
+         urlwatcher <- paste0(conf$WatcherURL, sessionViewer,'/',type,'/',proc,'/',digest(runif(1, 1, 10)))
          if (nchar(conf$PROXY_URL_ROOT)>0) urlwatcher <- paste0(conf$PROXY_URL_ROOT,'/',urlwatcher)
          return(HTML(paste0('<iframe id="ifwatcher" name="ifwatcher" src=',urlwatcher,' frameborder="0" style="overflow: hidden; height: ',height,'px; width: 100%; border: 0px;" width="100%" onload="this.contentWindow.document.documentElement.scrollTop=1000"></iframe>')))
    }
@@ -21,14 +21,14 @@
         values$error
         if (is.null(procJobName)) return (NULL)
         if (isolate(input$goButton)>1 && procJobName != "preprocess") return (NULL)
-        renderWatcher(values$jobrun || values$error, 'init', 600)
+        isolate({ renderWatcher(values$jobrun || values$error, 'init', 'preproc', 600); })
    })
    outputOptions(output, 'watcher', suspendWhenHidden=FALSE)
    outputOptions(output, 'watcher', priority=5)
 
    ## Watcher 1b: Preprocessing
    output$watcher1b <- renderUI({
-        renderWatcher(1,'view',600)
+        renderWatcher(1,'view','none',600)
    })
 
     ## Reactive value that indicates if the "Job Watcher" is required
@@ -52,14 +52,14 @@
              if (input$condProcPanels == 'Processing') logtype <- 'proc'
              if (input$condProcPanels == 'Bucketing') logtype <- 'bucket'
              if (input$condProcPanels == 'Data Export') logtype <- 'export'
-             renderWatcher(values$jobrun,logtype,600)
+             renderWatcher(values$jobrun,logtype,input$tpreproc, 600)
          })
     })
     outputOptions(output, 'watcher2', suspendWhenHidden=FALSE)
     outputOptions(output, 'watcher2', priority=5)
 
     ## Watcher 2b: Watch the logfile in shift time
-    output$watcher2b <- renderUI({ 
+    output$watcher2b <- renderUI({
          input$proclog
          isolate({
              if (is.null(procJobName)) return (NULL)

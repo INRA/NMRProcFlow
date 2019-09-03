@@ -1,18 +1,24 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 MAINTAINER "Daniel Jacob" daniel.jacob@u-bordeaux.fr
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Europe/Paris
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Install modules
 RUN apt-get update && apt-get install -y \
     sudo ca-certificates wget curl git vim ed p7zip \
-    libfreetype6-dev libmcrypt-dev libpng12-dev libcurl4-gnutls-dev libcairo2-dev \
+    libfreetype6-dev libmcrypt-dev libpng-dev libcurl4-gnutls-dev libcairo2-dev \
     libxt-dev libxml2-dev libv8-dev gnuplot \
     gdebi-core \
     libssl-dev openssl software-properties-common \
     libgsl0-dev gsl-bin libnlopt-dev && \
-  # See https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-16-04-2
-    sh -c 'echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list' && \
+  # See https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-18-04'
+  #     https://rtask.thinkr.fr/fr/installation-de-r-3-5-sur-ubuntu-18-04-lts-et-astuces-pour-les-packages-de-cartographie/
+    sh -c 'echo "deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/" >> /etc/apt/sources.list' && \
     apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9 && \
+    add-apt-repository ppa:marutter/c2d4u3.5 && \
   # Install R / ...
     apt-get update && apt-get install -y \
     r-recommended \
@@ -44,14 +50,13 @@ ENV LC_ALL=en_US.UTF-8 \
 RUN \
   # Download and install shiny server
     wget --no-verbose http://download3.rstudio.org/ubuntu-14.04/x86_64/VERSION -O "version.txt" && \
-    #VERSION=$(cat version.txt)  && \
-    VERSION=1.5.9.923 && \
+    VERSION=$(cat version.txt)  && \
     wget --no-verbose "http://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
     gdebi -n ss-latest.deb && \
     rm -f version.txt ss-latest.deb && \
   # Install Shiny and some extensions and some other dependencies
-    R -e "install.packages(c('gsl', 'Rcpp', 'RcppGSL', 'inline', 'rjson', 'httpuv', 'mime', 'jsonlite', 'xtable', 'htmltools', 'R6', 'shiny', 'shinyBS', 'shinyjs', 'stringi', 'docopt','doParallel','signal','ptw', 'openxlsx' ), repos='http://cran.rstudio.com')" && \
-    R -e "source('http://bioconductor.org/biocLite.R'); biocLite('MassSpecWavelet'); biocLite('impute'); install.packages('speaq', repos='http://cran.rstudio.com')"
+    R -e "install.packages(c('gsl', 'Rcpp', 'RcppGSL', 'inline', 'rjson', 'httpuv', 'mime', 'jsonlite', 'xtable', 'htmltools', 'R6', 'shiny', 'shinyBS', 'shinyjs', 'stringi', 'docopt','doParallel','signal','ptw', 'openxlsx','BiocManager' ), repos='http://cran.rstudio.com')" && \
+    R -e "BiocManager::install(c('MassSpecWavelet','impute')); install.packages('speaq', repos='http://cran.rstudio.com')"
 
 ENV APACHE_RUN_USER=www-data \
     APACHE_RUN_GROUP=www-data \
@@ -66,10 +71,10 @@ ENV APACHE_RUN_USER=www-data \
 
 # Metadata
 LABEL base.image="nmrprocflow:latest" \
-      version="1.2.26" \
+      version="1.3.08" \
       software="NMRProcFlow" \
-      software.version="1.2.26" \
-      description="An user-friendly tool dedicated to 1D NMR spectra processing (1H & 13C) for metabolomics" \
+      software.version="1.3.08" \
+      description="An user-friendly tool dedicated to 1D NMR spectra processing (1H, 13C, 31P) for metabolomics" \
       website="https://nmrprocflow.org/" \
       documentation="https://nmrprocflow.org/" \
       license="http://gplv3.fsf.org/" \

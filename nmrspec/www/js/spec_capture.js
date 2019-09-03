@@ -28,10 +28,22 @@ var toggle_capturemode = function() {
      } while (0)
 }
 
-var refresh_spectrum = function() {
+var refresh_spectrum = function(flg=0) {
      do {
         if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
-        $("#ifspecview").get(0).contentWindow.spectrum_view();
+        if ( $("#jobname").val()=='calibration' && flg) {
+           $("#ifspecview").get(0).contentWindow.spectrum_reset();
+        } else {
+           $("#ifspecview").get(0).contentWindow.spectrum_view();
+        }
+        setTimeout(function(){toggle_capturemode();}, 1000);
+     } while (0)
+}
+
+var reset_spectrum = function() {
+     do {
+        if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
+        $("#ifspecview").get(0).contentWindow.spectrum_reset();
         setTimeout(function(){toggle_capturemode();}, 1000);
      } while (0)
 }
@@ -39,7 +51,7 @@ var refresh_spectrum = function() {
 var refresh_if_capturebox = function() {
      do {
         if ( ! $( document.activeElement ).hasClass( "capture" ) ) break;
-        refresh_spectrum();
+        refresh_spectrum(0);
      } while (0)
 }
 
@@ -49,7 +61,7 @@ var resize_spectrumHeight = function(imgheight) {
         ifrminheight=imgheight+76
         $("#ifspecview").height(ifrminheight);
         $("#ifspecview").get(0).contentWindow.set_spectrum_imgheight(imgheight);
-        refresh_spectrum();
+        refresh_spectrum(0);
      } while (0)
 }
 
@@ -73,7 +85,7 @@ var set_spectrum_imgtype = function(type) {
         if( ! $("#ifspecview").get(0) ) break;
         $("#ifspecview").get(0).contentWindow.set_spectrum_imgtype(type);
      } while (0)
-     refresh_spectrum();
+     refresh_spectrum(0);
 }
 
 var replace_by_NL = function(id) {

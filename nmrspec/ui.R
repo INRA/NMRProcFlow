@@ -42,6 +42,9 @@ shinyUI(fluidPage(
    # Job Status (within a hidden textarea)
      tags$textarea(id="jobstatus", class="jobstatus", "0"),
 
+   # Viewer Status (within a hidden textarea)
+     tags$textarea(id="jobname", "0"),
+
    # Upload Files
      ui_upload,
 

@@ -29,9 +29,10 @@ Spec1rDoProc <- function(Input, param=Spec1rProcpar)
 #'   \item \code{PDATA_DIR} : subdirectory containing the 1r file (bruker's format only) - default value = 'pdata/1'
 #'   \item \code{LB} : Exponantial Line Broadening parameter - default value = 0.3
 #'   \item \code{GB} : Gaussian Line Broadening parameter - default value = 0
-#'   \item \code{REVTIME} : Reverse time points - default value = FALSE
-#'   \item \code{BLPHC} : Intensity offset correction - default value = FALSE
-#'   \item \code{SOLVPPM} : ppm of the solvent (D20 by default) - default value = 4.8
+#'   \item \code{REVPPM} : Reverse ppm scale - default value = FALSE
+#'   \item \code{BLPHC} : Number of points for baseline smoothing during phasing - default value = 260
+#'   \item \code{KSIG} : Number of times the noise signal to be considered during phasing - default value = 6
+#'   \item \code{CPMG} : Indicate if CPMG sequence  - default value = FALSE
 #'   \item \code{ZEROFILLING} : Zero Filling - - default value = FALSE
 #'   \item \code{ZFFAC} : Max factor for Zero Filling - default value = 4
 #'   \item \code{LINEBROADENING} : Line Broading - default value = TRUE
@@ -39,11 +40,8 @@ Spec1rDoProc <- function(Input, param=Spec1rProcpar)
 #'   \item \code{RABOT} : Zeroing of Negative Values - default value = FALSE
 #'   \item \code{OPTPHC0} : Zero order phase optimization - default value = TRUE
 #'   \item \code{OPTPHC1} : First order phase optimization - default value = FALSE
-#'   \item \code{ALGO2} : alternative algorithm for phase optimization - default value = FALSE
-#'   \item \code{FRACPPM} : Origin point for adjustment of the first order phase (defined as a fraction of the ppm scale) - default value = 0
-#'   \item \code{INCFRACPPM1} : Incrementation value for search of optimal point for adjustment of the first order phase : step 1 - default value = 0.125
-#'   \item \code{INCFRACPPM2} : Incrementation value for search of optimal point for adjustment of the first order phase : step 2 - default value = 0.0125
-#'   \item \code{JGD_INNER} : JEOL : internal or external estimation for Group Delay - default value = TRUE
+#'   \item \code{OPTCRIT1} : Criterium for phasing optimization (1 for SSpos, 2 for SSneg, 3 for Entropy - default value = 3
+#'   \item \code{JGD_INNER} : JEOL : internal (or external) estimation for Group Delay - default value = TRUE
 #' }
 Spec1rProcpar <- list (
 
@@ -58,9 +56,12 @@ Spec1rProcpar <- list (
 ### PRE-PROCESSING
     LB= 0.3,                   # Exponantial Line Broadening parameter
     GB= 0,                     # Gaussian Line Broadening parameter
-    REVTIME=FALSE,             # Reverse time points
-    BLPHC=FALSE,               # Intensity offset correction
-    SOLVPPM=4.8,               # ppm of the solvent (D20 by default)
+    REVPPM=FALSE,              # Reverse ppm scale
+    BLPHC=50,                  # Number of points for baseline smoothing during phasing
+    KSIG=2,                    # Number of times the noise signal to be considered
+    GAMMA=0.005,               # Penalty factor for the calculation of the entropy
+    CPMG=FALSE,                # Indicate if CPMG sequence
+    KZERO=0.3,                 # PPM range around the center to be masked during phase correction
     ZEROFILLING=FALSE,         # Zero Filling
     ZFFAC=4,                   # Max factor for Zero Filling 
     LINEBROADENING=TRUE,       # Line Broading
@@ -69,12 +70,13 @@ Spec1rProcpar <- list (
     RABOT=FALSE,               # Zeroing of Negative Values 
     OPTPHC0=TRUE,              # Zero order phase optimization
     OPTPHC1=FALSE,             # First order phase optimization
-    ALGO2=FALSE,               # alternative algorithm for phase optimization
-    FRACPPM= 0,                # Origin point for adjustment of the first order phase (defined as a fraction of the ppm scale)
-    CFRACPPM= 0.25,            # Origin point for adjustment of the first order phase (defined as a fraction of the ppm scale)
-    INCFRACPPM1=0.125,         # Incrementation value for search of optimal point for adjustment of the first order phase : step 1
-    INCFRACPPM2=0.0125,        # Incrementation value for search of optimal point for adjustment of the first order phase : step 2
-    JGD_INNER=TRUE,            # JEOL : internal or external estimation for Group Delay
+    OPTSTEP=TRUE,              # applied the lifting minimum to zero
+    OPTCRIT0=0,                # Criterium for zero order phasing optimization (0 for SSneg, 1 for SSpos)
+    OPTCRIT1=2,                # Global criterium for first order phasing optimization (1 for SSpos, 2 for SSneg, 3 for Entropy)
+    CRITSTEP1=0,               # Criterium for first step of the first order phasing optimization
+    CRITSTEP2=2,               # Criterium for second step of the first order phasing optimization
+    RATIOPOSNEGMIN=0.4,        # Ratio Positive/Negative Minimum
+    JGD_INNER=TRUE,            # JEOL : internal (or external) estimation for Group Delay
     RMS=0
 )
 
@@ -137,19 +139,22 @@ Spec1rProcpar <- list (
 ### Estime Group Delay
 #-- fid : free induction decay - Complex data type
 
-.estime_grpdelay <- function( fid )
+.estime_grpdelay <- function(fid)
 {
    P <- sqrt(  Re(fid)^2 + Im(fid)^2 )
    V <- cbind(Re(fid), Im(fid))
    G <- 0
-   for( i in 1:(dim(V)[2]) ) {
-      nd0 <- which(P>max(P)/2)[1];
-      nd0p <- which.max(abs(V[1:(nd0-1),i]))
-      if ((abs(V[nd0p,i])/abs(V[nd0,i]))>0.5) nd0 <- nd0p;
-      while(sign(V[nd0-1,i])==sign(V[nd0,i])) nd0 <- nd0-1;
-      G <- G + 0.9999*(nd0-1 - V[nd0-1,i]/(V[nd0,i]-V[nd0-1,i]))
+   nd0 <- which(P>max(P)/2)[1];
+   if (nd0>1) {
+      for( i in 1:(dim(V)[2]) ) {
+         nd0 <- which(P>max(P)/2)[1];
+         nd0p <- which.max(abs(V[1:(nd0-1),i]))
+         if ((abs(V[nd0p,i])/abs(V[nd0,i]))>0.5) nd0 <- nd0p;
+         while(nd0>1 && sign(V[nd0-1,i])==sign(V[nd0,i])) nd0 <- nd0-1;
+         G <- G + 0.9999*(nd0-1 + V[nd0-1,i]/(V[nd0-1,i]-V[nd0,i]))
+      }
+      G <- G/dim(V)[2]
    }
-   G <- G/dim(V)[2]
    G
 }
 
@@ -203,7 +208,6 @@ Spec1rProcpar <- list (
    signal<-readBin(to.read, what="int", n=TD, size=4L, endian = ENDIAN)
 
    close(to.read)
-   setwd(cur_dir)
 
    TDsignal<-length(signal)
    if (TDsignal < TD) {
@@ -238,6 +242,9 @@ Spec1rProcpar <- list (
                   .estime_grpdelay(fid)
                 })
    }
+   if (is.null(GRPDLY) || is.na(GRPDLY) ||  length(GRPDLY)==0 || GRPDLY<0)  GRPDLY <- 0
+
+   setwd(cur_dir)
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, 
                 PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, TEMP=TEMP, NUC=NUC, 
@@ -290,7 +297,6 @@ Spec1rProcpar <- list (
    SW      <- SWH/SFO1
    O1      <- .rs2d.get_param(ACQ,"OFFSET_FREQ_1")
    OFFSET  <- .rs2d.get_param(ACQ,"SR")/SFO1
-   LOCKPPM <- 0
    LCKSTATE <- ifelse( .rs2d.get_param(ACQ,"LOCK",type="string")=='true', TRUE, FALSE )
    ENDIAN  <-  "big"
    INSTRUMENT <- paste("RS2D",.rs2d.get_param(ACQ,"MODEL_NAME",type="string"))
@@ -309,7 +315,7 @@ Spec1rProcpar <- list (
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN="RS2D", ORIGPATH=DIR, 
                 PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, TEMP=TEMP, NUC=NUC, OFFSET=OFFSET,
-                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, LOCKPPM=LOCKPPM, LCKSTATE=LCKSTATE,
+                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, LCKSTATE=LCKSTATE,
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=0 )
    spec <- list( path=DIR, acq=acq, fid=fid )
@@ -827,7 +833,7 @@ Spec1rProcpar <- list (
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
 
-   proc <- list( phc0=PHC0, phc1=PHC1, SI=SI )
+   proc <- list( phc0=PHC0*pi/180, phc1=PHC1*pi/180, SI=SI )
 
    param$ZEROFILLING <- FALSE
    param$LINEBROADENING <- FALSE
@@ -914,7 +920,7 @@ Spec1rProcpar <- list (
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
 
-   proc <- list( phc0=PHC0, phc1=PHC1, SI=SI )
+   proc <- list( phc0=PHC0*pi/180, phc1=PHC1*pi/180, SI=SI )
 
    param$ZEROFILLING <- FALSE
    param$LINEBROADENING <- FALSE
@@ -942,7 +948,6 @@ Spec1rProcpar <- list (
        } else {
           Omega <- (0:(m-1))/m
        }
-       
        i <- complex(real=0,imaginary=1)
        p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
        Spectrum <- stats::fft(fid)
@@ -1000,12 +1005,7 @@ Spec1rProcpar <- list (
        ### Rotation
        td <- length(Spectrum); p <- td/2
        spec.p <- c( Spectrum[(p+1):td], Spectrum[1:p] )
-       param$REVTIME <- param$REVTIME || ( length(grep("VARIAN",toupper(spec$acq$INSTRUMENT)))>0 || length(grep("JEOL",toupper(spec$acq$INSTRUMENT)))>0)
-       if ( param$REVTIME ) {
-          rawspec <- spec.p[rev(1:td)]
-       } else {
-          rawspec <- spec.p
-       }
+       rawspec <- spec.p
        rawspec
     }
 
@@ -1041,7 +1041,10 @@ Spec1rProcpar <- list (
     if (param$DEBUG) .v("\tSI = %d\n", td, logfile=logfile)
 
     param$SI <- length(rawspec)
-    proc <- list( phc0=0, phc1=0, RMS=0, SI=length(rawspec), CFRACPPM=param$CFRACPPM)
+    proc <- list( phc0=0, phc1=0, crit=NULL, RMS=0, SI=length(rawspec))
+    attach(param)
+    if (!exists("phc0")) param$phc0 <- param$phc1 <- 0
+    detach(param)
 
     # PPM Calibration
     m <- proc$SI
@@ -1053,21 +1056,10 @@ Spec1rProcpar <- list (
         offset <- SW*param$O1RATIO
     }
     spec$dppm <- SW/(m-1)
-    spec$pmin <- 1 - round(SW/5) # 5 - 0.5*SW
-    
-    repeat {
-       if (spec$acq$NUC %in% c('1H','H1') ) {
-          spec$pmin <- offset - SW/2
-          break
-       }
-       if (spec$acq$NUC == '13C') {
-          spec$pmin <- offset - SW/2
-          break
-       }
-       break
-    }
+    spec$pmin <- offset - SW/2
     spec$pmax <- SW + spec$pmin
     spec$ppm <- seq(from=spec$pmin, to=spec$pmax, by=spec$dppm)
+    spec$B <- C_estime_sd(Re(spec$data0),128)
 
     ### Save into the spec object instance
     spec$data <- rawspec
@@ -1078,133 +1070,200 @@ Spec1rProcpar <- list (
     spec
 }
 
-.computeSSneg <- function(Yre) {
-#  Ajust baseline
-   bl <- C_Estime_LB2 (Yre, 1, length(Yre)-1, 100, 300, 3*C_estime_sd(Yre,128))
-   Yre <- Yre - bl
+#--------------------------------
+# Phase correction
+#--------------------------------
+
+.computeCrit <- function(spec, phc) {
+   V <- spec$data0;
+   if (spec$param$REVPPM) V <- rev(V)
+   spec1r <- C_corr_spec_re(list(re=Re(V),im=Im(V), phc0=phc[1], phc1=phc[2]))
+   NPBLSM <- 100
+   Yre <- spec1r$re - C_Estime_LB2 (spec1r$re, 1, length(spec1r$re)-1, NPBLSM, NPBLSM, 6*spec$B)
    n <- round(length(Yre)/24)
    Yre <- Yre[n:(23*n)]
-   ret <- sum((Yre[Yre<0])^2)
-   return(ret)
+   if (spec$param$BLPHC>0) Yre <- Yre + rep(spec$B/4, length(Yre))
+   entropy <- Fentropy(phc, Re(V),Im(V), spec$param$BLPHC, spec$param$KSIG*spec$B, spec$param$GAMMA)
+   x0 <- 0.5*(spec$pmax-spec$pmin) + spec$param$KZERO*c(-1,1)
+   Yre[ round(length(Yre)*x0[1]/spec$acq$SW):round(length(Yre)*x0[2]/spec$acq$SW) ] <- 0
+   #p <- 0.95
+   #v1 <- Yre[Yre>0]; Spos <- sum(v1[v1<quantile(v1,p)])
+   #v2 <- Yre[Yre<0]; Sneg <- sum(abs(v2[abs(v2)<quantile(abs(v2),p)]))
+   #crit <- c( Spos, Sneg, entropy, sum(abs(Yre)) )
+   crit <- c( sum(Yre[Yre>0]^2), sum(abs(Yre[Yre<0]^2)), entropy, sum(abs(Yre)) )
+   crit
+}
+
+.checkPhc <- function(spec, phc, lopt, count=0) {
+   phc0 <- phc[1]*180/pi; 
+   phc[1] <- (floor(phc0) %% 360 + phc0 %% 1)*pi/180
+   if (phc[1]<0) phc[1] <- phc[1] + 360
+   crit <- .computeCrit(spec, phc)
+   RatioPosNegMin <- spec$param$RATIOPOSNEGMIN
+   if ( crit[1] < RatioPosNegMin*crit[2] ) {
+       if (spec$param$DEBUG).v("\n\t%d: Spos= %2.4e, Sneg= %2.4e, Rotation of phc0: %3.6f => ", 
+                                lopt, crit[1], crit[2], phc[1]*180/pi, logfile=spec$param$LOGFILE)
+       if (phc[1]>pi) phc[1] <- phc[1] - pi
+       else           phc[1] <- phc[1] + pi
+       crit <- .computeCrit(spec, phc)
+       if (spec$param$DEBUG) .v("%3.6f", phc[1]*180/pi, logfile=spec$param$LOGFILE)
+   }
+   if (spec$param$DEBUG).v("\n\t%d: [%d] Spos= %2.4e, Sneg= %2.4e, phc=(%3.6f, %3.6f), Entropy= %2.4e   ", 
+                 lopt, count, crit[1], crit[2], phc[1]*180/pi, phc[2]*180/pi, crit[3], logfile=spec$param$LOGFILE)
+   list(crit=crit, phc=phc)
+}
+
+.capSolvent <- function(spec,lopt)
+{
+   V <- spec$data0;
+   if (spec$param$REVPPM) V <- rev(V)
+   SI <- length(V)
+   x0 <- 0.5*(spec$pmax-spec$pmin) + spec$param$KZERO*c(-1,1)
+   if (spec$param$DEBUG).v("\n\t%d: -- masking the ppm range = (%3.6f, %3.6f)   ", lopt, x0[1]+spec$pmin, x0[2]+spec$pmin, logfile=spec$param$LOGFILE)
+   V[ round(SI*x0[1]/spec$acq$SW):round(SI*x0[2]/spec$acq$SW) ] <- 0+0i
+   V
 }
 
 .optimphase0 <- function(spec)
 {
    # rms function to be optimised
-   rms0 <- function(ang, y)  {
-      Yrot <- C_corr_spec_re(list(re=Re(y),im=Im(y), phc0=ang, phc1=0, alpha=0))
-      ret <- .computeSSneg(Yrot$re)
+   rms0 <- function(ang, y, B, type=0)  {
+      Yrot <- C_corr_spec_re(list(re=Re(y),im=Im(y), phc0=ang, phc1=0))
+      Yre <- Yrot$re
+      NPBLSM <- 100
+      Yre <- Yre - C_Estime_LB2 (Yre, 1, length(Yre)-1, NPBLSM, NPBLSM, 6*B)
+      n <- round(length(Yre)/24)
+      Yre <- Yre[n:(23*n)]
+      if (type==0) ret <- sum((Yre[Yre<0])^2);
+      if (type==1) ret <- sum((Yre[Yre>0])^2);
       return(ret)
    }
 
-   if (spec$param$ALGO2==FALSE && spec$acq$NUC %in% c('1H','H1')) {
-      V <- spec$data0; SI <- length(V)
-      x0 <- (spec$param$SOLVPPM+abs(spec$pmin))/spec$acq$SW
-      V[ round(SI*(x0-0.3/spec$acq$SW)):round(SI*(x0+0.3/spec$acq$SW)) ] <- 0+0i
-      lparams <- list(re=Re(V),im=Im(V), phc0=0, phc1=0, alpha=0, p=0.95, blphc=spec$param$BLPHC)
-      best1 <- C_optim_phc(-pi, pi, lparams, 0, 1e-7)
-      best2 <- C_optim_phc(0, 2*pi, lparams, 0, 1e-7)
-      if ( best1[["objective"]] < best2[["objective"]] ) {
-         best <- best1
-      } else { 
-         best <- best2
-      }
-      lparams <- list(re=Re(V),im=Im(V), phc0=0, phc1=0, alpha=0, p=0.95, blphc=1)
-      best1 <- C_optim_phc(best[["minimum"]]-0.5, best[["minimum"]]+0.5, lparams, 0, 1e-7)
-      if ( best1[["objective"]] < best[["objective"]] ) {
-         best <- best1
-      }
-   } else {
-      interval <- c(-3*pi, 3*pi)
-      best <- stats::optimize(rms0, interval = interval, maximum = FALSE, y = spec$data)
+   DEBUG <- spec$param$DEBUG
+   spec$param$DEBUG <- TRUE
+   V <- spec$data0
+   if (spec$param$REVPPM) V <- rev(V)
+   crittype <- spec$param$OPTCRIT0
+   CPMG <- FALSE
+   best <- stats::optimize(rms0, interval = c(-2*pi, 2*pi), maximum = FALSE, y = V, B=spec$B, type=crittype)
+   L <- .checkPhc(spec, c(best[["minimum"]],0), 0)
+   crit0 <- L$crit
+   CritID <- spec$param$OPTCRIT1
+   if (spec$acq$NUC %in% c('1H','H1','31P')) {
+        V <- .capSolvent(spec,0);
+        best2 <- stats::optimize(rms0, interval = c(-2*pi, 2*pi), maximum = FALSE, y = V, B=spec$B, type=crittype)
+        L2 <- .checkPhc(spec, c(best2[["minimum"]],0), 0)
+        crit2 <- L2$crit
+        if (crit2[CritID] < crit0[CritID]) { L <- L2; CPMG <- TRUE }
    }
-   spec$proc$phc0 <- best[["minimum"]]
-   spec$proc$RMS <- best[["objective"]]
-   spec$data <- spec$data * exp(complex(real = 0, imaginary = spec$proc$phc0))
-
+   spec$proc$crit <- L$crit
+   spec$proc$phc0 <- L$phc[1]
+   spec$proc$RMS <- L$crit[CritID]
+   spec$param$CPMG <- CPMG
+   spec$param$DEBUG <- DEBUG
+   if (spec$param$DEBUG) .v("\n\tBest solution: phc0 = %3.6f, Entropy= %2.4e   ", L$phc[1]*180/pi, L$crit[3], logfile=spec$param$LOGFILE)
    spec
+}
+
+.optimRun <- function(spec, V, phc, flg, lopt)
+{
+   ret <- FALSE
+   CritID <- spec$param$OPTCRIT1
+   crit_prev <- spec$proc$crit
+   N <- 2; C <- 0
+   while( C==0 && N>0 ) {
+      opt <- tryCatch({
+                 optim(par=phc, fn=Fmin, method="Nelder-Mead", re=Re(V), im=Im(V), 
+                                blphc=spec$param$BLPHC, B=spec$param$KSIG*spec$B, flg=flg, control=list(maxit=200))
+             },  error = function(e) {  list(convergence=1) })
+      if (opt$convergence==0) {
+         C <- 1
+         L <- .checkPhc(spec, opt$par, lopt, opt$counts[1]); crit <- L$crit; opt$par <- L$phc
+         if ( ! is.vector(crit_prev) || (crit[CritID]<crit_prev[CritID]) ) {
+            spec$proc$phc0 <- opt$par[1]
+            spec$proc$phc1 <- opt$par[2]
+            spec$proc$RMS <- crit[CritID]
+            spec$proc$crit <- crit
+            ret <- TRUE
+         } else {
+            spec$proc$crit <- crit_prev
+         }
+      }
+      else {
+         if (spec$param$DEBUG).v("\n\t%d: No convergence   ",  lopt, logfile=spec$param$LOGFILE)
+         N <- N - 1
+      }
+      phc <- c( runif(1, -pi, pi), runif(1, -pi/10, pi/10) )
+   }
+   lopt <- lopt + 1
+   return( list(spec=spec, lopt=lopt, ret=ret) )
+}
+
+.optimExec <- function(spec, V, phc, flg, lopt)
+{
+   CPMG <- FALSE
+   spec$param$CPMG <- CPMG
+   L <- .optimRun(spec, V, phc, flg, lopt); spec <- L$spec; lopt <- L$lopt
+   if ( spec$param$BLPHC>0 && spec$acq$NUC %in% c('1H','H1','31P') ) { # spec$param$BLPHC>0 && 
+        V <- .capSolvent(spec,lopt);
+        spec$param$CPMG <- TRUE
+        L <- .optimRun(spec, V, phc, flg, lopt); spec <- L$spec; lopt <- L$lopt
+        CPMG <- L$ret
+   }
+   spec$param$CPMG <- CPMG;
+   return( list(spec=spec, lopt=lopt) )
 }
 
 .optimphase1 <- function(spec)
 {
-   fmidzero <- function(V) {
-      SI <- length(V)
-      x0 <- (spec$param$SOLVPPM+abs(spec$pmin))/spec$acq$SW
-      V[ round(SI*(x0-0.3/spec$acq$SW)):round(SI*(x0+0.3/spec$acq$SW)) ] <- 0+0i
-      return(V)
-   }
-   spec1r_cal <- function(flg=0,midzero=0) {
-      if (flg==0) { 
-          fid <- spec$fid0
-      } else {
-          fid <- spec$fid
-      }
-      m <- length(fid)
-      Spectrum <- stats::fft(fid)
-      p <- ceiling(m/2); seq1 <- ( (p+1):m ); seq2 <- ( 1:p )
-      V <- c( Spectrum[seq1], Spectrum[seq2] )
-      if (midzero==1) V <- fmidzero(V)
-      return(V)
-   }
+   DEBUG <- spec$param$DEBUG
+   BLPHC <- spec$param$BLPHC
+   CRITSTEP1 <- spec$param$CRITSTEP1
+   CRITSTEP2 <- spec$param$CRITSTEP2
+   spec$param$DEBUG <- TRUE
+   V <- spec$data0;
+   if (spec$param$REVPPM) V <- rev(V)
 
-   # rms function to be optimised
-   rms1 <- function(ang, spec1r, fracppm)  {
-      Yrot <- C_corr_spec_re(list(re=Re(spec1r),im=Im(spec1r), phc0=spec$proc$phc0, phc1=ang, alpha=fracppm))
-      ret <- .computeSSneg(Yrot$re)
-      return(ret)
+   lopt <- 1
+
+   phc_init <- c(spec$proc$phc0,spec$proc$phc1)
+
+   # BLPHC==0
+   spec$param$BLPHC <-  0
+   L <- .optimExec(spec, V, phc_init, CRITSTEP1, lopt); spec <- L$spec; lopt <- L$lopt
+   if (spec$param$OPTSTEP && CRITSTEP1>0) {
+      phc <- c(spec$proc$phc0,spec$proc$phc1)
+      L <- .optimExec(spec, V, phc, CRITSTEP2, lopt); spec <- L$spec; lopt <- L$lopt
    }
 
-   OptimAlpha <- function(amin, amax, ainc) {
-      opt <- NULL
-      blphc <-  ifelse( spec$param$BLPHC, 1, 0)
-      for(fp in seq(from=amin, to=amax, by=ainc)) {
-         if (spec$param$ALGO2==FALSE && spec$acq$NUC %in% c('1H','H1')) {
-             lparam <- list(re=Re(spec1r),im=Im(spec1r), phc0=spec$proc$phc0, phc1=0, alpha=fp, p=0.95, blphc=blphc)
-             best <- C_optim_phc(-0.6*pi, 0.6*pi, lparam, 1, 0.0001)
-             opt_tmp <- list(phc1=best[["minimum"]], rms=best[["objective"]], fracppm=fp)
-             if (is.null(opt) || opt_tmp$rms<opt$rms) opt <- opt_tmp
-         } else {
-             best <- stats::optimize(rms1, interval = c(-2*pi, 2*pi), maximum = FALSE, spec1r = spec1r, fracppm=fp)
-             opt_tmp <- list(phc1=best[["minimum"]], rms=best[["objective"]], fracppm=fp)
-         }
-         if (is.null(opt) || opt_tmp$rms<opt$rms) opt <- opt_tmp
-      }
-      opt
+   # BLPHC>0
+   spec$param$BLPHC <- BLPHC
+   L <- .optimExec(spec, V, phc_init, CRITSTEP1, lopt); spec <- L$spec; lopt <- L$lopt
+   if (spec$param$OPTSTEP && CRITSTEP1>0) {
+      phc <- c(spec$proc$phc0,spec$proc$phc1)
+      L <- .optimExec(spec, V, phc, CRITSTEP2, lopt); spec <- L$spec; lopt <- L$lopt
    }
 
-   # Compute criterim for phc1=0
-   spec1r <- fmidzero(spec$data0) # spec1r_cal(flg=1,midzero=1)
-   blphc <-  ifelse( spec$param$BLPHC, 1, 0)
-   best0 <- C_optim_phc(0, 0, list(re=Re(spec1r),im=Im(spec1r), phc0=spec$proc$phc0, phc1=0, alpha=0, p=0.95, blphc=blphc), -1, 0)
-
-   # Optimisation of the first order phase
-   if (spec$param$FRACPPM>0) {
-      spec1r <- fmidzero(spec$data0) # spec1r_cal(flg=1,midzero=1)
-      opt <- OptimAlpha(spec$param$FRACPPM, spec$param$FRACPPM, 0)
-   } else {
-      # Step 1: Fast exploration of full space for alpha
-      spec1r <- fmidzero(spec$data0) # spec1r_cal(flg=0,midzero=1)
-      opt <- OptimAlpha(0.125, 0.875, spec$param$INCFRACPPM1)
-      # Step 2: Exploration of the optimial local space for alpha
-      opt <- OptimAlpha(opt$fracppm-0.0625, opt$fracppm+0.0625, spec$param$INCFRACPPM1)
-   }
-   # if criterim is better for phc1=0
-   if (opt$rms>best0[["objective"]]) {
-      opt$rms <- best0[["objective"]]
-      opt$phc1 <- 0
-   }
-
-   spec$proc$phc1 <- opt$phc1
-   spec$proc$RMS <- opt$rms
-   spec$proc$CFRACPPM <- opt$fracppm
-   spec1r <- spec1r_cal(flg=1,midzero=0)
-   new_spec1r <- C_corr_spec_re(list(re=Re(spec1r),im=Im(spec1r), phc0=spec$proc$phc0, phc1=spec$proc$phc1, alpha=opt$fracppm))
-   spec$data <- complex(real=new_spec1r$re,imaginary=new_spec1r$im)
-   if (spec$param$REVTIME) spec$data <- spec$data[rev(1:length(spec$data))]
-
+   spec$param$DEBUG <- DEBUG
+   if (spec$param$DEBUG) .v("\nBest solution: phc = (%3.6f, %3.6f)   ", spec$proc$phc0*180/pi, spec$proc$phc1*180/pi, logfile=spec$param$LOGFILE)
    spec
 }
 
+.computeSpec <- function(spec) {
+   if (!spec$param$OPTPHC0 && !spec$param$OPTPHC1) {
+      spec$proc$phc0 <- spec$param$phc0
+      spec$proc$phc1 <- spec$param$phc1
+   }
+   V <- spec$data
+   new_spec1r <- C_corr_spec_re(list(re=Re(V),im=Im(V), phc0=spec$proc$phc0, phc1=spec$proc$phc1))
+   spec$data <- complex(real=new_spec1r$re,imaginary=new_spec1r$im)
+   if (spec$param$REVPPM) spec$data <- rev(spec$data)
+   spec
+}
+
+#--------------------------------
+# PPM calibration
+#--------------------------------
 .ppm_calibration <- function(spec)
 {
    logfile <- spec$param$LOGFILE
@@ -1298,15 +1357,16 @@ Spec1rProcpar <- list (
                if(param$DEBUG) .v("OK\n",logfile=logfile)
           }
           if(param$OPTPHC1) {
-              if(param$DEBUG) .v("Optimizing the first order phase ...",logfile=logfile)
+              if(param$DEBUG) .v("Optimizing both zero order and first order phases ...",logfile=logfile)
               spec <- .optimphase1(spec)
               if(param$DEBUG) .v("OK\n",logfile=logfile)
           }
-          spec$fid0 <- NULL
+
+          # Get new spectrum
+          spec <- .computeSpec(spec)
 
           # Get real spectrum
           spec$int <- ajustBL(Re(spec$data),0)
-          spec$data <- spec$data0 <- NULL
 
           # PPM calibration based on TSP
           if (param$TSP) {
@@ -1320,6 +1380,13 @@ Spec1rProcpar <- list (
               V <- stats::quantile( spec$int[ spec$int < 0 ], 0.25 )
               spec$int[ spec$int < V ] <- V
           }
+
+          #cleanup the final object
+          spec$data <- NULL
+          spec$data0 <- NULL
+          spec$fid0 <- NULL
+          spec$crit <- NULL
+          spec$B <- NULL
       }
 
       # Define spec list as a Spectrum object
