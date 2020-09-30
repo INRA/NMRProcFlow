@@ -145,7 +145,12 @@ get_Buckets_upperSNR <- function(buckets, outsnr, snrlevel)
      bucnames <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
      if (dim(outsnr)[1]>3) {
         # SNR threshold is applied on the 3rd quantile (1=>0%, 2=>25%, 3=>50%, 4=>75%, 5=>100%)
-        SNRavg <- apply(.toM(outsnr[, bucnames]), 2, quantile)[4,]
+        if (length(bucnames)>1) {
+            SNRavg <- apply(.toM(outsnr[, bucnames]), 2, quantile)[4,]
+        } else {
+            SNRavg <- quantile(outsnr[, bucnames])[4]
+            names(SNRavg) <- bucnames
+        }
         BUCsel <- names(SNRavg[ SNRavg>snrlevel ])
      } else {
         BUCsel <- bucnames
@@ -168,10 +173,15 @@ get_Data_matrix <- function(outDataViewer, zoneref, zonenoise)
         BUCsel <- get_Buckets_upperSNR(buckets, outsnr, input$snrlevel)
         outdata <- get_Buckets_dataset(specMat, bucketfile, input$normmeth, zoneref)
         nbfc <- length(colnames(outdata)) - length(buckets[,1])
-        if (specMat$nspec>1) {
-           outDataMat <- cbind( outdata[, 1:nbfc ],  outdata[, BUCsel[ grep("\\.2$", BUCsel, invert=TRUE) ] ] )
+        if ( length(BUCsel)>1 ) {
+           if (specMat$nspec>1) {
+              outDataMat <- cbind( outdata[, 1:nbfc ],  outdata[, BUCsel[ grep("\\.2$", BUCsel, invert=TRUE) ] ] )
+           } else {
+              outDataMat <- cbind( t(outdata[, 1:nbfc ]),  t(outdata[ , colnames(outdata) %in% BUCsel])  )
+           }
+           colnames(outDataMat)[1] <- 'Samplecode'
         } else {
-           outDataMat <- cbind( t(outdata[, 1:nbfc ]),  t(outdata[ , colnames(outdata) %in% BUCsel])  )
+           outDataMat <- outdata
         }
      }
      outDataMat
@@ -228,6 +238,7 @@ write_simple_wb <- function(wb, outDataViewer, zoneref, zonenoise)
 write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
 {
      # Styles
+     #options("openxlsx.numFmt" = "0.0000") # 4 decimal cases formating
      styBH   <- createStyle(fgFill = "#0070C0", halign = "CENTER", textDecoration = "Bold", border = "Bottom", fontColour = "white")
      styO    <- createStyle(fgFill = "#ED7D31", halign = "CENTER", textDecoration = "Bold", border = "Bottom", fontColour = "white")
      styB    <- createStyle(fgFill = "#8DB4E2")
@@ -309,6 +320,7 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
             T3 <- cbind( outdata[, c(1:(SC-1))], outdata[ , colnames(outdata) %in% BUCsel] )
          } else {
             T3 <- cbind( as.matrix(outdata[,1]), outdata[ , colnames(outdata) %in% BUCsel] )
+            colnames(T3)[1] <- 'Samplecode'
          }
          for (i in 1:length(df$Compound))
              writeFormula(wb, shid, paste0(tabs[2],"!",int2col(dim(df)[2]),i+1), startRow=1, startCol=(SC+i-1));
@@ -327,6 +339,7 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
             T4 <- cbind( outsnr[, c(1:(SC-1))], outsnr[ , colnames(outsnr) %in% BUCsel] )
          } else {
             T4 <- cbind( as.matrix(outsnr[,1]),  outsnr[ , colnames(outsnr) %in% BUCsel] )
+            colnames(T4)[1] <- 'Samplecode'
          }
          for (i in 1:length(df$Compound))
              writeFormula(wb, shid, paste0(tabs[2],"!",int2col(dim(df)[2]),i+1), startRow=1, startCol=(SC+i-1));
@@ -357,7 +370,12 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
          addStyle(wb, shid, style = styG,  rows = c(2:(dim(TV)[2]+1)), cols = c(SC:(SC+length(df$Compound)-1)), gridExpand = TRUE)
 
          startRow <- dim(TV)[2]+2
-         writeData(wb, shid, T3[, c(1:(SC-1))], startRow = startRow, startCol = 1, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+         if (SC>2) {
+            writeData(wb, shid, T3[, c(1:(SC-1))], startRow = startRow, startCol = 1, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+         } else {
+            writeData(wb, shid, 'Samplecode', startRow = startRow, startCol = 1, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+            writeData(wb, shid, T3[, 1], startRow = startRow+1, startCol = 1, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+         }
          writeData(wb, shid, t(buckets[,1]), startRow = startRow, startCol = SC, colNames=FALSE, rowNames=FALSE, withFilter = FALSE)
          addStyle(wb, shid, style = styBH, rows = startRow, cols = c(1:dim(T3)[2]), gridExpand = TRUE)
          addStyle(wb, shid, style = styVS, rows = c((startRow+1):(SS+startRow)), cols = 1, gridExpand = TRUE)

@@ -943,7 +943,6 @@ SEXP C_buckets_CSN_normalize (SEXP b)
 //  Spectra pre-processing
 // ---------------------------------------------------
 
-
 // [[Rcpp::export]]
 double C_estime_sd(SEXP x, int cut)
 {
@@ -1133,3 +1132,33 @@ double Fentropy(SEXP par, SEXP re, SEXP im, int blphc, double B, double gamma=5e
 
    return(_abs(E));
 }
+
+// ---------------------------------------------------
+//  Convolution with the second derivative of a Lorentzian function 
+// ---------------------------------------------------
+double lorentz(double x,double x0, double s) {  return s*s/(s*s+(x-x0)*(x-x0)); }
+
+// [[Rcpp::export]]
+SEXP C_SDL_convolution (SEXP x, SEXP y, double sigma)
+{
+   NumericVector X(x);
+   NumericVector Y(y);
+   int  n=X.size();
+   NumericVector V(n);
+   int ltzwin=500;
+   int n1,n2,k,count;
+   for (count=0; count<n; count++) {
+        V[count]=0;
+        n1 = count<ltzwin ? 0 : count-ltzwin;
+        n2 = count>(n-ltzwin-1) ? n-1 : count+ltzwin;
+        for (k=n1; k<=n2; k++) {
+            V[count] += Y[k]*lorentz(X[k], X[count], sigma);
+        }
+   }
+   for (k=0; k<100; k++) { V[k]=0.0; V[n-k-1]=0.0; }
+   V = C_Derive1(V);
+   V = C_Derive1(V);
+   return(V);
+}
+
+//

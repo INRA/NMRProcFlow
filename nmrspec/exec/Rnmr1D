@@ -299,6 +299,7 @@ tryCatch({
       # Write the new spectra matrix if needed
         if (specMat$fWriteSpec) {
            Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
+           Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(specMat$ppm_max,";",specMat$ppm_min), mode="wt")
            writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
         }
 

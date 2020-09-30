@@ -29,6 +29,7 @@ Spec1rDoProc <- function(Input, param=Spec1rProcpar)
 #'   \item \code{PDATA_DIR} : subdirectory containing the 1r file (bruker's format only) - default value = 'pdata/1'
 #'   \item \code{LB} : Exponantial Line Broadening parameter - default value = 0.3
 #'   \item \code{GB} : Gaussian Line Broadening parameter - default value = 0
+#'   \item \code{REMLFREQ} : Remove low frequencies by applying a polynomial subtraction method. - default order of the model = 0
 #'   \item \code{REVPPM} : Reverse ppm scale - default value = FALSE
 #'   \item \code{BLPHC} : Number of points for baseline smoothing during phasing - default value = 260
 #'   \item \code{KSIG} : Number of times the noise signal to be considered during phasing - default value = 6
@@ -56,6 +57,7 @@ Spec1rProcpar <- list (
 ### PRE-PROCESSING
     LB= 0.3,                   # Exponantial Line Broadening parameter
     GB= 0,                     # Gaussian Line Broadening parameter
+    REMLFREQ=0,                # Remove low frequencies by applying a polynomial subtraction method.
     REVPPM=FALSE,              # Reverse ppm scale
     BLPHC=50,                  # Number of points for baseline smoothing during phasing
     KSIG=2,                    # Number of times the noise signal to be considered
@@ -84,6 +86,8 @@ Spec1rProcpar <- list (
 # verbose function
 #--------------------------------
 .v <- function(..., logfile=Spec1rProcpar$LOGFILE) cat(sprintf(...), sep='', file=logfile, append=TRUE)
+
+
 
 #--------------------------------
 # READ FID && Acquisition Parameters
@@ -202,12 +206,14 @@ Spec1rProcpar <- list (
    ORIGIN   <- gsub("^[^=]+= ?","", ACQ[which(simplify2array(regexpr("^..ORIGIN=",ACQ))>0)])
    ORIGPATH <- gsub("^.. ", "", ACQ[which(simplify2array(regexpr("acqus$",ACQ))>0)])
 
-   SIZE = ifelse( DTYPA==0, 4, 8)
-
-   to.read = file(FIDFILE,"rb")
-   signal<-readBin(to.read, what="int", n=TD, size=4L, endian = ENDIAN)
-
+   SIZE <- ifelse( DTYPA==0, 4L, 8L)
+   DTYPE <- ifelse( DTYPA==0, "int", "double" )
+   
+   to.read <- file(FIDFILE,"rb")
+   signal <- readBin(to.read, what=DTYPE, n=TD, size=SIZE, endian = ENDIAN)
    close(to.read)
+   
+   setwd(cur_dir)
 
    TDsignal<-length(signal)
    if (TDsignal < TD) {
@@ -218,9 +224,15 @@ Spec1rProcpar <- list (
    } else {
      fidGoodSize = signal
    }
-
    rawR <- fidGoodSize[seq(from = 1, to = TD, by = 2)]
    rawI <- fidGoodSize[seq(from = 2, to = TD, by = 2)]
+
+   SI <- 2^round(log2(TD)+0.499)/2
+   if (TD>2*SI) {
+      rawR <- rawR[1:SI]
+      rawI <- rawI[1:SI]
+      TD <- 2*SI
+   }
    fid <- complex(real=rawR, imaginary=rawI)
    TD <- length(fid)
 
@@ -792,7 +804,6 @@ Spec1rProcpar <- list (
    SFO1    <- .bruker.get_param(ACQ,"SFO1")
    O1      <- .bruker.get_param(ACQ,"O1")
    GRPDLY  <- .bruker.get_param(ACQ,"GRPDLY")
-   DTYPA   <- .bruker.get_param(ACQ,"DTYPA")
    INSTRUMENT <- "Bruker"
    SOFTWARE <- gsub("..TITLE= ?Parameter ...., ","", gsub("Version ", "", gsub("\t\t", " ", ACQ[1])))
    ORIGIN   <- gsub("^[^=]+= ","", ACQ[which(simplify2array(regexpr("^..ORIGIN=",ACQ))>0)])
@@ -806,6 +817,7 @@ Spec1rProcpar <- list (
    # Read Processing parameters
    PROC <- readLines(PROCFILE)
    BYTORDP <- .bruker.get_param(PROC,"BYTORDP")
+   DTYPP <- .bruker.get_param(PROC,"DTYPP")
    NC_proc <-  .bruker.get_param(PROC,"NC_proc")
    OFFSET <- .bruker.get_param(PROC,"OFFSET")
    SI <- .bruker.get_param(PROC,"SI")
@@ -813,13 +825,15 @@ Spec1rProcpar <- list (
    PHC1 <-  .bruker.get_param(PROC,"PHC1")
 
    # Read the 1r spectrum
-   ENDIAN = ifelse( BYTORDP==0, "little", "big")
-   SIZE = ifelse( DTYPA==0, 4, 8)
-   to.read = file(SPECFILE,"rb")
-   signal<-rev(readBin(to.read, what="int",size=SIZE, n=SI, signed = TRUE, endian = ENDIAN))
-   signal <- (2^NC_proc)*signal
+   ENDIAN <- ifelse( BYTORDP==0, "little", "big")
+   SIZE <- ifelse( DTYPP==0, 4L, 8L)
+   DTYPE <- ifelse( DTYPP==0, "int", "double" )
+   
+   to.read <- file(SPECFILE,"rb")
+   signal <- rev(readBin(to.read, what=DTYPE, n=SI, size=SIZE, endian = ENDIAN))
    close(to.read)
-   TD <- length(signal)
+   signal <- (2^NC_proc)*signal
+   TD <- SI <- length(signal)
 
    setwd(cur_dir)
 
@@ -930,6 +944,12 @@ Spec1rProcpar <- list (
    spec
 }
 
+
+
+#--------------------------------
+# Pre-Processing
+#--------------------------------
+
 ### Group Delay correction
 .groupDelay_correction <- function(spec, param=Spec1rProcpar)
 {
@@ -960,9 +980,26 @@ Spec1rProcpar <- list (
     fid
 }
 
-#--------------------------------
-# Pre-Processing
-#--------------------------------
+### removeLowFreq : remove low frequencies 
+#       by applying a polynomial subtraction method.
+#  np : polynomial order
+# See https://www.rezolytics.com/articles/4/
+#     https://www.r-bloggers.com/fitting-polynomial-regression-in-r/
+.removeLowFreq <- function(fid, np=5)
+{
+   rawR <- Re(fid)
+   rawI <- Im(fid)
+   
+   model <- lm(rawR ~ poly(1:length(rawR), np))
+   rM <- fitted(model)
+   rawR <- rawR - rM
+   
+   model <- lm(rawI ~ poly(1:length(rawR), np))
+   iM <- fitted(model)
+   rawI <- rawI - iM
+
+   complex(real=rawR, imaginary=rawI)
+}
 
 #### Apply some preprocessing: zero_filling, line broading
 #--  Generate real and imaginary parts
@@ -1040,6 +1077,13 @@ Spec1rProcpar <- list (
     }
     if (param$DEBUG) .v("\tSI = %d\n", td, logfile=logfile)
 
+    ## Remove low frequencies 
+    if(param$REMLFREQ>0) {
+       if(param$DEBUG) .v("Remove low frequencies  ...\n",logfile=logfile)
+       spec$fid <- .removeLowFreq(spec$fid, np=param$REMLFREQ)
+       if(param$DEBUG) .v("OK\n",logfile=logfile)
+    }
+
     param$SI <- length(rawspec)
     proc <- list( phc0=0, phc1=0, crit=NULL, RMS=0, SI=length(rawspec))
     attach(param)
@@ -1069,6 +1113,8 @@ Spec1rProcpar <- list (
     ### return the spec object instance
     spec
 }
+
+
 
 #--------------------------------
 # Phase correction
@@ -1261,6 +1307,8 @@ Spec1rProcpar <- list (
    spec
 }
 
+
+
 #--------------------------------
 # PPM calibration
 #--------------------------------
@@ -1288,6 +1336,13 @@ Spec1rProcpar <- list (
 
    spec
 }
+
+
+
+#--------------------------------
+# Main routines
+#--------------------------------
+
 
 ### FID Processing - Main routine
 #--    DIR        : absolute path of the Bruker/Varian directory
@@ -1345,6 +1400,7 @@ Spec1rProcpar <- list (
       if(param$DEBUG) .v("OK\n",logfile=logfile)
 
       if ( param$INPUT_SIGNAL == "fid") {
+
           ## Pre-processing: group delay, zero filling, line broadening
           if(param$DEBUG) .v("Preprocessing ...\n",logfile=logfile)
           spec <- .preprocess(spec,param)
@@ -1505,7 +1561,7 @@ writeSpec = function(spec, outdir, mode="bin", name="1r")
 
    procfile <- paste(outdir,'procs',sep='/')
    proclist <- c(
-       '##TITLE= Processing parameters, POSTPROC		Rnmr1D v1.2',
+       '##TITLE= Processing parameters, POSTPROC		Rnmr1D v1.3',
        '##ORIGIN= Bruker BioSpin GmbH',
        '@@ *** Processing parameters in the same format as generated by Bruker TopSpin software (procs) ***',
        '##@BYTORDP= 0',
