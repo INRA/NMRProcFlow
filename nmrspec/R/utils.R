@@ -170,6 +170,7 @@ get_Data_matrix <- function(outDataViewer, zoneref, zonenoise)
      if ( file.exists(bucketfile) ) {
         outsnr <- get_SNR_dataset(specMat, bucketfile, c(min(zonenoise), max(zonenoise)), ratio=TRUE)
         buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
+        buckets <- buckets[ buckets[,2]>0, ]
         BUCsel <- get_Buckets_upperSNR(buckets, outsnr, input$snrlevel)
         outdata <- get_Buckets_dataset(specMat, bucketfile, input$normmeth, zoneref)
         nbfc <- length(colnames(outdata)) - length(buckets[,1])
@@ -278,6 +279,7 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
          outsnr <- get_SNR_dataset(specMat, bucketfile, c(min(zonenoise), max(zonenoise)), ratio=TRUE)
          outdata <- get_Buckets_dataset(specMat, bucketfile, input$normmeth, zoneref)
          buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
+         buckets <- buckets[ buckets[,2]>0, ]
          BUCsel <- get_Buckets_upperSNR(buckets, outsnr, input$snrlevel)
          BUCsel <- BUCsel[ grep("\\.2$", BUCsel, invert=TRUE) ]
          buckets <- get_Buckets_table(bucketfile)

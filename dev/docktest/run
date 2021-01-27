@@ -1,0 +1,20 @@
+#!/bin/bash
+MYDIR=`dirname $0` && [ ! `echo "$0" | grep '^\/'` ] && MYDIR=`pwd`/$MYDIR
+
+IMAGE=docktest
+CONTAINER=docktest
+
+CMD=$1
+
+usage() { echo "usage: sh $0 build|shell";  exit 1; }
+
+case "$CMD" in
+   build)
+        ( sudo docker build -t $IMAGE . )
+        ;;
+   shell)
+        ( sudo docker run -it --rm  $CONTAINER /bin/bash )
+        ;;
+   *) usage
+      exit 2
+esac

@@ -1,0 +1,210 @@
+https://auth0.com/blog/2015/09/24/adding-authentication-to-shiny-open-source-edition/
+https://auth0.com/docs/server-platforms/apache
+https://manage.auth0.com/#/
+
+https://manage.auth0.com/login
+djacob65@gmail.com / H...65
+
+
+See https://github.com/zandbelt/mod-auth-openidc-dist/blob/master/ubuntu/trusty/run/Dockerfile
+---
+apt-get install -y libjansson4 libhiredis0.10
+curl -s -L -o libapache2-mod-auth-openidc.deb  https://mod-auth-openidc.org/download/libapache2-mod-auth-openidc_1.8.7-1ubuntu1~trusty+1_amd64.deb
+dpkg -i libapache2-mod-auth-openidc.deb
+
+
+See https://auth0.com/docs/server-platforms/apache
+---
+OIDCProviderIssuer https://npflow.eu.auth0.com
+OIDCProviderAuthorizationEndpoint https://npflow.eu.auth0.com/authorize
+OIDCProviderTokenEndpoint https://npflow.eu.auth0.com/oauth/token
+OIDCProviderTokenEndpointAuth client_secret_post
+OIDCProviderUserInfoEndpoint https://npflow.eu.auth0.com/userinfo
+
+OIDCClientID 6EUwTEABWjcjEiUVBl5OKACQRmTSO4zx
+OIDCClientSecret rV0Csk_6-w2SRwsECHLOV_tnobuGnJl1RkRApa3fWt7lKztFRYQBN0pV6qwjALQl
+
+OIDCScope "openid name email"
+OIDCRedirectURI https://your_apache_server/your_path/redirect_uri/
+OIDCCryptoPassphrase <passwordToEncryptTheSessionInformationOnTheCookie>
+OIDCCookiePath /your_path/
+
+SSLEngine on
+SSLCertificateFile /home/your_cert.crt
+SSLCertificateKeyFile /home/your_key.key
+
+<Location /your_path/>
+   AuthType openid-connect
+   Require valid-user
+   LogLevel debug
+</Location>
+
+curl 'https://npflow.eu.auth0.com/api/clients/6EUwTEABWjcjEiUVBl5OKACQRmTSO4zx' -X PUT -H 'authorization: Bearer ACCESS_TOKEN' -H 'content-type: application/json' --data-binary $'{ "jwtConfiguration": {"lifetimeInSeconds": "36000", "secretNotEncoded": true  }}'
+
+
+See https://manage.auth0.com/#/
+---
+
+Client ID 6EUwTEABWjcjEiUVBl5OKACQRmTSO4zx
+Client Secret rV0Csk_6-w2SRwsECHLOV_tnobuGnJl1RkRApa3fWt7lKztFRYQBN0pV6qwjALQl
+
+
+See https://devcenter.heroku.com/articles/ssl-certificate-self
+
+-----BEGIN CERTIFICATE-----
+MIIC7jCCAdagAwIBAgIJe+c0fwbhBydMMA0GCSqGSIb3DQEBBQUAMB4xHDAaBgNV
+BAMTE25wZmxvdy5ldS5hdXRoMC5jb20wHhcNMTYwMTE1MTUxMjI3WhcNMjkwOTIz
+MTUxMjI3WjAeMRwwGgYDVQQDExNucGZsb3cuZXUuYXV0aDAuY29tMIIBIjANBgkq
+hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwj3cpW17uIBVIxPYo2FE1R8DwqNFa9V2
+cMnzFwAZbmQEahkriOxwL4R6EzF3wqK7o6BCdj4jTWhXejnDgzLyjb+hRVu+BW4/
+VspvVwGEO26Bresbk6y/3jyn7oeleDdtwXM/NGcT5h7p8WqAROM0Hrt8rJQ/JZmi
+IYEucI5BWCLXieHLyAjUegv5LwfRvbCBndBDym3Ko1xt5hwq1C1cqQebbJCCBhie
+r+laLq1tPhwHyZCLc4dSnprJP+4KZ0RIa+L0IgkzPNTIN+C/mjhLeLl/4V81SrFE
+91TY+k/Blytqc0ndLH0hOktXMhhfjBv5ymuAgQa8t6FLlYdbMSKZawIDAQABoy8w
+LTAMBgNVHRMEBTADAQH/MB0GA1UdDgQWBBQ2ceXPTNJdAgS8ooe9ro7AY8/O1TAN
+BgkqhkiG9w0BAQUFAAOCAQEAT3mHq9qQJdqoqdL17jtYfBjiPUrRZSDdAxoURWgs
+Ijoe0vJ/QhI4ds/rnEh4X+xZoL2hDcjMPIHdT4eDMfUv4ZHaBOJVlAQMIistCgOu
+Huq7STkx2zurFuucXIoWDhQMTWZJHSc4Ue/NJyIK2i0naA8pQBeAHvNxMQpcEJe1
+bbVbE0TXuScb/0h+v1xuwZ3JhLITkYuEwxoARnNcN0hQrto1oJlEglqwVT+YHoKe
+PSUlrLOZgSEuR8GSM7YDimQcQByHFKvPXEh0tv3aYAvam1h8aTFkbcsdX3+oDiIv
+HTWxg2IP8DYsLi3YVXyO1oNa1heYyB+OjaFJhsyzbRyB6g==
+-----END CERTIFICATE-----
+
+D2:49:13:08:46:AD:70:E3:B4:68:32:E0:FB:8E:EA:41:34:A2:14:60
+
+D249130846AD70E3B46832E0FB8EEA4134A21460
+
+{
+  "email": "djacob65@gmail.com",
+  "email_verified": true,
+  "name": "Daniel JACOB",
+  "given_name": "Daniel",
+  "family_name": "JACOB",
+  "picture": "https://lh5.googleusercontent.com/-lpb0OqF-9Is/AAAAAAAAAAI/AAAAAAAAAYk/POtEvmo6Q8M/photo.jpg",
+  "gender": "male",
+  "locale": "fr",
+  "clientID": "DIUZ6kWJykdF0f212czOGEJCAwmztrFi",
+  "updated_at": "2016-01-18T15:29:54.471Z",
+  "user_id": "google-oauth2|104271698711998131792",
+  "nickname": "djacob65",
+  "identities": [
+    {
+      "provider": "google-oauth2",
+      "access_token": "ya29.bQLpMKrOaXyUsfHp9Ru-nJHTb4p7O0NMXNL_BbEEFGb0ni-eFnQE77hcomTmUvEtBdWn",
+      "expires_in": 3600,
+      "user_id": "104271698711998131792",
+      "connection": "google-oauth2",
+      "isSocial": true
+    }
+  ],
+  "created_at": "2016-01-18T15:28:29.269Z",
+  "sub": "google-oauth2|104271698711998131792"
+}
+
+
+https://login.eu.auth0.com/login/callback?code=AQTqdW0Qa52XanjtB1juIelC1_9XMpR58wTzo2QNlFqIGfdweeax63nlD8LzHpC-v6ilz8jkWKdcz6PwJ7VhEqhqjFvY5rA2fDoP2Udb5Mj924YySQ0&state=oC1Ez5T9c3Xs435E
+
+{
+  "given_name": "Daniel",
+  "family_name": "JACOB",
+  "picture": "https://media.licdn.com/mpr/mprx/0_fsPnURLnhX3ESge2DR3dUMQQ2FLFTOe2SgbdUZz61GA9Ysxu_y_sz4THGW5JGJWhaMleN0wj6eeg",
+  "name": "Daniel JACOB",
+  "apiStandardProfileRequest": {
+    "headers": {
+      "_total": 1,
+      "values": [
+        {
+          "name": "x-li-auth-token",
+          "value": "name:976K"
+        }
+      ]
+    },
+    "url": "https://api.linkedin.com/v1/people/fp4Cpvlzs4"
+  },
+  "currentShare": {
+    "author": {
+      "firstName": "Daniel",
+      "id": "fp4Cpvlzs4",
+      "lastName": "JACOB"
+    },
+    "comment": "I just added a SlideShare to my profile",
+    "content": {
+      "description": "BioStatFlow is a web application useful to analyze \"OMICS\", including metabolomics, data with statistical methods.\nBioStatFlow is available online: http://biostatflow.org",
+      "eyebrowUrl": "http://www.slideshare.net/danieljacob771282/biostatflow",
+      "resolvedUrl": "http://www.slideshare.net/danieljacob771282/biostatflow",
+      "shortenedUrl": "https://lnkd.in/db75wJC",
+      "submittedImageUrl": "http://cdn.slidesharecdn.com/ss_thumbnails/biostatflowmay15-150524174624-lva1-app6891-thumbnail-4.jpg?cb=1432489736",
+      "submittedUrl": "http://www.slideshare.net/danieljacob771282/biostatflow",
+      "thumbnailUrl": "https://media.licdn.com/media-proxy/ext?w=80&h=100&f=&hash=mT0SpgbJk1vBzsv6gww98zmXUG0%3D&ora=1%2CaFBCTXdkRmpGL2lvQUFBPQ%2CxAVta9Er0VKunVUJzhUl5b2JrF2150NJC4HTDy_iGEruopDdMim4IJucZuD4-x5SKWhXzFt1Ir7hQTX8E5a8LojrfNt1jZXhOcyiZ1ZLaAwm0zEWvZwvMQwpt5qnDOe9NGBEwusHbi3gYu26NQZnU3Jkqw",
+      "title": "Biostatflow"
+    },
+    "id": "s6008297448634613760",
+    "source": {
+      "application": {
+        "name": "SlideShare"
+      },
+      "serviceProvider": {
+        "name": "SLIDESHARE"
+      }
+    },
+    "timestamp": 1432489740000,
+    "visibility": {
+      "code": "anyone"
+    }
+  },
+  "distance": 0,
+  "headline": "Research Engineer at INRA",
+  "industry": "Research",
+  "location": {
+    "country": {
+      "code": "fr"
+    },
+    "name": "Bordeaux Area, France"
+  },
+  "numConnections": 44,
+  "numConnectionsCapped": false,
+  "positions": {
+    "_total": 1,
+    "values": [
+      {
+        "company": {
+          "id": 500504,
+          "industry": "Research",
+          "name": "French National Institute for Agricultural Research",
+          "size": "5001-10,000 employees",
+          "type": "Government Agency"
+        },
+        "id": 304638795,
+        "isCurrent": true,
+        "startDate": {
+          "year": 2009
+        },
+        "title": "Research Engineer"
+      }
+    ]
+  },
+  "publicProfileUrl": "https://www.linkedin.com/in/daniel-jacob-b3bb4855",
+  "relationToViewer": {
+    "distance": 0
+  },
+  "siteStandardProfileRequest": {
+    "url": "https://www.linkedin.com/profile/view?id=196924511&authType=name&authToken=976K&trk=api*a3993303*s4061143*"
+  },
+  "email_verified": true,
+  "clientID": "DIUZ6kWJykdF0f212czOGEJCAwmztrFi",
+  "updated_at": "2016-01-18T15:47:46.871Z",
+  "user_id": "linkedin|fp4Cpvlzs4",
+  "nickname": "Daniel JACOB",
+  "identities": [
+    {
+      "access_token": "AQXkf57WMMGrPRQbOiv-bpYXxpJUi0vdAnKqXj4Y2zM3jqd20zd8AjjiJB4r49kw3-vkLKSnOr4Z6Q8Zs5pDmD1yUxofg3dBpJCvM-G-y-7ZaiKfZB1hqRY0rG2FAay1XCOxnkHcdk9h1mvF0v2qN3I6NWxfD33ej67cYj7t7aBWfCIq4Ws",
+      "provider": "linkedin",
+      "user_id": "fp4Cpvlzs4",
+      "connection": "linkedin",
+      "isSocial": true
+    }
+  ],
+  "created_at": "2016-01-18T15:46:28.798Z",
+  "sub": "linkedin|fp4Cpvlzs4"
+}
+

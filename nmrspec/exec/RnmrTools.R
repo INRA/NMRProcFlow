@@ -424,6 +424,8 @@ RNorm1D <- function(specMat, normmeth, zones)
       }
       # Calculate the most probable quotient
       V <- apply(SUBMAT, 2, median)
+      SUBMAT <- SUBMAT[, V!=0]
+      V <- V[V!=0]
       MQ <- t(t(SUBMAT)/V)
       COEFF <- apply(MQ,1,median)
    }
@@ -1157,6 +1159,7 @@ get_Buckets_table <- function(bucketfile)
    if ( file.exists(bucketfile) ) {
       # Read the buckets
       buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
+      buckets <- buckets[ buckets[,2]>0, ]
       colnames(buckets) <- c("center", "width")
       buckets$name <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
       buckets$min <- buckets[,1]-0.5*buckets[,2]
@@ -1176,6 +1179,7 @@ get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA
    if ( file.exists(bucketfile) ) {
       # Read the buckets
       buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
+      buckets <- buckets[ buckets[,2]>0, ]
       buckets$min <- buckets[,1]-0.5*abs(buckets[,2])
       buckets$max <- buckets[,1]+0.5*abs(buckets[,2])
       # get index of buckets' ranges
@@ -1231,6 +1235,7 @@ get_SNR_dataset <- function(specMat, bucketfile, zone_noise, ratio=TRUE)
       factors <- read.table(factorsFile, header=F, sep=";", stringsAsFactors=FALSE)
       # Read the buckets
       buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
+      buckets <- buckets[ buckets[,2]>0, ]
       buckets$min <- buckets[,1]-0.5*buckets[,2]
       buckets$max <- buckets[,1]+0.5*buckets[,2]
       # get index of buckets' ranges

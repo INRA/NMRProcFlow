@@ -1,0 +1,54 @@
+specSig <- fitdistr(specMat$int[i,length(which(specMat$ppm>PPM_NOISE_AREA[2])):(which(specMat$ppm<=PPM_NOISE_AREA[1])[1])], "normal")$estimate[2]
+TAG <- -9999
+OFFSET <- 3
+CMIN <- round(0.02/specMat$dppm)
+y <- Smooth(x,4)
+dY <- C_Derive1(y)
+dY2 <- C_Derive1(dY)
+dZ2 <- dY2
+dZ2[ abs(dY2)<0.25*specSig ] <- TAG
+
+bci <- 0*rep(1:n)
+bci[1:OFFSET] <- y[1:OFFSET]
+bci[(n-OFFSET+1):n] <- y[(n-OFFSET+1):n]
+cnt<-0
+n1 <- OFFSET+1
+n2 <- OFFSET+1
+while(n2<n) {
+    if (dZ2[n2]!= TAG) {
+       if (cnt<CMIN) {
+           cnt <- 0
+           while(dZ2[n2]!= TAG && n2<n) { n2 <- n2+1 }
+           n2 <- n2-1
+           bci[n1:n2] <- TAG
+       } else {
+           cnt <- 0
+           bci[n1:(n2-1)] <- y[n1:(n2-1)]
+       }
+       n2 <- n2+1
+       n1 <- n2
+       if (n2>=(n-OFFSET+1)) n2 <- n
+    } else {
+        while(dZ2[n2]== TAG && n2<n) { cnt <- cnt + 1; n2 <- n2+1 }
+        if (n2>=(n-OFFSET+1)) {
+           bci[n1:n2] <- y[n1:n2]
+           n2 <- n
+        }
+    }
+}
+bci1 <- bci
+n1 <- OFFSET
+n2 <- OFFSET
+while(n2<n) {
+   if (bci[n2]!= TAG) {
+        while(bci[n2]!= TAG && n2<n) { n2 <- n2+1 }
+   } else {
+        n1 <- n2-1
+        while(bci[n2]== TAG && n2<n) { n2 <- n2+1 }
+        bci[(n1-1):n2] <- ( (bci[n2]-bci[n1-1])/(n2-n1+1) )*c(0:(n2-n1+1)) + bci[n1-1]
+        n1 <- n2
+   }
+}
+#bci1
+bci
+#dZ2
