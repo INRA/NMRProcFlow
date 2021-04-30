@@ -238,6 +238,8 @@ repeat {
    break
 }
 
+#------------------------------
+
 # tryCatch
 }, error=function(e) {
    fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")

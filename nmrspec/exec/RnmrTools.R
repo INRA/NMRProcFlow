@@ -129,6 +129,12 @@ pop_STACK <- function (DATADIR, listfiles, STACKID)
    }
 }
 
+clean_STACK <- function(DATADIR, listfiles)
+{
+   for (f in 1:length(listfiles))
+      file.remove( file.path(DATADIR, dir(path=DATADIR ,pattern=paste0(listfiles[f],'.0*'))) )
+}
+
 # -----
 # Generate the 'samples.csv' & 'factors' files from the list of raw spectra
 # -----
@@ -188,7 +194,7 @@ WhittakerSmooth <- function(x,w,lambda,differences=1)
   return(as.vector(background))
 }
  
-airPLS <- function(x,lambda=100,porder=1, itermax=8)
+airPLS <- function(x,lambda=100, porder=1, itermax=8)
 {
   x = as.vector(x)
   m = length(x)
@@ -584,19 +590,19 @@ Rqnmrbc1D <- function(specMat, PPM_NOISE_AREA, zone, ProgressFile=NULL)
 #------------------------------
 # airPLS : Local Baseline Correction
 #------------------------------
-RairPLSbc1D <- function(specMat, zone, clambda, ProgressFile=NULL)
+RairPLSbc1D <- function(specMat, zone, clambda, porder=1, ProgressFile=NULL)
 {
    i1 <- ifelse( max(zone)>=specMat$ppm_max, 1, length(which(specMat$ppm>max(zone))) )
    i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
    n <- i2-i1+1
-   cmax <- 6
+   cmax <- switch(porder, 6, 7, 8)
 
    lambda <- ifelse (clambda==cmax, 5, 10^(cmax-clambda) )
    # Baseline Estimation for each spectrum
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
    BLList <- foreach(i=1:specMat$nspec, .combine=cbind) %dopar% {
        x <- specMat$int[i,c(i1:i2)]
-       bc <- airPLS(x, lambda)
+       bc <- airPLS(x, lambda, porder=porder)
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        bc
    }
@@ -996,13 +1002,15 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
           }
           if (cmdName == lbAIRPLS) {
               params <- as.numeric(cmdPars[-1])
-              if (length(params)==3) {
+              if (length(params)>=3) {
+                 porder <- 1
+                 if (length(params)==4) porder <- params[4]
                  PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
                  LAMBDA <- params[3]
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Baseline Correction: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
-                 Write.LOG(LOGFILE,paste("Rnmr1D:     Type=airPLS, lambda=",LAMBDA))
+                 Write.LOG(LOGFILE,paste("Rnmr1D:     Type=airPLS, lambda=",LAMBDA, ", order=",porder))
                  registerDoParallel(cores=NCPU)
-                 specMat <- RairPLSbc1D(specMat, PPMRANGE, LAMBDA, ProgressFile=ProgressFile)
+                 specMat <- RairPLSbc1D(specMat, PPMRANGE, LAMBDA, porder=porder, ProgressFile=ProgressFile)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
               }

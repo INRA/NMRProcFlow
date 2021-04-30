@@ -1,11 +1,13 @@
-library(Rnmr1D)
+# Global environment for both ui and server
 library(shiny)
-library(shinyBS)
 library(shinyjs)
+library(shinyBS)
+
 library(digest)
 library(rjson)
 library(parallel)
 library(openxlsx)
+library(Rnmr1D)
 
 # R options: See https://rdrr.io/r/base/options.html
 

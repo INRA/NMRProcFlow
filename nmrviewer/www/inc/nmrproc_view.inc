@@ -26,6 +26,7 @@ class nmrproc_view extends nmrproc_conf {
     var $level    = 0;      # level in the group id : 0 for all
     var $sublevel = '';     # samplecode in the group id : 0 for all
     var $stacked  = 0;      # plot spectra as Stacked spectra (1) or Unstacked (0)
+    var $ordplot  = 0;      # plot as alphanumerical order (1) or in the reverse order (0)
     var $legend   = 0;      # spectra legend: boolean true for display
     var $imgtype = '';      # Gnuplot output type
     var $sepfield = '';     # Delimiter within the nomenclature (samplecodes of factor groups)
@@ -50,9 +51,9 @@ class nmrproc_view extends nmrproc_conf {
                             'YMAX' => 0,       # Max spectra intensity value within the current ppm range
                             'IMAX' => 0        # Max spectra intensity value within the whole ppm range
                     );
-    var $gnuplot_colors   = array ( "red", "web-green", "web-blue", "dark-magenta", "orange", "magenta", "dark-cyan", 
-                            "turquoise", "purple", "dark-green", "light-red", "medium-blue", "sea-green", "orange-red", 
-                            "light-coral", "salmon", "olive", "steelblue", "orchid", "dark-pink", "spring-green" );
+    var $gnuplot_colors   = array ( "web-blue", "red", "web-green", "dark-magenta", "orange", "magenta", "dark-cyan", 
+                            "dark-orange", "purple", "dark-green", "light-red", "medium-blue", "sea-green", "orange-red", 
+                            "light-coral", "dark-chartreuse", "olive", "steelblue", "orchid", "dark-pink", "spring-green" );
 
 /********************************************************
 * Init. Method / Constructor
@@ -97,7 +98,6 @@ class nmrproc_view extends nmrproc_conf {
         $this->PPM1 = $this->val1 ? $this->val1 : $this->PPM_MIN;
         $this->PPM2 = $this->val2 ? $this->val2 : $this->PPM_MAX;
         $this->MEXTRACT = $this->UNPACK_BIN;
-        #$this->FLGALL = (! $this->val1 && ! $this->val2 ) ? 1 : 0 ;
         $this->FLGALL = 0 ;
         $this->FULL_SPEC = "SPEC_".$this->color.'_'.$this->level.'_'.$this->IMGSIZE.'_'.$this->IMGHEIGHT.'_'.$this->stacked.'_NMR.png';
         # Fix the GNUPLOT left box offset based on GNUPLOT patchlevel
@@ -218,7 +218,7 @@ EOT;
             }
             fclose($handle);
             usort($list_idx,"__cmp_speckey");
-            
+
             $TMP=$this->TMP;
             $filename="$TMP/index.csv";
             if (file_exists($filename)) unlink($filename);
@@ -241,6 +241,7 @@ EOT;
         if(is_writable($this->DATADIR)) {
             `echo "$LISTID" | head -1 > $SELECTED`;
         }
+        chmod($SELECTED, 0666);
     }
 
 /********************************************************
@@ -257,7 +258,6 @@ EOT;
         $VARCOL=1;
         $PREVAR = "xx";
         $PREVSPL='xx';
-        $PLOT='';
         $SPEC=0;
         $record='';
         $fac_items=0;
@@ -325,13 +325,15 @@ EOT;
             `echo "elapsed time = $elapsed" >> $TMP/bin4gp.log`; # for debugging
         }
 
-        # Generate the corresponding gnuplot 'plot' statement (NEW2: Full Matrix with X scale => double size)
+        # Generate the corresponding gnuplot commands (NEW2: Full Matrix with X scale => double size)
+        $PLOT_ARR = array();
         foreach ($list as $idx => $arr) {
             $PREM = $arr[0];
             $sample = $arr[1];
             $COL=$arr[2];
             $SEL=$arr[3];
             $TITLE='';
+            $cnt++;
             if ("$PREM" != "$PREVAR" && $this->level==0) {
                 if ($fac_items<=10 || $this->legend==1) $TITLE="$PREM";
                 $VARCOL++;
@@ -342,18 +344,17 @@ EOT;
             if ($SEL==0) continue;
             if ($this->level>0) $VARCOL++;
             $COLOR=$this->gnuplot_colors[($VARCOL-2)%count($this->gnuplot_colors)];
-            if (strlen($PLOT)) {
-                  $PLOT .= ", \\\n \"\"";
-            } else {
-                  $PLOT ="\"$PLOTFILE\"";
-            }
-            $PLOT .= " binary record=($record) format=\"%float32%float32\"";
+            $PLOT = " binary record=($record) format=\"%float32%float32\"";
             if ($SPEC>0) $PLOT .= " skip=$record*8*$SPEC";
             $PLOT .=" u 1:2 title \"$TITLE\" w lines lt rgb \"$COLOR\"";
-#--
+            array_push($PLOT_ARR, $PLOT);
             $SPEC++;
         }
 
+        # Gather the gnuplot commands, reversing them if necessary
+        $PLOT='';
+        foreach ( (! $this->ordplot ? array_reverse($PLOT_ARR) : $PLOT_ARR) as $CMD)
+            $PLOT .= (strlen($PLOT) ? ", \\\n \"\"" : "\"$PLOTFILE\"").$CMD;
         $this->hPLOT['SPEC']=$SPEC;
         $this->hPLOT['PLOT']=$PLOT;
     }

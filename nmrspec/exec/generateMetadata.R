@@ -29,12 +29,12 @@ generateMetadata <- function(RAWDIR, procParams, samples=NULL)
 {
    metadata <- list()
    repeat {
-      # Bruker, Varian or nmrML with a provided sample file 
+      # if a sample file is provided 
       if (! is.null(samples) ) {
           metadata <- set_Metadata(RAWDIR, procParams, samples )
           break
       }
-      # Bruker without sample file 
+      # if Bruker without sample file 
       if ( procParams$VENDOR=="bruker" ) {
           if ( procParams$INPUT_SIGNAL=="fid" ) {
               metadata <- generate_Metadata_Bruker_fid(RAWDIR, procParams )
@@ -46,6 +46,7 @@ generateMetadata <- function(RAWDIR, procParams, samples=NULL)
           }
           break
       }
+      # if RS2D without sample file 
       if ( procParams$VENDOR=="rs2d" ) {
           if ( procParams$INPUT_SIGNAL=="fid" ) {
               metadata <- generate_Metadata_RS2D_fid(RAWDIR, procParams )
@@ -57,7 +58,7 @@ generateMetadata <- function(RAWDIR, procParams, samples=NULL)
           }
           break
       }
-      # Varian, Jeol or nmrML without sample file 
+      # else: Varian, Jeol or nmrML without sample file 
       metadata <- set_Metadata(RAWDIR, procParams, samples )
       break
    }
@@ -72,9 +73,9 @@ generate_Metadata_Bruker_fid <- function(RAWDIR, procParams)
    lstfac <- matrix(c(1,"Samplecode"), nrow=1)
    RAWPATH <- gsub("//", "/", RAWDIR)
    LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "fid$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-   if ( class(LIST)=="character" && length(LIST)==0 ) return(NULL)
+   if ( "character" %in% class(LIST) && length(LIST)==0 ) return(NULL)
    L <- simplify2array(strsplit(LIST,'/'))
-   if (class(L) != "matrix") {
+   if (! "matrix" %in% class(L)) {
       L <- simplify2array(lapply(L, length))
       LM <- round(mean(L),0)
       RMLIST <- c()
@@ -124,7 +125,7 @@ generate_Metadata_Bruker_fid <- function(RAWDIR, procParams)
    } else {
       M <-  MS[, c(1,2) ]
    }
-   if (nr==1 && class(M)=="character") M <- as.matrix(t(M))
+   if (nr==1 && "character" %in% class(M)) M <- as.matrix(t(M))
    if (nr>1 && length(unique(sort(M[,2])))==1) M[,2] <- M[,1]
 
    metadata$ERRORLIST <- ERRORLIST
@@ -145,9 +146,9 @@ generate_Metadata_Bruker_1r <- function(RAWDIR, procParams)
    RAWPATH <- gsub("//", "/", RAWDIR)
 
    LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "1r$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-   if ( class(LIST)=="character" && length(LIST)==0 ) return(NULL)
+   if ( "character" %in% class(LIST) && length(LIST)==0 ) return(NULL)
    L <- simplify2array(strsplit(LIST,'/'))
-   if (class(L) != "matrix") {
+   if (! "matrix" %in% class(L)) {
       L <- simplify2array(lapply(L, length))
       LM <- round(mean(L),0)
       RMLIST <- c()
@@ -204,7 +205,7 @@ generate_Metadata_Bruker_1r <- function(RAWDIR, procParams)
    } else {
       M <-  MS[, c(1,2) ]
    }
-   if (nr==1 && class(M)=="character") M <- as.matrix(t(M))
+   if (nr==1 && "character" %in% class(M)) M <- as.matrix(t(M))
 
    metadata$ERRORLIST <- ERRORLIST
    if (OKRAW==1) {
@@ -405,7 +406,7 @@ set_Metadata <- function(RAWDIR, procParams, samples)
    OKRAW <- 1
 
    LIST <- gsub('//', '/', list.files(path = RAWDIR, pattern = "fid$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-   if ( class(LIST)=="character" && length(LIST)==0 ) return(0)
+   if ( "character" %in% class(LIST) && length(LIST)==0 ) return(0)
 
    if (!is.null(samples)) {
        samplesize <- dim(samples)
@@ -468,7 +469,7 @@ set_Metadata <- function(RAWDIR, procParams, samples)
    OKRAW <- 1
    pattern <- paste0('.',ext,'$')
    LIST <- gsub('//', '/', list.files(path = RAWDIR, pattern = pattern, all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-   if ( class(LIST)=="character" && length(LIST)==0 ) return(0)
+   if ( "character" %in% class(LIST) && length(LIST)==0 ) return(0)
 
    if (!is.null(samples)) {
       samplesize <- dim(samples)

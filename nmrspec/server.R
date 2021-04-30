@@ -1,6 +1,11 @@
+library(Rnmr1D)
+library(digest)
+library(rjson)
+library(parallel)
+library(openxlsx)
 
 # Define Server for NMR processing application
-shinyServer(function(input, output, session) {
+function(input, output, session) {
 
     #----------------------------------------------------
     # Init
@@ -43,12 +48,12 @@ shinyServer(function(input, output, session) {
     values$fgalaxy <- 0
     values$uploadmsg <- 0
 
-
-    source("R/utils.R", local=TRUE)     # general routines
-    source("R/Login.R", local=TRUE)     # Log in module
-    source("R/Proc1.R", local=TRUE)     # UI initialization events - Upload & Preprocessing
-    source("R/Proc2.R", local=TRUE)     # Watcher - NMRViewer & Capture
-    source("R/Proc3.R", local=TRUE)     # Processing
+    source("Rsrc/utils.R", local=TRUE)     # general routines
+    source("Rsrc/Login.R", local=TRUE)     # Log in module
+    source("Rsrc/Proc1.R", local=TRUE)     # UI initialization events - Upload & Preprocessing
+    source("Rsrc/Proc2.R", local=TRUE)     # Watcher - NMRViewer & Capture
+    source("Rsrc/Proc3.R", local=TRUE)     # Samples
+    source("Rsrc/Proc4.R", local=TRUE)     # Processing
 
     #----------------------------------------------------
     # Main
@@ -104,5 +109,5 @@ shinyServer(function(input, output, session) {
 
     })
 
-})
+}
 

@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     libxt-dev libxml2-dev libv8-dev gnuplot \
     gdebi-core \
     libssl-dev openssl software-properties-common \
-    libgsl0-dev gsl-bin libnlopt-dev && \
+    libnlopt-dev && \
   # See https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-18-04'
   #     https://rtask.thinkr.fr/fr/installation-de-r-3-5-sur-ubuntu-18-04-lts-et-astuces-pour-les-packages-de-cartographie/
     sh -c 'echo "deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/" >> /etc/apt/sources.list' && \
@@ -21,13 +21,12 @@ RUN apt-get update && apt-get install -y \
     add-apt-repository ppa:marutter/c2d4u3.5 && \
   # Install R / ...
     apt-get update && apt-get install -y \
-    r-recommended \
-    r-base-dev \
-    r-cran-rcurl \
-    r-cran-foreach \
-    r-cran-multicore \
-    r-cran-base64enc \
-    r-cran-xml \
+    r-recommended r-base-dev r-cran-rcurl r-cran-foreach r-cran-multicore r-cran-base64enc r-cran-xml \
+    r-cran-rcpp r-cran-biocmanager r-cran-base64enc r-cran-mime r-cran-inline r-cran-docopt \
+    r-cran-doparallel r-cran-httpuv r-cran-xtable r-cran-rjson r-cran-jsonlite r-cran-htmltools r-cran-stringi \
+    r-cran-signal r-cran-ptw r-bioc-impute r-bioc-massspecwavelet r-cran-speaq r-cran-minqa \
+    r-cran-fs r-cran-rappdirs r-cran-sass r-cran-jquerylib r-cran-sourcetools r-cran-fastmap r-cran-commonmark \
+    r-cran-bslib r-cran-cachem r-cran-zip r-cran-openxlsx r-cran-shiny r-cran-shinybs  r-cran-shinyjs \
   # Install Apache+PHP
     apache2 apache2-dev php libapache2-mod-php php-gd && \
   # See https://github.com/jeffreyhorner/rapache
@@ -48,15 +47,12 @@ ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
 
 RUN \
-  # Download and install shiny server
+  # Download and install Shiny server
     wget --no-verbose http://download3.rstudio.org/ubuntu-14.04/x86_64/VERSION -O "version.txt" && \
     VERSION=$(cat version.txt)  && \
     wget --no-verbose "http://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
     gdebi -n ss-latest.deb && \
-    rm -f version.txt ss-latest.deb && \
-  # Install Shiny and some extensions and some other dependencies
-    R -e "install.packages(c('gsl', 'Rcpp', 'RcppGSL', 'inline', 'rjson', 'httpuv', 'mime', 'jsonlite', 'xtable', 'htmltools', 'R6', 'shiny', 'shinyBS', 'shinyjs', 'stringi', 'docopt','doParallel','signal','ptw', 'openxlsx','BiocManager' ), repos='http://cran.rstudio.com')" && \
-    R -e "BiocManager::install(c('MassSpecWavelet','impute')); install.packages('speaq', repos='http://cran.rstudio.com')"
+    rm -f version.txt ss-latest.deb
 
 ENV APACHE_RUN_USER=www-data \
     APACHE_RUN_GROUP=www-data \
@@ -71,9 +67,9 @@ ENV APACHE_RUN_USER=www-data \
 
 # Metadata
 LABEL base.image="nmrprocflow:latest" \
-      version="1.3.08" \
+      version="1.4.04" \
       software="NMRProcFlow" \
-      software.version="1.3.08" \
+      software.version="1.4.04" \
       description="An user-friendly tool dedicated to 1D NMR spectra processing (1H, 13C, 31P) for metabolomics" \
       website="https://nmrprocflow.org/" \
       documentation="https://nmrprocflow.org/" \

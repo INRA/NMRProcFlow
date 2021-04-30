@@ -28,6 +28,13 @@ var toggle_capturemode = function() {
      } while (0)
 }
 
+var refresh_select = function(id) {
+     do {
+        if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
+        $("#ifspecview").get(0).contentWindow.spectrum_select(id);
+     } while (0)
+}
+
 var refresh_spectrum = function(flg=0) {
      do {
         if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;

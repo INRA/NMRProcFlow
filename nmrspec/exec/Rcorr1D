@@ -284,10 +284,10 @@ repeat {
       Write.LOG(LOGFILE,paste0("Rcorr1D:  airPLS - lambda = ",procParams$LAMBDA));
 
       CMDINFO <- paste("#\n# Baseline Correction: PPM Range = ( ",min(zone)," , ",max(zone)," )\n#\n")
-      CMDINFO <- paste0(CMDINFO,paste("airpls",min(zone),max(zone), procParams$LAMBDA, "\n"))
+      CMDINFO <- paste0(CMDINFO,paste("airpls",min(zone),max(zone), procParams$LAMBDA, procParams$PORDER, "\n"))
       
       registerDoParallel(cores=env.list$CORES)
-      specMat <- RairPLSbc1D(specMat, zone, procParams$LAMBDA, ProgressFile=ProgressFile)
+      specMat <- RairPLSbc1D(specMat, zone, procParams$LAMBDA, porder=procParams$PORDER, ProgressFile=ProgressFile)
 
    }
 
@@ -343,5 +343,5 @@ if (fWriteSpec) {
    close(dfcmd)
 } else {
  # Retrieve the previous saved files
-#   pop_STACK(DATADIR, c(conf$SPEC_PACKED, conf$LOGFILE, conf$Rnmr1D_PCMD), get_maxSTACKID(DATADIR,conf$SPEC_PACKED))
+   pop_STACK(DATADIR, c(conf$SPEC_PACKED, conf$LOGFILE, conf$Rnmr1D_PCMD), get_maxSTACKID(DATADIR,conf$SPEC_PACKED))
 }

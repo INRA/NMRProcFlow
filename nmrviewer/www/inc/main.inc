@@ -62,6 +62,8 @@
   \$( "#level" ).attr('title', 'Select an item');
   \$( "#check" ).button({ icons: { primary: "ui-icon-flag" },text: false })
                .click( function( event ) { spectrum_view(); });
+  \$( "#ordplot" ).button({ icons: { primary: "ui-icon-arrowthick-2-n-s" },text: false })
+               .click( function( event ) { spectrum_view(); });
   \$( "#stack" ).button().click( function( event ) { spectrum_view(); });
   Spectrum.callback= function () {
      if (Spectrum.first) {
@@ -81,7 +83,7 @@ EOT;
 <?php
 if (!$conf->error) {
   $arr_select = array ();
-  $arr_select[]=DS_select_or_input('color',$color_id,$colortype,1,"spectrum_level()",1,"Color by");
+  $arr_select[]='<span id="main_select">'.DS_select_or_input('color',$color_id,$colortype,1,"spectrum_level()",1,"Color by").'</span>';
   $arr_select[]='<span id="level_select">'.DS_select_or_input('level',$level_id,$arr_level,1,"spectrum_view()",1,"all levels").'</span>';
   $arr_select[]='<span id="sub_level_select"></span>';
 }
@@ -110,6 +112,7 @@ if (!$conf->error) {
 <td width="20%"><bZout>Zoom out</bZout><bZprev>Previous</bZprev></td>
 <td align="center"><div id="info" class="ui-widget"><?php if (!$conf->error) echo DS_html_elems($arr_select); ?></div></td>
 <td><input type="checkbox" id="check"><label for="check">Force the display of the legend</label></td>
+<td><input type="checkbox" name="ordplot" id="ordplot"><label for="ordplot">Reverse the plot order</label></td>
 <td width="15%"><input type="checkbox" name="stack" id="stack"><label for="stack">Stacked spectra</label></td>
 <td style="width:200px;" align="center"><div id="right" class="ui-widget">-</div></td>
 </tr></table>
@@ -182,9 +185,21 @@ if (!$conf->error) {
 
 // -- End: addOn for capturing a ppm range
 
+   var spectrum_select = function(id) {
+       $.ajax({
+           url:'<?php echo $SELECT_AJAX; ?>'+'&main_select='+id,
+           async:false,
+           global:true
+       }).done(function ( response ) {
+           document.getElementById('main_select').innerHTML = response;
+           eval($(response).find("script").text());
+       });
+       spectrum_level();
+   }
+
    var spectrum_level = function() {
        $.ajax({
-           url:'<?php echo $SELECT_AJAX; ?>'+'&color=' + $('#color option:selected').val(),
+           url:'<?php echo $SELECT_AJAX; ?>'+'&main_select=0&color=' + $('#color option:selected').val(),
            async:false,
            global:true
        }).done(function ( response ) {
@@ -197,7 +212,7 @@ if (!$conf->error) {
 
    var spectrum_sub_level = function() {
        $.ajax({
-           url:'<?php echo $SELECT_AJAX; ?>'+'&color=' + $('#color option:selected').val() + '&level_id=' + $('#level option:selected').val() + '&level_id=' + $('#level option:selected').val(),
+           url:'<?php echo $SELECT_AJAX; ?>'+'&main_select=0&color=' + $('#color option:selected').val() + '&level_id=' + $('#level option:selected').val(),
            async:false,
            global:true
        }).done(function ( response ) {
@@ -221,6 +236,7 @@ if (!$conf->error) {
        Spectrum.params = Spectrum.params + '&SMAX=' + $( "#slider-vertical" ).slider( "value" );
        if (params) Spectrum.params = Spectrum.params + '&' + params;
        if ( $('#check').is(':checked') ) Spectrum.params = Spectrum.params + '&legend=1';
+       if ( $('#ordplot').is(':checked') ) Spectrum.params = Spectrum.params + '&ordplot=1';
        if ( $('#stack').is(':checked') ) {
              Spectrum.params = Spectrum.params + '&stacked=1';
              $('#stack').button( 'option', 'label', 'Overlaid spectra');
