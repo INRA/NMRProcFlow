@@ -1,4 +1,7 @@
 ![logo](nmrpf_logo_full.png)
+
+[![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/INRA/NMRProcFlow/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/INRA/NMRProcFlow)
+
 ## NMRProcFlow
 
 An efficient GUI tool for spectra processing from 1D NMR metabolomics data
@@ -128,12 +131,12 @@ Jacob, D., Deborde, C., Lefebvre, M., Maucourt, M. and Moing, A. (2017) NMRProcF
 
 ### Funded by:
 
-* INRA UMR 1332 BFP, Bordeaux Metabolomics Facility
+* INRAE UMR 1332 BFP, Bordeaux Metabolomics Facility
 * the ANR-11-INBS-0010 grant (MetaboHUB)
 
 ### License
 
-Copyright (C) 2016-2018  Daniel Jacob - INRA 
+Copyright (C) 2016-2021  Daniel Jacob - INRAE 
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

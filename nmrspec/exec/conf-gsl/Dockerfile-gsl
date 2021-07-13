@@ -1,0 +1,5 @@
+
+# Install modules
+RUN apt-get update && apt-get install -y 
+   libgsl0-dev gsl-bin \
+   r-cran-gsl r-cran-rcppgsl

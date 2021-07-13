@@ -458,24 +458,28 @@ RGbaseline1D <- function(specMat,PPM_NOISE_AREA, zone, WS, NEIGH, ProgressFile=N
    # Baseline Estimation for each spectrum
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
    BLList <- foreach(i=1:specMat$nspec, .combine=cbind) %dopar% {
-       sig <- fitdistr(specMat$int[i, length(which(specMat$ppm>PPM_NOISE_AREA[2])):(which(specMat$ppm<=PPM_NOISE_AREA[1])[1])], "normal")$estimate[2]
-       mv <- simplify2array(lapply( c(3:61), function(x) { mean(abs(specMat$int[i, ((x-1)*TD/64):(x*TD/64)])); }))
-       mmoy<-min(mv)
-       if (min(specMat$int[i, ])< -NEGFAC*mmoy) {
-           Vthreshold <- max(specMat$int[ i, specMat$int[i, ]/mmoy < -NEGFAC ])
-           specMat$int[ i, specMat$int[i, ]/mmoy < -NEGFAC ] <- Vthreshold
-       }
        V <- specMat$int[i, ]
-       if (NBPASS==1) {
-           BL <- C_Estime_LB (V, i1, i2, WS, NEIGH, NFAC*sig)
+       if (WS>0) {
+          sig <- fitdistr(specMat$int[i, length(which(specMat$ppm>PPM_NOISE_AREA[2])):(which(specMat$ppm<=PPM_NOISE_AREA[1])[1])], "normal")$estimate[2]
+          mv <- simplify2array(lapply( c(3:61), function(x) { mean(abs(specMat$int[i, ((x-1)*TD/64):(x*TD/64)])); }))
+          mmoy<-min(mv)
+          if (min(specMat$int[i, ])< -NEGFAC*mmoy) {
+              Vthreshold <- max(specMat$int[ i, specMat$int[i, ]/mmoy < -NEGFAC ])
+              specMat$int[ i, specMat$int[i, ]/mmoy < -NEGFAC ] <- Vthreshold
+          }
+          if (NBPASS==1) {
+              BL <- C_Estime_LB (V, i1, i2, WS, NEIGH, NFAC*sig)
+          } else {
+              BL <- 0*rep(1:length(V))
+              for( n in 1:NBPASS) {
+                 # Estimation of Baseline
+                 BLn <- C_Estime_LB (V, i1, i2, WS, NEIGH, NFAC*sig)
+                 V <- V - BLn
+                 BL <- BL + BLn
+              }
+          }
        } else {
-           BL <- 0*rep(1:length(V))
-           for( n in 1:NBPASS) {
-              # Estimation of Baseline
-              BLn <- C_Estime_LB (V, i1, i2, WS, NEIGH, NFAC*sig)
-              V <- V - BLn
-              BL <- BL + BLn
-           }
+          BL <- ptw::asysm(V, lambda = 1e+10, p = 0.05, eps = 1e-8, maxit = 42)
        }
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        BL

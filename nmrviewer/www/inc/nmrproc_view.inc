@@ -124,8 +124,8 @@ class nmrproc_view extends nmrproc_conf {
         $width_px = $img_width.'px';
         $height_px = $img_height.'px';
 ## CANVAS - Javascript if ($this->imgtype == 'JS')
-##         `cp /usr/share/gnuplot5/gnuplot/5.0/js/canvastext.js $TMP`;
-##         `cp /usr/share/gnuplot5/gnuplot/5.0/js/gnuplot_common.js $TMP`;
+##         `cp /usr/share/gnuplot/gnuplot/5.2/js/canvastext.js $TMP`;
+##         `cp /usr/share/gnuplot/gnuplot/5.2/js/gnuplot_common.js $TMP`;
 ##         echo<<<EOT
 ## <div id='myimg'><!-- $spec_img - $PPM1,$PPM2  -->
 ## <script src="$TMPurl/canvastext.js"></script>
@@ -436,10 +436,10 @@ EOT;
         if ($this->SMAX>0 && $UMAX<$MAX) $ymax=$UMAX;
         $ymin = $this->stacked==0 ? max($MIN, -$ymax/20) : 0 ;
 
-        if ($this->imgtype == 'SD')   { $terminal='png font arial 8'; $gridcol= '#D2D4D4'; $ext='.png'; }
-        if ($this->imgtype == 'MD')   { $terminal='png truecolor interlace enhanced font arial 8'; $gridcol= '#D2D4D4'; $ext='.png'; }
-        if ($this->imgtype == 'HD')   { $terminal='pngcairo font "Arial,8"'; $gridcol='#323333'; $ext='.png'; }
-        if ($this->imgtype == 'SVG')  { $terminal='svg  enhanced mouse font "Arial,8"'; $gridcol= '#D2D4D4'; $ext='.svg'; }
+        if ($this->imgtype == 'SD')   { $terminal='png font arial 8 noenhanced'; $gridcol= '#D2D4D4'; $ext='.png'; }
+        if ($this->imgtype == 'MD')   { $terminal='png truecolor interlace noenhanced font arial 8'; $gridcol= '#D2D4D4'; $ext='.png'; }
+        if ($this->imgtype == 'HD')   { $terminal='pngcairo font "Arial,8" noenhanced'; $gridcol='#323333'; $ext='.png'; }
+        if ($this->imgtype == 'SVG')  { $terminal='svg  noenhanced mouse font "Arial,8"'; $gridcol= '#D2D4D4'; $ext='.svg'; }
         #if ($this->imgtype == 'JS')   { $terminal="canvas name 'imgplot'"; $gridcol= '#D2D4D4'; $ext='.js'; }
 
         $spec_log  = "$TMP/gnuplot.log";
@@ -450,6 +450,7 @@ EOT;
         
         $gnuplot = <<<EOT
         set terminal $terminal size $img_width,$img_height;
+        set key box opaque;
         set origin 0.0, 0.0;
         set output "$TMP/$spec_img";
         set lmargin 10;

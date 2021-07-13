@@ -140,7 +140,7 @@ ui_proc_process <- column(12,
                   conditionalPanel(condition="input.bctype==1",
                     selectInput("gbclev", "Level of Correction",
                          c("Soft correction" = "1", "Intermediate correction" = "2", "Strong correction" = "3", "High correction" = "4"),
-                         selected = "1")
+                         selected = "0")
                   ),
               # Local Correction
                   conditionalPanel(condition="input.bctype==2",

@@ -195,15 +195,19 @@ repeat {
    Write.LOG(LOGFILE,paste0("Rcorr1D:  PPM Range = ( ",min(zone)," , ",max(zone)," )"));
    Write.LOG(LOGFILE,paste0("Rcorr1D:  Points Size = ",specMat$size));
 
-   L <- list ( c(100,70), c(50,35), c(25,15), c(10,5), c(5,2.5) )
-   SIFAC <- min( max( round(log2(SI)), 15), 18) - 14
-   IDX <- max( min( procParams$GBCLEV, length(L)), 1)
-   if( round(log2(SI))>15 ) IDX <- IDX + 1
-   if( round(log2(SI))>16 ) SIFAC <- SIFAC/2
-   Write.LOG(LOGFILE,paste0("Rcorr1D:  SI Fac = ",SIFAC));
-   GBCWS <- (L[[IDX]]*SIFAC)[1]
-   NEIGH <- (L[[IDX]]*SIFAC)[2]
-
+   if (procParams$GBCLEV>0) {
+      L <- list ( c(100,70), c(50,35), c(25,15), c(10,5), c(5,2.5) )
+      SIFAC <- min( max( round(log2(SI)), 15), 18) - 14
+      IDX <- max( min( procParams$GBCLEV, length(L)), 1)
+      if( round(log2(SI))>15 ) IDX <- IDX + 1
+      if( round(log2(SI))>16 ) SIFAC <- SIFAC/2
+      Write.LOG(LOGFILE,paste0("Rcorr1D:  SI Fac = ",SIFAC));
+      GBCWS <- (L[[IDX]]*SIFAC)[1]
+      NEIGH <- (L[[IDX]]*SIFAC)[2]
+   } else {
+      GBCWS <- 0
+      NEIGH <- 0
+   }
    CMDINFO <- paste("#\n# Global Baseline Correction: PPM Range = ( ",min(zone)," , ",max(zone)," )\n#\n")
    CMDINFO <- paste0(CMDINFO,paste("gbaseline",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),min(zone),max(zone), GBCWS, NEIGH, "\n"))
 
