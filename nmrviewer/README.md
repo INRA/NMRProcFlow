@@ -3,8 +3,7 @@
    * NMRViewer module is included within the NMRProcFlow docker image, but you can also build and use NMRViewer as a standalone docker image
 
 ### Based on: Docker Apache + php Image
-   * cf https://registry.hub.docker.com/_/php/
-        https://github.com/docker-library/php/tree/master/5.6
+   * cf https://hub.docker.com/_/php
 
 ### Docker NMRViewer Container
 
@@ -17,19 +16,21 @@
           * data         : -v /<data root path>:/opt/data
    * web link : http://<your_host>/nv/view/<session identifier>
 
-          * the <session identifier> must correspond to a subdirectory under /opt/data, with the following files:
+          * the <session identifier> must correspond to a subdirectory under /opt/data, with at least the following files:
 
                * specs.pack : The matrix of the binary spectra (N spectra x M points) (Binary format)
-               * samples.csv The sample file that links together Raw name, sample name, factor names for each spectrum (CSV format)
-               * factors : List of information type available for the NMR spectra viewer (TXT format)
+               * samples.csv The sample file that links together Raw name, sample name, factor names for each spectrum (TXT format, semicolon as separator)
+               * factors : List of information type available for the NMR spectra viewer (TXT format, semicolon as separator)
+               * nuc.txt : Acquisition Nucleus (1H, 13C or 31P)(TXT format)
+               * ppmrange.txt: The full ppm range of the spectra in the frequency domain (ppm max;ppm min)(TXT format, semicolon as separator)
 
 
 ##  INSTALL
 
-* get the php:5.6-apache image
+* get the php:7.4.18-apache
 
 ```
-   $ docker pull php:5.6-apache
+   $ docker php:7.4.18-apache
 ```
 
 * build the nmrview docker image

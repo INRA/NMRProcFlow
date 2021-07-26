@@ -1,0 +1,97 @@
+{
+    "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+    "@type": "SoftwareSourceCode",
+    "license": "https://spdx.org/licenses/GPL-3.0",
+    "codeRepository": "https://github.com/INRA/NMRProcFlow",
+    "dateCreated": "2015-07-01",
+    "datePublished": "2016-07-11",
+    "dateModified": "2021-04-12",
+    "issueTracker": "https://github.com/INRA/NMRProcFlow/issues",
+    "name": "NMRProcFlow",
+    "version": "1.404",
+    "description": "An interactive 1D NMR spectra processing tool dedicated to metabolomics.",
+    "applicationCategory": "Metabolomics",
+    "funding": "ANR-11-INBS-0010 ",
+    "developmentStatus": "active",
+    "referencePublication": "doi:10.1007/s11306-017-1178-y",
+    "funder": {
+        "@type": "Organization",
+        "name": "INRAE"
+    },
+    "keywords": [
+        "NMR",
+        "metabolomics",
+        "processing",
+        "fingerprinting",
+        "targeted"
+    ],
+    "programmingLanguage": [
+        "R",
+        "PHP",
+        "Javascript"
+    ],
+    "operatingSystem": [
+        "Linux",
+        "Windows"
+    ],
+    "softwareRequirements": [
+        "Docker or Hypervisor such as Oracle VirtualBox"
+    ],
+    "relatedLink": [
+        "https://nmrprocflow.org/"
+    ],
+    "author": [
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0002-6687-7169",
+            "givenName": "Daniel",
+            "familyName": "Jacob",
+            "email": "daniel.jacob@inrae.fr",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "INRAE UMR 1332 BFP"
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0001-5687-9059",
+            "givenName": "Catherine",
+            "familyName": "Deborde",
+            "email": "catherine.deborde@inrae.fr",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "INRAE UMR 1332 BFP"
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0002-3093-5873",
+            "givenName": "Marie",
+            "familyName": "Lefebvre",
+            "email": "marie.lefebvre@inrae.fr",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "INRAE UMR 1332 BFP"
+            }
+        {
+            "@type": "Person",
+            "givenName": "Mickaël",
+            "familyName": "Moncourt",
+            "email": "mickael.maucourt@inrae.fr",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "INRAE UMR 1332 BFP"
+            }
+        },
+        {
+            "@type": "Person",
+            "givenName": "Annick",
+            "familyName": "Moing",
+            "email": "annick.moing@inrae.fr",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "INRAE UMR 1332 BFP"
+            }
+        }
+    ]
+}
