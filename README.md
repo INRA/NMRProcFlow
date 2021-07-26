@@ -1,6 +1,10 @@
 ![logo](nmrpf_logo_full.png)
 
 [![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/INRA/NMRProcFlow/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/INRA/NMRProcFlow)
+[![NPFLOW](https://img.shields.io/badge/biotools-nmrprocflow-blue)](https://bio.tools/nmrprocflow)
+
+
+https://bio.tools/nmrprocflow
 
 ## NMRProcFlow
 
