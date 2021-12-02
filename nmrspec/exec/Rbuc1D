@@ -83,6 +83,9 @@ bucketfile <- file.path(DATADIR,conf$BUCKET_LIST)
 
 Write.LOG(LOGFILE,paste0("Rbuc1D:  Bucketing method = ",procParams$BUCMETH));
 
+# Nucleus type
+NUC <- readLines(file.path(DATADIR,'nuc.txt'))
+
 # Limit size of buckets
 MAXBUCKETS<-2000
 NOISE_FAC <- 3
@@ -231,11 +234,19 @@ repeat {
    bdata$inoise_end <- idx_Noise[2]
    bdata$R <- procParams$AIBIN_R
    bdata$dppm <- specMat$dppm
-   bdata$noise_fac <- NOISE_FAC
-   bdata$bin_fac <- 0.5
-   bdata$peaknoise_rate <- 15
-   bdata$BUCMIN <- 0.003
    bdata$VREF <- 1
+
+   if (NUC=="13C") {
+      bdata$noise_fac <- 2
+      bdata$bin_fac <- 0.1
+      bdata$peaknoise_rate <- 5
+      bdata$BUCMIN <- 0.05
+   } else {
+      bdata$noise_fac <- NOISE_FAC
+      bdata$bin_fac <- 0.5
+      bdata$peaknoise_rate <- 15
+      bdata$BUCMIN <- 0.003
+   }
 
    registerDoParallel(cores=env.list$CORES)
 

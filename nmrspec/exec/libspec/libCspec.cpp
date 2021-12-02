@@ -1050,7 +1050,7 @@ double Fmin(SEXP par, SEXP re, SEXP im, int blphc, double B, int flg=0)
    const size_t n = (size_t)(Re.size());
    const size_t n2 = (size_t)(n/24);
    size_t i;
-   double phi, x0, Xmin, Xmax, SS;
+   double phi, Xmin, Xmax, SS;
 
    NumericVector X(n);
    for (i=0; i<n; i++) {
