@@ -1200,18 +1200,18 @@ get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA
                     )))
       # Integration
       buckets_IntVal <- C_all_buckets_integrate (specMat$int, buckets_m, 0)
-      buckets_IntVal_CSN <- C_buckets_CSN_normalize( buckets_IntVal )
       if (norm_meth == 'CSN') {
-          buckets_IntVal <- buckets_IntVal_CSN
+          buckets_IntVal <- C_buckets_CSN_normalize( buckets_IntVal )
       }
       if (norm_meth == 'PQN') {
+          buckets_IntVal_CSN <- C_buckets_CSN_normalize( buckets_IntVal )
           bucVref_IntVal <- C_MedianSpec(buckets_IntVal_CSN)
           bucRatio <- buckets_IntVal_CSN / bucVref_IntVal
           Coeff <- apply(bucRatio,1,median)
           buckets_IntVal <- buckets_IntVal_CSN / Coeff
       }
       # if supplied, integrate of all spectra within the PPM range of the reference signal
-      Vref <- 0*c(1:specMat$nspec)
+      # Vref <- 0*c(1:specMat$nspec)
       if (! is.na(zoneref)) {
           istart <- length(which(specMat$ppm>max(zoneref)))
           iend <- length(which(specMat$ppm>min(zoneref)))

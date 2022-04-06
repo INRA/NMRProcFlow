@@ -357,14 +357,19 @@
              zonenoise <- as.numeric(simplify2array(strsplit(trim(input$ppmsnrnoise), " ")))
              # Create a new Workbook
              wb <- createWorkbook()
+             shid <- 0
              # Fill in  the Workbook based on the 'simple' template
              if (input$exportTempl == 'simple') {
-                 write_simple_wb(wb, outDataViewer, zoneref, zonenoise)
+                 shid <- write_simple_wb(wb, outDataViewer, zoneref, zonenoise)
              }
              # Fill in  the Workbook based on the 'qhnmr' template
              if (input$exportTempl == 'qhnmr') {
-                 write_qhnmr_wb(wb, outDataViewer, zoneref, zonenoise)
+                 shid <- write_qhnmr_wb(wb, outDataViewer, zoneref, zonenoise)
              }
+             # Add a 'Macro_Cmd' tab
+             shid <- add_macrocmd_wb(wb, outDataViewer, shid)
+             # Add a 'about' tab
+             shid <- add_about_wb(wb, outDataViewer, zoneref, zonenoise, shid)
              # Save the Workbook
              saveWorkbook(wb, file, overwrite = TRUE)
              runjs( "document.getElementById('Exportmsg').style.display = 'none';" )

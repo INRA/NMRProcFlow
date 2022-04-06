@@ -213,44 +213,58 @@ get_Data_matrix <- function(outDataViewer, zoneref, zonenoise)
 #----
 write_simple_wb <- function(wb, outDataViewer, zoneref, zonenoise)
 {
-     bucketfile <- file.path(outDataViewer,conf$BUCKET_LIST)
-     # Buckets table
-     addWorksheet(wb = wb, sheetName = "Buckets", gridLines = TRUE)
-     # Data matrix
-     addWorksheet(wb = wb, sheetName = "Data", gridLines = TRUE)
-     # SNR matrix
-     addWorksheet(wb = wb, sheetName = "SNR", gridLines = TRUE)
-     # Macro_Cmd
-     addWorksheet(wb = wb, sheetName = "Macro-CMD", gridLines = TRUE)
      # Styles
      styBH <- createStyle(fgFill = "#0070C0", halign = "CENTER", textDecoration = "Bold", border = "Bottom", fontColour = "white")
-     styREM <- createStyle(fontColour = "green", borderStyle="none", fgFill="white")
-     styBOLD <- createStyle(textDecoration = "Bold", borderStyle="none", fgFill="white")
+
+     # Create tabs
+     tabs <- c( "Samples", "Buckets", "Data", "SNR")
+     for (i in 1:length(tabs))  addWorksheet(wb = wb, sheetName = tabs[i], gridLines = TRUE)
+
+     bucketfile <- file.path(outDataViewer,conf$BUCKET_LIST)
+     shid <- 0
      if ( file.exists(bucketfile) ) {
+
+     # Get the list of all Raw directories
+         rawids <- read.table(file.path(outDataViewer,'rawids.csv'), sep=';', stringsAsFactors=F)[, c(2,3) ]
+     # Get the list of samples
+         samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
+         # SS: Size of Samples
+         SS <- nrow(samples)
+         # SC: Size of Compounds
+         SC <- ncol(samples)
+     # read factors labels
+         labels <- c( 'Rawnames', read.table(file.path(outDataViewer,"factors"), header=F, sep=";", stringsAsFactors=FALSE)[,2])
+         if (SC>2) {
+             T1 <- cbind( samples[,c(1,2)], rawids, samples[,c(3:SC)] )
+             colnames(T1) <- c(labels[c(1,2)], 'expno', 'procno', labels[c(3:length(labels))])
+         } else {
+             T1 <- cbind( samples[,c(1,2)], rawids )
+             colnames(T1) <- c(labels[c(1,2)], 'expno', 'procno')
+         }
+     # Get Buckets / Data / SNR
          specMat <- get_specMat()
          outsnr  <- get_SNR_dataset(specMat, bucketfile, c(min(zonenoise), max(zonenoise)), ratio=TRUE)
          buckets <- get_Buckets_table(bucketfile)
          datamat <- get_Data_matrix(outDataViewer, zoneref, zonenoise)
+
+     # Samples
          shid <- 1
+            writeData(wb, shid, x = T1, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+            addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:ncol(T1)), gridExpand = TRUE)
+     # Buckets
+         shid <- shid + 1
             writeData(wb, shid, x = buckets, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
-            addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:dim(buckets)[2]), gridExpand = TRUE)
+            addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:ncol(buckets)), gridExpand = TRUE)
+     # Data
          shid <- shid + 1
             writeData(wb, shid, x = datamat, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
-            addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:dim(datamat)[2]), gridExpand = TRUE)
+            addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:ncol(datamat)), gridExpand = TRUE)
+     # SNR
          shid <- shid + 1
             writeData(wb, shid, x = outsnr,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
-            addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:dim(outsnr)[2]), gridExpand = TRUE)
-         shid <- shid + 1
-         if (file.exists(file.path(outDataViewer,conf$Rnmr1D_PCMD))) {
-            cmdlines <- readLines(file.path(outDataViewer,conf$Rnmr1D_PCMD))
-            writeData(wb, shid, x = cmdlines,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
-            setColWidths(wb, shid, cols=1, widths=100, ignoreMergedCells = FALSE)
-            L <- grep("^#", cmdlines)
-            for (i in 1:length(L)) addStyle(wb, shid, style = styREM, rows = L[i], cols = 1, gridExpand = TRUE)
-            L <- grep("^[^#]", cmdlines)
-            for (i in 1:length(L)) addStyle(wb, shid, style = styBOLD, rows = L[i], cols = 1, gridExpand = TRUE)
-         }
+            addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:ncol(outsnr)), gridExpand = TRUE)
      }
+     shid
 }
 
 #----
@@ -270,17 +284,16 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
      styDP   <- createStyle(fgFill = "#60497A", halign = "RIGHT", textDecoration = "Bold", fontColour = "white")
      styNeg  <- createStyle(fontColour = "#9C0006", fgFill = "#FFC7CE")
      styPos  <- createStyle(fontColour = "#006100", fgFill = "#C6EFCE")
-     styREM  <- createStyle(fontColour = "green", borderStyle="none", fgFill="white")
-     styBOLD <- createStyle(textDecoration = "Bold", borderStyle="none", fgFill="white")
 
      negStyle <- createStyle(fontColour = "#9C0006", bgFill = "#FFC7CE")
      posStyle <- createStyle(fontColour = "#006100", bgFill = "#C6EFCE")
 
      # Create tabs
-     tabs <- c( "Samples", "Buckets", "Data", "SNR", "Quantification", "Macro-CMD" )
+     tabs <- c( "Samples", "Buckets", "Data", "SNR", "Quantification")
      for (i in 1:length(tabs))  addWorksheet(wb = wb, sheetName = tabs[i], gridLines = TRUE)
 
      bucketfile <- file.path(outDataViewer,conf$BUCKET_LIST)
+     shid <- 0
      if ( file.exists(bucketfile) ) {
 
      # Get the list of all Raw directories
@@ -418,23 +431,107 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
                class(FQ$Z) <- c(class(FQ$Z), "formula")
                writeData(wb, shid, x=FQ, startRow = startRow+1, startCol = SC+i-1, colNames=FALSE, rowNames=FALSE, withFilter = FALSE)
          }
-
          setColWidths(wb, shid, cols = c(1:dim(T3)[2]), widths = 'auto')
-
-     # Macro-CMD tab
-         shid <- shid + 1
-         if (file.exists(file.path(outDataViewer,conf$Rnmr1D_PCMD))) {
-             cmdlines <- readLines(file.path(outDataViewer,conf$Rnmr1D_PCMD))
-             writeData(wb, shid, x = cmdlines,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
-             setColWidths(wb, shid, cols=1, widths=100, ignoreMergedCells = FALSE)
-             L <- grep("^#", cmdlines)
-             for (i in 1:length(L)) addStyle(wb, shid, style = styREM, rows = L[i], cols = 1, gridExpand = TRUE)
-             L <- grep("^[^#]", cmdlines)
-             for (i in 1:length(L)) addStyle(wb, shid, style = styBOLD, rows = L[i], cols = 1, gridExpand = TRUE)
-         }
      }
+     shid
 }
 
+#----
+# Add a 'Macro_Cmd' tab
+#----
+add_macrocmd_wb <- function(wb, outDataViewer, shid)
+{
+     # Styles
+     styREM  <- createStyle(fontColour = "green", borderStyle="none", fgFill="white")
+     styBOLD <- createStyle(textDecoration = "Bold", borderStyle="none", fgFill="white")
+     # Macro_Cmd
+     shid <- shid + 1
+     addWorksheet(wb = wb, sheetName = "Macro-CMD", gridLines = TRUE)
+     if (file.exists(file.path(outDataViewer,conf$Rnmr1D_PCMD))) {
+        cmdPreproc <- readLines(file.path(outDataViewer,conf$Rnmr1D_PPCMD))[1]
+        cmdlines <- readLines(file.path(outDataViewer,conf$Rnmr1D_PCMD))
+        writeData(wb, shid, x = c(cmdPreproc,cmdlines),  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+        setColWidths(wb, shid, cols=1, widths=100, ignoreMergedCells = FALSE)
+        L <- grep("^#", cmdlines)
+        for (i in 1:length(L)) addStyle(wb, shid, style = styREM, rows = L[i], cols = 1, gridExpand = TRUE)
+        L <- grep("^[^#]", cmdlines)
+        for (i in 1:length(L)) addStyle(wb, shid, style = styBOLD, rows = L[i], cols = 1, gridExpand = TRUE)
+     } else {
+        cmdPreproc <- readLines(file.path(outDataViewer,conf$Rnmr1D_PPCMD))[1]
+        writeData(wb, shid, x = cmdPreproc,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+        setColWidths(wb, shid, cols=1, widths=100, ignoreMergedCells = FALSE)
+     }
+     shid
+}
+
+#----
+# Add a 'about' tab
+#----
+add_about_wb <- function(wb, outDataViewer, zoneref, zonenoise, shid)
+{
+     # Styles
+     styBH <- createStyle(fgFill = "#0070C0", halign = "CENTER", textDecoration = "Bold", border = "Bottom", fontColour = "white")
+     styBOLD2 <- createStyle(textDecoration = "Bold")
+     # About
+     shid <- shid + 1
+     addWorksheet(wb = wb, sheetName = "About", gridLines = TRUE)
+     infos <- rbind(
+         c("Software", conf$TITLE),
+         c("Version",conf$VERSION),
+         c("","") )
+     # Import parameters
+     user <- ifelse( conf$USRCONMGR>0 && file.exists(file.path(outDataViewer,'user')), readLines(file.path(outDataViewer,'user')), "none")
+     userfiles <- readLines(file.path(outDataViewer,'userfiles'))
+     infos <- rbind(infos,
+         c("Import parameters", ""),
+         c("Session identifer", sessionViewer),
+         c("User", user),
+         c("Instrument/Vendor/Format", procParams$VENDOR),
+         c("Spectra type", procParams$INPUT_SIGNAL),
+         c("ZIP file",userfiles[1]),
+         c("Samplefile",userfiles[2]),
+         c("","") )
+     # Export parameters
+     ppmref <- ifelse( ! is.na(zoneref), paste0("[",round(min(zoneref),4),", ",round(max(zoneref),4),"]"), "none")
+     infos <- rbind(infos,
+         c("Export parameters",""),
+         c("Normalization",input$normmeth),
+         c("SNR level", input$snrlevel),
+         c("PPM noise", paste0("[",round(min(zonenoise),4),", ",round(max(zonenoise),4),"]")),
+         c("PPM reference", ppmref),
+         c("",""),
+         c("Export date",date()),
+         c("","") )
+     # Environment
+     V <- sessionInfo()
+     p <- ls(V$loadedOnly)
+     packages <- NULL
+     for (i in 1:length(p))
+     packages <- c( packages, paste0(V$loadedOnly[[p[i]]]$Package,'_',V$loadedOnly[[p[i]]]$Version) )
+     p <- ls(V$otherPkgs)
+     others <- NULL
+     for (i in 1:length(p))
+          others <- c( others, paste0(V$otherPkgs[[p[i]]]$Package,'_',V$otherPkgs[[p[i]]]$Version) )
+     infos <- rbind(infos,
+         c("Environment",""),
+         c("Shiny Server version", serverInfo()$version),
+         c("R version", gsub("R version","", V$R.version$version.string)),
+         c("Running under", V$running),
+         c("Platform", V$platform),
+         c("Blas", V$BLAS),
+         c("Lapack", V$LAPACK),
+         c("Locale", gsub(';',', ', V$locale)),
+         c("Base Packages", paste(V$basePkgs, collapse=', ')),
+         c("Loarded Packages", paste(packages, collapse=', ')),
+         c("Others Packages", paste(others, collapse=', ')) )
+     colnames(infos) <- c("Label","Value")
+     writeData(wb, shid, x = infos,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+     addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:ncol(infos)), gridExpand = TRUE)
+     addStyle(wb, shid, style = styBOLD2, rows = c(5,13,21), cols = 1, gridExpand = TRUE)
+     setColWidths(wb, shid, cols=1, widths=30, ignoreMergedCells = FALSE)
+     setColWidths(wb, shid, cols=2, widths=100, ignoreMergedCells = FALSE)
+     shid
+}
 
 ##---------------
 ## Extension for Galaxy Interactive Environment

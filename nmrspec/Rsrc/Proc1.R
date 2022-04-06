@@ -541,8 +541,8 @@
             "The original name of the Zip file = ", NameZip, "\n",
             "The original name of the Samples file = ", SampleFilename, "\n",
             "The macro-command file for processing = ", PCMDFilename, "\n",
-            "The number of Spectra = ", dim(samples)[1], "\n",
-            "The number of Factors = ", dim(factors)[1]-1, "\n",
+            "The number of Spectra = ", nrow(samples), "\n",
+            "The number of Factors = ", nrow(factors)-1, "\n",
             "----\n",
            sep="")
    })

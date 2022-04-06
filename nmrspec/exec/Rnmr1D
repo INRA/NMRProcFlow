@@ -165,6 +165,7 @@ tryCatch({
        }
     }
     Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(PPM_MAX,";",PPM_MIN))
+    Write.LOG(LOGFILE, paste0('Rnmr1D:  PPM range = [',round(PPM_MAX,4)," , ",round(PPM_MIN,4),"]\n"))
 
     if (length(idsOK)<N) {
        specList <- specList[,idsOK]
@@ -177,7 +178,6 @@ tryCatch({
        writeLines(paste0(N-length(idsOK)," error(s) found while preprocessing  \n") , fh)
        close(fh)
     }
-
 
     Write.LOG(LOGFILE, "Rnmr1D:  Generate the final matrix of spectra...\n")
 
