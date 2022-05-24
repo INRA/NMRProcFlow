@@ -500,7 +500,7 @@ add_about_wb <- function(wb, outDataViewer, zoneref, zonenoise, shid)
          c("PPM noise", paste0("[",round(min(zonenoise),4),", ",round(max(zonenoise),4),"]")),
          c("PPM reference", ppmref),
          c("",""),
-         c("Export date",date()),
+         c("Export date",Sys.time()),
          c("","") )
      # Environment
      V <- sessionInfo()

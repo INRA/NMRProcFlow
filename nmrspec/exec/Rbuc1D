@@ -225,7 +225,7 @@ repeat {
    Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
 
    Write.LOG(LOGFILE,paste("Rbuc1D:  Noise Zone= (",PPM_NOISE_AREA[2],",",PPM_NOISE_AREA[1],"), (",idx_Noise[1]," - ",idx_Noise[2],")"))
-   Write.LOG(LOGFILE,paste("Rbuc1D:  Factor Resolution = ",procParams$AIBIN_R))
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Factor Resolution =",procParams$AIBIN_R,"- SNR threshold =",procParams$SNRBUCLEVEL))
 
    bdata <- list()
    bdata$ynoise <- ynoise
@@ -263,7 +263,82 @@ repeat {
        inc_counter(ProgressFile, i)
        # Keep only the buckets for which the SNR average is greater than SNRBUCLEVEL
        MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
-       buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,mean)>procParams$SNRBUCLEVEL), ]
+       buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,stats::quantile)[4,]>procParams$SNRBUCLEVEL), ]
+       cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
+   }
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(buckets_zones)[1]))
+   if (dim(buckets_zones)[1]>2) {
+       buckets_zones <- buckets_zones[order(buckets_zones[,1]), ]
+   }
+
+   M <- cbind( (buckets_zones[,1] + buckets_zones[,2])/2, abs(buckets_zones[,1] - buckets_zones[,2]))
+   f_append <- ifelse (file.exists(bucketfile) && procParams$BUCAPPEND==TRUE, TRUE, FALSE )
+   write.table(M, file=bucketfile, append=f_append, sep="\t", row.names=F, col.names=F, quote=F)
+
+   # remove the PPM ranges file
+   unlink(zonesfile)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
+
+   Write.LOG(LOGFILE,"Rbuc1D: ")
+   break
+}
+
+#------------------------------
+# ERVA -  Extraction of Relevant Variables for Analysis 
+#------------------------------
+repeat {
+   if (procParams$BUCMETH != 'ERVA') break
+
+   # exit if not PPM ranges file
+   zonesfile <- file.path(DATADIR,'zones4_list.in')
+   if (! file.exists(zonesfile)) break
+
+   # get the PPM ranges list
+   zones <- read.table(zonesfile, header=F, sep="\t",stringsAsFactors=FALSE)
+   zones$min <- zones[,1]-0.5*zones[,2]
+   zones$max <- zones[,1]+0.5*zones[,2]
+
+   # Noise estimation
+   zone <- suppressWarnings(as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " "))))
+   if (is.na(zone)) {
+       PPM_NOISE_AREA <- c(10, 10.5)
+   } else {
+       PPM_NOISE_AREA <- c(min(zone), max(zone))
+   }
+   if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
+
+   idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
+   Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
+   Vref <- spec_ref(specMat$int)
+
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Noise Zone= (",PPM_NOISE_AREA[2],",",PPM_NOISE_AREA[1],"), (",idx_Noise[1]," - ",idx_Noise[2],")"))
+   Write.LOG(LOGFILE,paste("Rbuc1D:  Factor Resolution = ",procParams$ERVA_R))
+
+   bdata <- list()
+   bdata$bucketsize <- procParams$ERVA_R
+   bdata$noise_fac <- 1
+   bdata$dppm <- specMat$dppm
+   bdata$ppm_min <- specMat$ppm_min
+   bdata$BUCMIN <- 0.001
+
+   registerDoParallel(cores=env.list$CORES)
+
+   buckets_zones <- NULL
+   N <- dim(zones)[1]
+   init_counter(ProgressFile, N)
+   buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
+       i2<-which(specMat$ppm<=zones$min[i])[1]
+       i1<-length(which(specMat$ppm>zones$max[i]))
+       Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
+       Mbuc[] <- 0
+       buckets_m <- C_erva_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
+       Write.LOG(LOGFILE,paste("Rbuc1D:  Zone",i,"= (",zones$min[i],",",zones$max[i],"), Nb Buckets =",dim(buckets_m)[1]))
+       inc_counter(ProgressFile, i)
+       # Keep only the buckets for which the SNR average is greater than SNRBUCLEVEL
+       MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
+       buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,stats::quantile)[4,]>procParams$SNRBUCLEVEL), ]
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(buckets_zones)[1]))

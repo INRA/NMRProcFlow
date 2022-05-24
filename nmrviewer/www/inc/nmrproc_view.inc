@@ -217,7 +217,11 @@ EOT;
                  $line_id++;
             }
             fclose($handle);
-            usort($list_idx,"__cmp_speckey");
+
+            # sort list by the first column
+            #usort($list_idx,"__cmp_speckey");
+            # sort list by the first two columns
+            array_multisort($list_idx);
 
             $TMP=$this->TMP;
             $filename="$TMP/index.csv";
@@ -251,8 +255,8 @@ EOT;
   Input : the list of spectrum, ordered according to the color parameter
           provided by the get_list_spectra() method
 ********************************************************/
-    function get_PLOT_line($list) {
-
+    function get_PLOT_line($list)
+    {
         list( $TMP, $PACKED ) = array( $this->TMP, $this->DATADIR.'/'.$this->SPEC_PACKED );
 
         $VARCOL=1;
@@ -269,7 +273,6 @@ EOT;
         $PTS=2048;
 
         # Preparation if spectra
-
         if (count($list)>0) {
 
             # count the number of items within the chosen factor
@@ -450,7 +453,7 @@ EOT;
         
         $gnuplot = <<<EOT
         set terminal $terminal size $img_width,$img_height;
-        set key box opaque;
+        set key nobox opaque;
         set origin 0.0, 0.0;
         set output "$TMP/$spec_img";
         set lmargin 10;

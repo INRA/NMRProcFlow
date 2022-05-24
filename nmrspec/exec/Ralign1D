@@ -158,12 +158,16 @@ repeat {
    # Alignment of each PPM range
    if (procParams$ALIGNMETH==1) {
        Write.LOG(LOGFILE,paste0("Ralign1D:  Least-Square Method"))
+       if (procParams$IDXSREF>0)
+           Write.LOG(LOGFILE,paste0("Ralign1D:  Reference spectrum: ", samples[procParams$IDXSREF,2]))
        CMDINFO <- paste0(CMDINFO,paste("align",min(zoneref),max(zoneref),procParams$RELDECAL,procParams$IDXSREF))
        registerDoParallel(cores=env.list$CORES)
-       specMat <- RAlign1D(specMat, zoneref, procParams$RELDECAL, procParams$IDXSREF, Selected=Selected, ProgressFile=ProgressFile)
+       specMat <- RAlign1D(specMat, zoneref, procParams$RELDECAL, procParams$IDXSREF, Selected=Selected, fapodize=procParams$FAPODIZE, ProgressFile=ProgressFile)
    }
    if (procParams$ALIGNMETH==2) {
        Write.LOG(LOGFILE,paste0("Ralign1D:  Parametric Time Warping Method"));
+       if (procParams$IDXSREF>0)
+           Write.LOG(LOGFILE,paste0("Ralign1D:  Reference spectrum: ", samples[procParams$IDXSREF,2]))
        CMDINFO <- paste0(CMDINFO,paste("warp",min(zoneref),max(zoneref), procParams$IDXSREF, procParams$PTWCRIT))
        specMat <- RWarp1D(specMat, zoneref, idxSref=procParams$IDXSREF, warpcrit=.C(procParams$PTWCRIT), Selected=Selected)
    }
@@ -171,6 +175,8 @@ repeat {
        Write.LOG(LOGFILE,paste0("Ralign1D:  CluPa Method"));
        Write.LOG(LOGFILE,paste("Ralign1D:  SNR threshold = ",procParams$SNRBUCLEVEL));
        Write.LOG(LOGFILE,paste("Ralign1D:  Resolution = ",procParams$RESPPM));
+       if (procParams$IDXSREF>0)
+           Write.LOG(LOGFILE,paste0("Ralign1D:  Reference spectrum: ", samples[procParams$IDXSREF,2]))
        zone <- as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " ")))
        if (is.na(zone)) {
            PPM_NOISE_AREA <- c(10.2, 10.5)

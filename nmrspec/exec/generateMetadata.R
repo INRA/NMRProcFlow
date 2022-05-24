@@ -301,13 +301,6 @@ set_Metadata <- function(RAWDIR, procParams, samples)
       ERRORLIST <- c()
       OKRAW <- 1
 
-      if (procParams$INPUT_SIGNAL == "fid") {
-          LIST <-  gsub("//", "/", list.files(path = RAWDIR, pattern = "fid$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-          LIST <- grep(pattern = "pdata", LIST, value = TRUE, invert=TRUE)
-      } else {
-          LIST <-  gsub("//", "/", list.files(path = RAWDIR, pattern = "1r$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-          LIST <- grep(pattern = "pdata", LIST, value = TRUE, invert=FALSE)
-      }
       for (i in 1:nraw) {
           FileSpectrum <- paste(samples[i,1],samples[i,3], sep="/")
           if (procParams$INPUT_SIGNAL == "fid") {
@@ -315,9 +308,8 @@ set_Metadata <- function(RAWDIR, procParams, samples)
           } else {
               FileSpectrum <- paste(FileSpectrum, "pdata",samples[i,4], "1r", sep="/")
           }
-          L <- sapply( LIST, function(x) as.numeric(regexpr(FileSpectrum, x)>0) )
-          if ( sum(L)==1 ) {
-              specdir <- dirname(LIST[which(L==1)])
+          if (file.exists(file.path(RAWDIR,FileSpectrum))) {
+              specdir <- dirname(file.path(RAWDIR,FileSpectrum))
               if (procParams$INPUT_SIGNAL == "1r") specdir <- dirname(dirname(specdir))
               rawdir <- rbind( rawdir, c( specdir, samples[i,3], samples[i,4] ) )
           } else {
@@ -356,22 +348,14 @@ set_Metadata <- function(RAWDIR, procParams, samples)
       ERRORLIST <- c()
       OKRAW <- 1
 
-      LIST <-  gsub("//", "/", list.files(path = RAWDIR, pattern = "data.dat$", 
-                    all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-      if (procParams$INPUT_SIGNAL == "fid") {
-          LIST <- grep(pattern = "/Proc/", LIST, value = TRUE, invert=TRUE)
-      } else {
-          LIST <- grep(pattern = "/Proc/", LIST, value = TRUE, invert=FALSE)
-      }
       for (i in 1:nraw) {
           if (procParams$INPUT_SIGNAL == "fid") {
               FileSpectrum  <- paste(samples[i,1], "data.dat", sep="/")
           } else {
               FileSpectrum  <- paste(samples[i,1],"Proc",samples[i,3], "data.dat", sep="/")
           }
-          L <- sapply( LIST, function(x) as.numeric(regexpr(FileSpectrum, x)>0) )
-          if ( sum(L)==1 ) {
-              specdir <- dirname(LIST[which(L==1)])
+          if (file.exists(file.path(RAWDIR,FileSpectrum))) {
+              specdir <- dirname(file.path(RAWDIR,FileSpectrum))
               if (procParams$INPUT_SIGNAL == "1r") specdir <- dirname(dirname(specdir))
               rawdir <- rbind( rawdir, c( specdir, samples[i,3], samples[1,3] ) )
           } else {

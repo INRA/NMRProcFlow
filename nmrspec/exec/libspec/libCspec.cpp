@@ -255,9 +255,9 @@ SEXP Smooth (SEXP v, int n)
     double Wk=V[0];
     S[0]=V[0];
     for (int k=1; k<(N-1); k++) {
-        if (k<=n)            { Wk += (V[2*k]   + V[2*k-1]);    S[k] = Wk/(2*k+1);     }
-        if (k>n && k<=(N-n)) { Wk += (V[k+n]   - V[k-n-1]);    S[k] = Wk/(2*n+1);     }
-        if (k>(N-n))         { Wk -= (V[2*k-N] - V[2*k-N-1]);  S[k] = Wk/(2*(N-k)+1); }
+        if (k<=n)              { Wk += (V[2*k]   + V[2*k-1]);    S[k] = Wk/(2*k+1);     }
+        if (k>n && k<=(N-n-1)) { Wk += (V[k+n]   - V[k-n-1]);    S[k] = Wk/(2*n+1);     }
+        if (k>(N-n-1))         { Wk -= (V[2*k-N] - V[2*k-N-1]);  S[k] = Wk/(2*(N-k)+1); }
     }
     S[N-1]=V[N-1];
     return S;
@@ -562,9 +562,9 @@ int find_optim_decal( SEXP x, SEXP y, int decal )
        for (i=0; i<size_m; i++) {
            ij = i + j;
            if ( ij<size_m && ij>=0 )
-              sse +=  10.0*pow(vref[i]-vk[ij],2);
+              sse +=  10.0*(vref[i]-vk[ij])*(vref[i]-vk[ij]);
            else 
-              sse +=  10.0*pow(vref[i],2);
+              sse +=  10.0*vref[i]*vref[i];
        }
        if (sse<min_sse) { optim_decal=j; min_sse=sse; }
    }
@@ -624,7 +624,7 @@ SEXP C_segment_shifts (SEXP x, int idx_vref, int decal_max, int istart, int iend
 }
 
 // [[Rcpp::export]]
-int C_align_segment (SEXP x, SEXP s, int istart, int iend, IntegerVector v)
+int C_align_segment (SEXP x, SEXP s, int istart, int iend, int apodize, IntegerVector v)
 {
    NumericMatrix VV(x);
    NumericVector shift_v(s);
@@ -645,16 +645,23 @@ int C_align_segment (SEXP x, SEXP s, int istart, int iend, IntegerVector v)
    for (k=0; k<bounds; k++) {
        idx = v.length()>0 ? v[k] : k ;
        delta = shift_v[idx]-moy_shift;
+       delta = shift_v[idx];
        if (delta==0) continue;
        for (i=0; i<size_m; i++) {
-           vk[i]=0.0;
+           //vk[i]=0.0;
            ij=i+delta;
-           if ( ij>=0 && ij<size_m)
+           if ( ij<0 )
+               vk[i]=VV(idx, istart);
+           else if ( ij>=size_m )
+               vk[i]=VV(idx, iend);
+           else if ( ij>=0 && ij<size_m )
                vk[i]=VV(idx, istart+ij);
        }
        for (i=0; i<size_m; i++) VV(idx,istart+i)=vk[i];
-       _apodize(x, idx,istart);
-       _apodize(x, idx,iend);
+       if (apodize>0) {
+          _apodize(x, idx,istart);
+          _apodize(x, idx,iend);
+       }
    }
    return(moy_shift);
 }
@@ -670,6 +677,7 @@ struct BinData {
    int inoise_start;
    int inoise_end;
    double delta_ppm;
+   double ppm_max;
    double R;
    double ynoise;
    double vnoise;
@@ -677,6 +685,18 @@ struct BinData {
    double bin_fac;
    double peaknoise_rate;
    double BUCMIN;
+   double DELTAPPM;
+};
+
+struct ErvaData {
+   int n_buckets;
+   double bucketsize;
+   double delta_ppm;
+   double ppm_min;
+   double R;
+   double THRESBUC;
+   double BUCMIN;
+   double noise_fac;
 };
 
 // [[Rcpp::export]]
@@ -739,7 +759,7 @@ void save_bucket(SEXP b, SEXP v, struct BinData *bdata, int n1, int n2)
    bdata->n_buckets++;
 }
 
-int find_buckets(SEXP x, SEXP b, SEXP v, struct BinData *bdata, int n1, int n2)
+int find_aibin_buckets(SEXP x, SEXP b, SEXP v, struct BinData *bdata, int n1, int n2)
 {
    NumericMatrix buckets(b);
    NumericVector vref(v);
@@ -759,8 +779,8 @@ int find_buckets(SEXP x, SEXP b, SEXP v, struct BinData *bdata, int n1, int n2)
    }
    //Rprintf("find bucket: range %d - %d, vbmax=%f, nmin=%d, ncut=%d\n",n1,n2, vbmax, nmin, ncut);
    if (ncut>0) {
-        if (find_buckets(x, buckets,vref,bdata,n1,ncut)==0) save_bucket(buckets,vref,bdata,n1,ncut);
-        if (find_buckets(x, buckets,vref,bdata,ncut,n2)==0) save_bucket(buckets,vref,bdata,ncut,n2);
+        if (find_aibin_buckets(x, buckets,vref,bdata,n1,ncut)==0) save_bucket(buckets,vref,bdata,n1,ncut);
+        if (find_aibin_buckets(x, buckets,vref,bdata,ncut,n2)==0) save_bucket(buckets,vref,bdata,ncut,n2);
    }
    return ncut;
 }
@@ -788,7 +808,7 @@ SEXP C_aibin_buckets(SEXP x, SEXP b, SEXP v, SEXP l, int n1, int n2)
    bdata.vnoise = bdata.bin_fac*bin_value(x, vref, &bdata, bdata.inoise_start, bdata.inoise_end);
    // Rprintf("AIBIN: range %d - %d, vnoise=%f\n",n1,n2, bdata.vnoise);
 
-   find_buckets(x, buckets,vref,&bdata,n1-1,n2-1);
+   find_aibin_buckets(x, buckets,vref,&bdata,n1-1,n2-1);
    // Rprintf("Returned Value = %d, number of buckets found = %d\n",ret, bdata.n_buckets);
    if (bdata.n_buckets==0) return R_NilValue;
 
@@ -796,6 +816,145 @@ SEXP C_aibin_buckets(SEXP x, SEXP b, SEXP v, SEXP l, int n1, int n2)
    for (i=0; i<bdata.n_buckets; i++) { M(i,0) = buckets(i,0)+1; M(i,1) = buckets(i,1)+1; }
    return M;
 }
+
+// ---------------------------------------------------
+//  ERVA
+// ---------------------------------------------------
+
+// ---------------------------------------------------
+//  Convolution with the second derivative of a Lorentzian function 
+// ---------------------------------------------------
+double func_lorentz(double x,double x0, double s) {  return s*s/(s*s+(x-x0)*(x-x0)); }
+
+// Calculation of the derivative (order 4 centered)
+void Derivation (double *v1, double *v2, int count_max)
+{
+    int    count;
+
+    for (count=0; count<=count_max; count++) v2[count]=0.0;
+    for (count=6; count<=count_max-5; count++)
+        v2[count] = (42*(v1[count+1]-v1[count-1]) +
+                     48*(v1[count+2]-v1[count-2]) +
+                     27*(v1[count+3]-v1[count-3]) +
+                      8*(v1[count+4]-v1[count-4]) +
+                         v1[count+5]-v1[count-5] )/512;
+
+}
+
+// [[Rcpp::export]]
+SEXP C_SDL_convolution (SEXP x, SEXP y, double sigma)
+{
+   NumericVector X(x);
+   NumericVector Y(y);
+   int  n=X.size();
+   NumericVector V(n);
+   int ltzwin=500;
+   int n1,n2,k,count;
+   for (count=0; count<n; count++) {
+        V[count]=0;
+        n1 = count<ltzwin ? 0 : count-ltzwin;
+        n2 = count>(n-ltzwin-1) ? n-1 : count+ltzwin;
+        for (k=n1; k<=n2; k++) {
+            V[count] += Y[k]*func_lorentz(X[k], X[count], sigma);
+        }
+   }
+   for (k=0; k<100; k++) { V[k]=0.0; V[n-k-1]=0.0; }
+   V = C_Derive1(V);
+   V = C_Derive1(V);
+   return(V);
+}
+
+int find_erva_buckets(SEXP x, SEXP b, SEXP v, struct ErvaData *edata, int n1, int n2)
+{
+   NumericMatrix VV(x);
+   NumericMatrix buckets(b);
+   NumericVector vref(v);
+
+   int i1, i2, k, count, ltzwin, flg;
+   int n_points = VV.ncol();
+
+   double ppm, ppm0, f2buc;
+   double sigma = edata->bucketsize;
+   double dppm=edata->BUCMIN;
+   double max_vref=0.0;
+
+   double *v2=(double *) malloc((unsigned) (n_points+1)*sizeof(double));
+   double *v1=(double *) malloc((unsigned) (n_points+1)*sizeof(double));
+
+   ltzwin=1000;
+   for (count=1; count<=n_points; count++) {
+       ppm0 = edata->ppm_min + (count-1)*edata->delta_ppm;
+       v1[count]=0;
+       i1 = count<ltzwin ? 1 : count-ltzwin+1;
+       i2 = count>(n_points-ltzwin) ? n_points : count+ltzwin;
+       for (k=i1; k<=i2; k++) {
+           ppm = edata->ppm_min + (k-1)*edata->delta_ppm;
+           v1[count] += 100000.0*vref[k-1]*func_lorentz(ppm, ppm0, sigma);
+       }
+   }
+   Derivation(v1,v2,n_points);
+   Derivation(v2,v1,n_points);
+
+   edata->n_buckets=0;
+   count = n1;
+   flg=0;
+   while(count<n2) {
+       count++;
+       if (v1[count+1]<0.0)
+           f2buc=-1.0*v1[count+1];
+       else
+           f2buc=0.0;
+       if (flg==0 && f2buc>0.0) {
+           buckets(edata->n_buckets,0)=count-(int)(dppm/edata->delta_ppm);
+           max_vref=0.0;
+           flg=1;
+           continue;
+       }
+       if (flg==1 && f2buc>0.0) {
+           if (vref[count]>max_vref) max_vref=vref[count];
+           continue;
+       }
+       if (flg==1 && f2buc==0.0) {
+           buckets(edata->n_buckets,1)=count+(int)(dppm/edata->delta_ppm);
+           if ((buckets(edata->n_buckets,1)-buckets(edata->n_buckets,0))*edata->delta_ppm>=edata->noise_fac*dppm)
+               edata->n_buckets++;
+           flg=0;
+       }
+   }
+
+   free(v1);
+   free(v2);
+
+   return edata->n_buckets;
+}
+
+// [[Rcpp::export]]
+SEXP C_erva_buckets(SEXP x, SEXP b, SEXP v, SEXP l, int n1, int n2)
+{
+   NumericMatrix buckets(b);
+   NumericVector vref(v);
+   List blist(l);
+   struct ErvaData edata;
+   int i;
+
+   edata.n_buckets=0;
+   edata.bucketsize = as<double>(blist["bucketsize"]);
+   edata.BUCMIN = as<double>(blist["BUCMIN"]); // 0.001
+   edata.noise_fac = as<double>(blist["noise_fac"]); // 3
+   edata.delta_ppm = as<double>(blist["dppm"]);
+   edata.ppm_min = as<double>(blist["ppm_min"]);
+
+   find_erva_buckets(x, buckets,vref,&edata,n1-1,n2-1);
+   // Rprintf("Returned Value = %d, number of buckets found = %d\n",ret, edata.n_buckets);
+   if (edata.n_buckets==0) return R_NilValue;
+
+   NumericMatrix M(edata.n_buckets, 2);
+   for (i=0; i<edata.n_buckets; i++) {
+       M(i,0) = buckets(i,0)+1; M(i,1) = buckets(i,1)+1;
+   }
+   return M;
+}
+
 
 // [[Rcpp::export]]
 SEXP C_spectra_integrate (SEXP x, int istart, int iend)
@@ -1145,30 +1304,3 @@ double Fentropy(SEXP par, SEXP re, SEXP im, int blphc, int neigh, double B, doub
    return(H1 + Gamma * Pfun);
 }
 
-// ---------------------------------------------------
-//  Convolution with the second derivative of a Lorentzian function 
-// ---------------------------------------------------
-double func_lorentz(double x,double x0, double s) {  return s*s/(s*s+(x-x0)*(x-x0)); }
-
-// [[Rcpp::export]]
-SEXP C_SDL_convolution (SEXP x, SEXP y, double sigma)
-{
-   NumericVector X(x);
-   NumericVector Y(y);
-   int  n=X.size();
-   NumericVector V(n);
-   int ltzwin=500;
-   int n1,n2,k,count;
-   for (count=0; count<n; count++) {
-        V[count]=0;
-        n1 = count<ltzwin ? 0 : count-ltzwin;
-        n2 = count>(n-ltzwin-1) ? n-1 : count+ltzwin;
-        for (k=n1; k<=n2; k++) {
-            V[count] += Y[k]*func_lorentz(X[k], X[count], sigma);
-        }
-   }
-   for (k=0; k<100; k++) { V[k]=0.0; V[n-k-1]=0.0; }
-   V = C_Derive1(V);
-   V = C_Derive1(V);
-   return(V);
-}

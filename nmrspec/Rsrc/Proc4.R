@@ -48,6 +48,7 @@
              if (input$tpreproc=='ppmalign') {
                  procParams$ALIGNMETH <<- input$alignmeth
                  procParams$RELDECAL <<- input$aligndecal
+                 procParams$FAPODIZE <<- ifelse(input$fapodize==1, TRUE, FALSE)
                  procParams$PTWCRIT <<- input$warpcrit
                  procParams$IDXSREF <<- input$RefSpecSelect
                  procParams$PPM_RANGE <<- input$ppmrefrange3

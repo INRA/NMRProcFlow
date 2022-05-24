@@ -48,7 +48,7 @@ do {
        exec("cat $datadir/samples.csv | awk -F';' '{ print \$$c }' | sort | uniq 2>/dev/null",$arr_output,$retval);
    } else {
        $level_name = trim(`cat $datadir/samples.csv | awk -F';' '{ print \$$c }' | sort | uniq | head -$level_id | tail -1 2>/dev/null`);
-       exec("cat $datadir/samples.csv | awk -F';' '{ print \$2,\$$c }' | grep '$level_name' |  awk -F' ' '{ print \$1 }' 2>/dev/null",$arr_output,$retval);
+       exec("cat $datadir/samples.csv | awk -F';' '{ print \$2,\$$c }' | grep '$level_name' |  awk -F' ' '{ print \$1 }' | sort | uniq 2>/dev/null",$arr_output,$retval);
    }
    
    if ($retval == 0) {

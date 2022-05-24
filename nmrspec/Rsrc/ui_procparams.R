@@ -161,7 +161,9 @@ ui_proc_process <- column(12,
                      selectInput("alignmeth", "Align. Method", c("Least Square" = "1", "Time Warping" = "2", "CluPA" = "3"), selected = "1"),
                      conditionalPanel(condition="input.alignmeth==1",
                          numericInput("aligndecal", "Relative max. shift:", 0.05, min = 0.01, max = 1, step=0.05),
-                         bsTooltip("aligndecal", "Relative maximum shift allowed between the reference spectrum and another spectrum in order to find the best alignment", "bottom", options = list(container = "body"))
+                         bsTooltip("aligndecal", "Relative maximum shift allowed between the reference spectrum and another spectrum in order to find the best alignment", "bottom", options = list(container = "body")),
+                         checkboxInput("fapodize", "Marks a break at both ends ", FALSE),
+                         bsTooltip("fapodize", "Marks a break at both ends to avoid having a constant non-zero value at the shift points of the spectra", "bottom", options = list(container = "body"))
                      ),
                      conditionalPanel(condition="input.alignmeth==2",
                          selectInput("warpcrit", "Optim. Criterium", c("WCC" = "WCC", "RMS" = "RMS"), selected = "WCC")
@@ -226,13 +228,13 @@ ui_proc_bucket <- column(12,
      column(3,
          # Bucketing Method selection
          radioButtons("bucmeth", "Bucketing Method:",
-                     c("Uniforme" = "uniforme", "Intelligent Bucketing" = "AIBIN", "Variable Size Buckets" = "VSB", # "ERVA" = "ERVA", 
+                     c("Uniforme" = "uniforme", "Intelligent Bucketing" = "AIBIN", "Variable Size Buckets" = "VSB", "ERVA" = "ERVA", 
                        "Import Buckets"="bucimport", "Merging / Resetting"="bucreset" ), selected = "AIBIN")
      ),
      column(4,
          conditionalPanel(condition="input.bucmeth=='uniforme'", numericInput("unif_size", "PPM Resolution:", 0.04, min = 0.01, max = 0.1, step=0.01)),
          conditionalPanel(condition="input.bucmeth=='AIBIN'", numericInput("aibin_r", "Resolution Factor:", 0.5, min = 0.1, max = 0.6, step=0.1)),
-         conditionalPanel(condition="input.bucmeth=='ERVA'", numericInput("erva_r", "Resolution Factor:", 0.005, min = 0.001, max = 0.01, step=0.001)),
+         conditionalPanel(condition="input.bucmeth=='ERVA'", numericInput("erva_r", "Resolution Factor:", 0.0005, min = 0.0001, max = 0.01, step=0.0005)),
          conditionalPanel(condition="input.bucmeth=='uniforme' || input.bucmeth=='ERVA' || input.bucmeth=='AIBIN'", 
              numericInput("snrbuclev", "SNR threshold:", 3, min = 0, max = 10, step=1),
              tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange2", supclass="single noise", nrows=1, ncols=18, value="10.5 10.2"),

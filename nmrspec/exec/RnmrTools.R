@@ -667,17 +667,17 @@ RZero1D <- function(specMat, zones, LOGFILE=NULL, ProgressFile=NULL)
 #------------------------------
 # LS : Alignment of the selected PPM ranges
 #------------------------------
-RAlign1D <- function(specMat, zone, RELDECAL=0.35, idxSref=0, Selected=NULL, ProgressFile=NULL)
+RAlign1D <- function(specMat, zone, RELDECAL=0.35, idxSref=0, Selected=NULL, fapodize=FALSE, ProgressFile=NULL)
 {
    # Alignment of each PPM range
    NBPASS <- 3
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, NBPASS)
    i1 <- ifelse( max(zone)>=specMat$ppm_max, 1, length(which(specMat$ppm>max(zone))) )
    i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
-   
+   apodize <- ifelse(fapodize,1,0)
    decal <- round((i2-i1)*RELDECAL)
    for( n in 1:NBPASS) {
-       ret <- align_segment(specMat$int, segment_shifts( specMat$int, idxSref, decal, i1-1, i2-1, Selected-1), i1-1, i2-1, Selected-1)
+       ret <- align_segment(specMat$int, segment_shifts( specMat$int, idxSref, decal, i1-1, i2-1, Selected-1), i1-1, i2-1, apodize, Selected-1)
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, n)
    }
 
@@ -757,14 +757,15 @@ RShift1D <- function(specMat, zone, RELDECAL=0, Selected=NULL)
    di <- round(RELDECAL / specMat$dppm,0);
    j1 <- i1 - di
    j2 <- i2 - di
+   icte <- ifelse(di<0, i1, i2)
 
    if( is.null(Selected) ) {
         M <- specMat$int[, c(i1:i2) ]
-        specMat$int[, c(i1:i2) ] <- 0
+        for (k in 1:nrow(specMat$int)) specMat$int[ k, c(i1:i2) ] <- specMat$int[ k, icte ]
         specMat$int[, c(j1:j2) ] <- M
    } else  {
         M <- specMat$int[Selected, c(i1:i2) ]
-        specMat$int[Selected, c(i1:i2) ] <- 0
+        for (k in Selected) specMat$int[ k, c(i1:i2) ] <- specMat$int[ k, icte ]
         specMat$int[Selected, c(j1:j2) ] <- M
    }
 
@@ -780,12 +781,13 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
    BUCKET_LIST  <- 'bucket_list.in'
    BUC.filename <- 'SpecBuckets.txt'
    BUC.cmd <- 'SpecBucCmd.lst'
+   NUC <- readLines('nuc.txt')
 
    # Limit size of buckets
    MAXBUCKETS<-2000
    NOISE_FAC <- 3
 
-   if (Algo %in% c('aibin','unif')) {
+   if (Algo %in% c('aibin','unif','erva')) {
       # Noise estimation
       if (is.na(zonenoise)) {
           PPM_NOISE_AREA <- c(10.2, 10.5)
@@ -796,7 +798,10 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
       Vref <- spec_ref(specMat$int)
       ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
       Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
-      
+      Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="at")
+   }
+
+   if (Algo %in% c('aibin')) {
       bdata <- list()
       bdata$ynoise <- ynoise
       bdata$vnoise <- NULL
@@ -805,12 +810,27 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
       bdata$R <- resol
       bdata$dppm <- specMat$dppm
       bdata$noise_fac <- NOISE_FAC
-      bdata$bin_fac <- 0.5
-      bdata$peaknoise_rate <- 15
-      bdata$BUCMIN <- 0.003
       bdata$VREF <- 1
+      if (NUC=="13C") {
+         bdata$noise_fac <- 2
+         bdata$bin_fac <- 0.1
+         bdata$peaknoise_rate <- 5
+         bdata$BUCMIN <- 0.05
+      } else {
+         bdata$noise_fac <- NOISE_FAC
+         bdata$bin_fac <- 0.5
+         bdata$peaknoise_rate <- 15
+         bdata$BUCMIN <- 0.003
+      }
+   }
 
-      Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="at")
+   if (Algo %in% c('erva')) {
+      bdata <- list()
+      bdata$bucketsize <- resol
+      bdata$noise_fac <- 1
+      bdata$dppm <- specMat$dppm
+      bdata$ppm_min <- specMat$ppm_min
+      bdata$BUCMIN <- 0.001
    }
 
    if (Algo=='vsb') {
@@ -829,6 +849,11 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
           Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
           Mbuc[] <- 0
           buckets_m <- C_aibin_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
+       }
+       if (Algo=='erva') {
+          Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
+          Mbuc[] <- 0
+          buckets_m <- C_erva_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
        }
        if (Algo=='unif') {
           seq_buc <- seq(i1, i2, round(resol/specMat$dppm))
@@ -1049,7 +1074,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  idxSref=params[4]
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Alignment: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
                  Write.LOG(LOGFILE,paste0("Rnmr1D:     Rel. Shift Max.=",RELDECAL," - Reference=",idxSref))
-                 specMat <- RAlign1D(specMat, PPMRANGE, RELDECAL, idxSref, Selected=Selected, ProgressFile=ProgressFile)
+                 specMat <- RAlign1D(specMat, PPMRANGE, RELDECAL, idxSref, Selected=Selected, fapodize=FALSE, ProgressFile=ProgressFile)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
               }
@@ -1127,7 +1152,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               break
           }
           if (cmdName == lbBUCKET) {
-              if ( !( length(cmdPars) >= 6 && cmdPars[2] %in% c('aibin','unif') ) &&
+              if ( !( length(cmdPars) >= 6 && cmdPars[2] %in% c('aibin','erva','unif') ) &&
                    !( length(cmdPars) == 2 && cmdPars[2] %in% c('vsb') ) ) {
                  CMD <- CMD[-1]
                  break;
@@ -1139,7 +1164,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                   zones <- rbind(zones, as.numeric(unlist(strsplit(CMD[1],";"))))
                   CMD <- CMD[-1]
               }
-              if ( cmdPars[2] %in% c('aibin','unif') ) {
+              if ( cmdPars[2] %in% c('aibin','erva','unif') ) {
                   params <- as.numeric(cmdPars[-c(1:2)])
                   PPM_NOISE <- c( min(params[1:2]), max(params[1:2]) )
                   resol <- params[3]; snr <- params[4];

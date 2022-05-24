@@ -1026,12 +1026,12 @@ Spec1rProcpar <- list (
    rawR <- Re(fid)
    rawI <- Im(fid)
    
-   model <- lm(rawR ~ poly(1:length(rawR), np))
-   rM <- fitted(model)
+   model <- stats::lm(rawR ~ poly(1:length(rawR), np))
+   rM <- stats::fitted(model)
    rawR <- rawR - rM
    
-   model <- lm(rawI ~ poly(1:length(rawR), np))
-   iM <- fitted(model)
+   model <- stats::lm(rawI ~ poly(1:length(rawR), np))
+   iM <- stats::fitted(model)
    rawI <- rawI - iM
 
    complex(real=rawR, imaginary=rawI)
@@ -1123,7 +1123,7 @@ Spec1rProcpar <- list (
     param$SI <- length(rawspec)
     proc <- list( phc0=0, phc1=0, crit=NULL, RMS=0, SI=length(rawspec))
     attach(param)
-    if (!exists("phc0")) param$phc0 <- param$phc1 <- 0
+    if (!exists("phc0") || is.null(phc0)) param$phc0 <- param$phc1 <- 0
     detach(param)
 
     # PPM Calibration
@@ -1255,7 +1255,7 @@ Spec1rProcpar <- list (
    N <- 2; C <- 0
    while( C==0 && N>0 ) {
       opt <- tryCatch({
-                 optim(par=phc, fn=Fmin, method="Nelder-Mead", re=Re(V), im=Im(V), 
+                 stats::optim(par=phc, fn=Fmin, method="Nelder-Mead", re=Re(V), im=Im(V), 
                                 blphc=spec$param$BLPHC, B=spec$param$KSIG*spec$B, flg=flg, control=list(maxit=200))
              },  error = function(e) {  list(convergence=1) })
       if (opt$convergence==0) {
@@ -1275,7 +1275,7 @@ Spec1rProcpar <- list (
          if (spec$param$DEBUG).v("\n\t%d: No convergence   ",  lopt, logfile=spec$param$LOGFILE)
          N <- N - 1
       }
-      phc <- c( runif(1, -pi, pi), runif(1, -pi/10, pi/10) )
+      phc <- c( stats::runif(1, -pi, pi), stats::runif(1, -pi/10, pi/10) )
    }
    lopt <- lopt + 1
    return( list(spec=spec, lopt=lopt, ret=ret) )
@@ -1331,15 +1331,22 @@ Spec1rProcpar <- list (
    spec
 }
 
-.computeSpec <- function(spec) {
+# Compute the final spectra based on the best optimisation
+.computeSpec <- function(spec)
+{
    if (!spec$param$OPTPHC0 && !spec$param$OPTPHC1) {
       spec$proc$phc0 <- spec$param$phc0
       spec$proc$phc1 <- spec$param$phc1
    }
-   V <- spec$data
-   new_spec1r <- C_corr_spec_re(list(re=Re(V),im=Im(V), phc0=spec$proc$phc0, phc1=spec$proc$phc1))
+   if (spec$param$DEBUG) .v("\nPhasing: phc = (%3.6f, %3.6f)\n", spec$proc$phc0*180/pi, spec$proc$phc1*180/pi,
+                                                                  logfile=spec$param$LOGFILE)
+
+   fspec <- stats::fft(spec$fid)
+   m <- length(fspec); p <- ceiling(m/2)
+   fspec <- c( fspec[(p+1):m], fspec[1:p] )
+   if ( spec$param$REVPPM ) fspec <- fspec[rev(1:m)]
+   new_spec1r <- C_corr_spec_re(list(re=Re(fspec),im=Im(fspec), phc0=spec$proc$phc0, phc1=spec$proc$phc1))
    spec$data <- complex(real=new_spec1r$re,imaginary=new_spec1r$im)
-   if (spec$param$REVPPM) spec$data <- rev(spec$data)
    spec
 }
 
@@ -1441,7 +1448,7 @@ Spec1rProcpar <- list (
           if(param$DEBUG) .v("Preprocessing ...\n",logfile=logfile)
           spec <- .preprocess(spec,param)
           if(param$DEBUG) .v("OK\n",logfile=logfile)
-          
+
           ## Phasing
           if(param$OPTPHC0) {
                if(param$DEBUG) .v("Optimizing the zero order phase ...",logfile=logfile)
@@ -1684,11 +1691,11 @@ segment_shifts = function (specMat, idx_vref, decal_max, istart, iend, selected=
 }
 
 #' @export align_segment
-align_segment = function (specMat, shifts, istart, iend, selected=NULL)
+align_segment = function (specMat, shifts, istart, iend, apodize=0, selected=NULL)
 {
    if (is.null(selected)) {
-       C_align_segment (specMat, shifts, istart, iend, numeric(0))
+       C_align_segment (specMat, shifts, istart, iend, apodize, numeric(0))
    } else {
-       C_align_segment (specMat, shifts, istart, iend, selected)
+       C_align_segment (specMat, shifts, istart, iend, apodize, selected)
    }
 }
