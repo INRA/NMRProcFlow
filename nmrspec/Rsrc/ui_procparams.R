@@ -228,7 +228,7 @@ ui_proc_bucket <- column(12,
      column(3,
          # Bucketing Method selection
          radioButtons("bucmeth", "Bucketing Method:",
-                     c("Uniforme" = "uniforme", "Intelligent Bucketing" = "AIBIN", "Variable Size Buckets" = "VSB", "ERVA" = "ERVA", 
+                     c("Uniforme" = "uniforme", "Intelligent Bucketing" = "AIBIN", "ERVA" = "ERVA", "Variable Size Buckets" = "VSB",
                        "Import Buckets"="bucimport", "Merging / Resetting"="bucreset" ), selected = "AIBIN")
      ),
      column(4,
