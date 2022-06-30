@@ -1,6 +1,7 @@
 #### Log in module ###
 CONNECT  <- reactiveValues(Logged = Logged)
 
+## cf ui_frame.R
 #passwdInput <- function(inputId, label) {
 #    tagList(
 #      tags$label(label),

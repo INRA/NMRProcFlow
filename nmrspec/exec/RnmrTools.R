@@ -420,7 +420,7 @@ RNorm1D <- function(specMat, normmeth, zones)
       }
       COEFF <- SUM/mean(SUM)
    }
-   if (normmeth=='PQN') {
+   if (normmeth=='PQN') { # TOTO: cf https://github.com/tkimhofer/metabom8/blob/master/R/pqn.R
       # 1/ Get spectra values for each zone ...
       SUBMAT <- foreach(i=1:N, .combine=cbind) %dopar% {
           i1<-length(which(specMat$ppm>max(zones[i,])))

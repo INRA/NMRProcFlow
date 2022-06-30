@@ -131,8 +131,10 @@
                     NameZip <<- V[1]
                     SampleFilename <<- V[2]
                     outDir <<- dirname(V[3])
+                    unlink(file.path(outDataViewer," zones*"))
                     if (! file.exists(outDir) ) outDir <<- outDataViewer
                  }
+                 do.call(file.remove, list(list.files(outDataViewer, pattern="zones[0-9]_list.in", full.names=T)))
                  runjs( paste0("document.title ='",NameZip,"';") )
                  if (file.exists(file.path(outDataViewer,"pcmdfiles"))) {
                     V <- read.table(file.path(outDataViewer,"pcmdfiles"), header=F, stringsAsFactors=FALSE)[,1]

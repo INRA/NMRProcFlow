@@ -123,7 +123,7 @@ ui_proc_process <- column(12,
          conditionalPanel(condition="input.tpreproc=='baseline'",
               # Select Correction type & Noise area
               column(4,
-                  selectInput("bctype", "Type of Correction", c("Global Correction" = "1", "Local Correction" = "4", "q-NMR" = "3"), selected = "1"),
+                  selectInput("bctype", "Type of Correction", c("Global Correction" = "1", "Local Correction" = "4", "q-NMR" = "3"), selected = "4"),
                   tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange", supclass="single noise", nrows=1, ncols=18, value="10.5 10.2"),
                   bsTooltip("ppmnoiserange", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
 
@@ -148,7 +148,7 @@ ui_proc_process <- column(12,
                   ),
               # airPLS
                   conditionalPanel(condition="input.bctype==4",
-                     numericInput("lambda", "Level of Correction:", 2, min = 1, max = 6, step=1),
+                     numericInput("lambda", "Level of Correction:", 1, min = 1, max = 6, step=1),
                      numericInput("porder", "Order:", 1, min = 1, max = 3, step=1)
                   )
               ),
