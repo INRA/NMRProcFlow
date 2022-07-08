@@ -31,7 +31,9 @@ function(input, output, session) {
     MsgStyle <- 'danger'        # Style of Message Box
     ArrayProc <- rep(0, NBPROC) # Init the status of each process type
     ImgTermVal <- 1             # Gnuplot Output type (0=> SD, 1=>MD, 2=>HD)
-
+    USER <- NULL                # User information
+    
+    CONNECT  <- reactiveValues(Logged = Logged)
     ERROR <- reactiveValues(MsgErrLog = '', MsgErrLoad='', MsgErrProc='', MsgUpload='' )
     values <- reactiveValues()
     values$sessinit <- 0
@@ -82,12 +84,9 @@ function(input, output, session) {
             values$fgalaxy <- 2
         }
 
-
         # Is a new Session ?
         outData <- file.path(tempdir(),sessid)
         newSession <- nchar(sessid)==0 || ! ( file.exists(file.path(outData,'userfiles')) || file.exists(file.path(conf$DATASETS,sessid)) )
-        # Is User logged ?
-        condLogin <- CONNECT$Logged == TRUE
 
         # If session identifier is not valid or not provided, create a new one
         if ( newSession ) {
@@ -96,6 +95,14 @@ function(input, output, session) {
            if ( ! file.exists(outData) ) dir.create(outData)
         }
         output$jreload <- renderUI({ tags$script(HTML(paste0("window.history.replaceState(null,'NMRProcFlow', '?", sessid, "');"))) })
+
+        # Reactive values (cf Login.R): Is User logged ? 
+        condLogin <- CONNECT$Logged == TRUE
+        if (condLogin && dir.exists(outData) && ! file.exists(file.path(outData,"user")) && ! is.null(USER)) {
+            # Create the file containing the user email if not already exists
+            if (is.na(USER$email)) USER$email <- 'none'
+            Write.LOG(file.path(outData,"user"),USER$email, mode="wt")
+        }
 
         # With a valid session identifier, needless to login
         if (condLogin || (! newSession && ( file.exists(file.path(outData,'userfiles')) || file.exists(file.path(conf$DATASETS,sessid)) ) )) {

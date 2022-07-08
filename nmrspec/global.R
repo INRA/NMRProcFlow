@@ -31,6 +31,6 @@ if (is.numeric(conf$MAXZIPSIZE) && as.numeric(conf$MAXZIPSIZE)>0) {
 options(shiny.maxRequestSize=MAXZIPSIZE*1024^2)
 options(shiny.sanitize.errors = FALSE)
 
-Logged = ifelse(conf$USRCONMGR==1, FALSE, TRUE)
+Logged <- ifelse(conf$USRCONMGR==1, FALSE, TRUE)
 USER <- list( email='anonymous', lastname='', firstname='', password='' )
 USERS <- NULL

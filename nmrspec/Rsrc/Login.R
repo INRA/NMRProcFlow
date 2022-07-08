@@ -1,26 +1,4 @@
 #### Log in module ###
-CONNECT  <- reactiveValues(Logged = Logged)
-
-## cf ui_frame.R
-#passwdInput <- function(inputId, label) {
-#    tagList(
-#      tags$label(label),
-#      tags$input(id = inputId, type="password", value="", class="form-control")
-#    )
-#}
-#
-#output$uiLogin <- renderUI({
-#    if (CONNECT$Logged == FALSE) {
-#      wellPanel(
-#        textInput("userName", "Email:"),
-#        passwdInput("passwd", "Password:"),
-#        br(),
-#        actionButton("Login", "Log in"),
-#        HTML("&nbsp;&nbsp;"),actionLink("reqAccess", "", icon = icon("envelope")),
-#        tags$i(HTML(paste0('<a href="',conf$URL_ACCOUNT_REQUEST,'" target="_blank">Request an Access</a>')))
-#      )
-#    }
-#})
 
 observe ({
     input$login

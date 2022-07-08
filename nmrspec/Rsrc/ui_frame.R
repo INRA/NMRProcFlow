@@ -67,7 +67,7 @@ ui_mainpanel  <- mainPanel(
 
 # Footer
 ui_footer <- column(12, tags$hr(),
-  tags$p(class="cprght", "NMRProcFlow -(C) INRA UMR 1332 BFP, Bordeaux Metabolome - 2016-2021")
+  tags$p(class="cprght", "NMRProcFlow -(C) INRA UMR 1332 BFP, Bordeaux Metabolome - 2016-2022")
 )
 
 # Textarea UI widget

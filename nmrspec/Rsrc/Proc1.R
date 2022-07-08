@@ -178,7 +178,7 @@
    initPreprocessingParams <- function(macropcmdfile) {
        CMDTEXT <- gsub("\t", "", readLines(macropcmdfile))
        if ( length(grep("#%%", CMDTEXT[1]))==1 ) {
-            procpar <- unlist(strsplit(gsub("#%% ", "", CMDTEXT[1]), "; "))
+            procpar <- unlist(strsplit(gsub("#%% ", "", CMDTEXT[1]), "; *"))
             parnames <- NULL; parvals <- NULL
             for (param in procpar ) {
                  parnames <- c( parnames, unlist(strsplit(param,"="))[1] ); parvals <- c( parvals, unlist(strsplit(param,"="))[2] );
@@ -370,9 +370,10 @@
             thedate <- paste0( format(Sys.Date(), format="%m/%d/%Y"), ' ', format(Sys.time(), format="%H:%M:%S"))
             write_textlines(conf$USER_ACCESS_FILE, paste(USER$email, thedate, sessionViewer, 'INIT', NameZip, ZipSize, sep="\t"))
 
-            # Save the user name if not already exists
-            if (is.na(USER$email)) USER$email <- 'none'
-            if (! file.exists(file.path(outDataViewer,"user")) ) Write.LOG(file.path(outDataViewer,"user"),USER$email, mode="wt")
+            # Get the file containing the user email if not already exists
+            tmpSession <- file.path(tempdir(),sessionViewer)
+            if ( file.exists(file.path(tmpSession,"user")) && ! file.exists(file.path(outDataViewer,"user")) )
+                file.copy(file.path(tmpSession,"user"), file.path(outDataViewer,"user"))
 
             # Save the processing file if provided
             macropcmd <- input$macropcmd
