@@ -71,8 +71,14 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
                    )
                ),
                conditionalPanel(condition="input.usrphc==1",
-                   numericInput("USRPHC0", "Zero order phase:", 0, min = -360, max = 360, step=10),
-                   numericInput("USRPHC1", "First order phase:", 0, min = -360, max = 360, step=10)
+                   checkboxInput("fphcfile", "Using a file", FALSE),
+                   conditionalPanel(condition="input.fphcfile==1",
+                       fileInput( 'phcfile', 'Phasing file for samples', accept = c( 'text/plain' ) )
+                   ),
+                   conditionalPanel(condition="input.fphcfile==0",
+                       numericInput("USRPHC0", "Zero order phase:", 0, min = -360, max = 360, step=10),
+                       numericInput("USRPHC1", "First order phase:", 0, min = -360, max = 360, step=10)
+                   )
                ),
                checkboxInput("rabot", "Zeroing of Negative Values", FALSE),
                checkboxInput("zeroref", "TSP/TMS/DSS", FALSE),

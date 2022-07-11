@@ -83,6 +83,9 @@ LIST <- read.table(file.path(DATADIR,'rawids.csv'), sep=';', stringsAsFactors=F)
 # Get the list of samples
 samples <- read.table(file.path(DATADIR,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
 
+if (procParams$PHCFILE)
+   PHC <- read.table(file.path(DATADIR,'phc.txt'), sep="\t", header=T, stringsAsFactors=F)
+
 registerDoParallel(cores=env.list$CORES)
 Sys.sleep(1)
 
@@ -94,6 +97,12 @@ specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %d
      ACQDIR <- LIST[x,1]
      NAMEDIR <- ifelse( procParams$VENDOR=='bruker', basename(dirname(ACQDIR)), basename(ACQDIR) )
      PDATA_DIR <- ifelse( procParams$VENDOR=='rs2d', 'Proc', 'pdata' )
+     if (procParams$INPUT_SIGNAL=='fid' && procParams$PHCFILE) {
+         n <- which(PHC[,1]==NAMEDIR)
+         procParams$phc0 <- as.numeric(PHC[n,2])*pi/180
+         procParams$phc1 <- as.numeric(PHC[n,3])*pi/180
+         procParams$OPTPHC0 <- procParams$OPTPHC1 <- FALSE
+     }
      # Init the log filename
      procParams$LOGFILE <- paste0(RAWDIR,'/',NAMEDIR,'.log')
      procParams$PDATA_DIR <- file.path(PDATA_DIR,LIST[x,3])

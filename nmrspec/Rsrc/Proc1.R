@@ -202,8 +202,11 @@
             }
 
             if (is.null(procpar$USRPHC)) procpar$USRPHC <- "FALSE";
+            if (is.null(procpar$FILEPHC)) procpar$FILEPHC <- "FALSE";
+            if (procpar$FILEPHC=="TRUE") procpar$USRPHC <- "TRUE";
             updateCheckboxInput(session, "usrphc", value = ifelse( procpar$USRPHC=="TRUE", 1, 0));
-            if (procpar$USRPHC=="FALSE") {
+            updateCheckboxInput(session, "fphcfile", value = ifelse( procpar$FILEPHC=="TRUE", 1, 0));
+            if (procpar$USRPHC=="FALSE" && procpar$FILEPHC=="FALSE") {
                if (! is.null(procpar$PHC0)) {
                   updateCheckboxInput(session, "optimphc0", value = ifelse( procpar$PHC0=="TRUE", 1, 0));
                }
@@ -216,7 +219,7 @@
                  }
                }
             }
-            if (procpar$USRPHC=="TRUE") {
+            if (procpar$USRPHC=="TRUE" && procpar$FILEPHC=="FALSE") {
                if (! is.null(procpar$PHC0)) {
                   updateCheckboxInput(session, "USRPHC0", value = as.numeric(procpar$PHC0));
                }
@@ -358,12 +361,24 @@
                  SampleFile <<- file.path(outDir,'samples.txt')
                  file.rename( samplefile$datapath, SampleFile )
                  system(paste0("rm -rf ",dirname(samplefile$datapath)))
-                 listfiles <- c( NameZip, SampleFilename, SampleFile )
+                 listfiles <- c( NameZip, SampleFilename, SampleFile, 'NA', '/tmp/RtmpNone' )
             } else {
-                 listfiles <- c( NameZip, SampleFilename, '/tmp/RtmpNone' )
+                 listfiles <- c( NameZip, SampleFilename, '/tmp/RtmpNone', 'NA', '/tmp/RtmpNone' )
             }
             # Save the uploaded file names
             write.table( gsub( " ", "_", listfiles), file=file.path(outDataViewer,"userfiles"), sep=';', row.names=F, col.names=F, quote=F)
+
+            phcfile <- input$phcfile
+            PHCfile <<- NULL
+            if ( ! is.null(phcfile) ) {
+                 PHCfilename <<- phcfile$name
+                 PHCfile <<- file.path(outDataViewer,'phc.txt')
+                 file.copy(phcfile$datapath, PHCfile)
+                 system(paste0("rm -rf ",dirname(phcfile$datapath)))
+                 listfiles <- c( NameZip, SampleFilename, SampleFile, PHCfilename, PHCfile )
+            } else {
+                 listfiles <- c( NameZip, SampleFilename, '/tmp/RtmpNone', PHCfilename, '/tmp/RtmpNone' )
+            }
 
             # Trace the loading ...
             ZipSize <- file.info(RawZip)$size
@@ -412,6 +427,7 @@
             procParams$VENDOR <<- input$vendor
             procParams$INPUT_SIGNAL <<- input$spectype
             procParams$READ_RAW_ONLY <<- TRUE
+            procParams$PHCFILE <<- FALSE
             CMD <- paste0("#%% Vendor=",input$vendor,"; Type=",input$spectype,"; ")
             if (input$spectype=="fid") {
                 procParams$READ_RAW_ONLY <<- FALSE
@@ -419,11 +435,18 @@
                 procParams$GB <<- as.numeric(input$GB)
                 procParams$OC <<- FALSE
                 procParams$JGD_INNER <<- TRUE
-                if (input$usrphc==1) {
+                procParams$PHCFILE <<- ifelse(input$fphcfile==1, TRUE, FALSE)
+                USROK <- ifelse( input$usrphc==1 && input$fphcfile==1 && is.null(PHCfile), 0, 1 )
+                if (USROK==1 && input$usrphc==1) {
                    procParams$OPTPHC0 <<- FALSE
                    procParams$OPTPHC1 <<- FALSE
-                   procParams$phc0 <<- as.numeric(input$USRPHC0)*pi/180
-                   procParams$phc1 <<- as.numeric(input$USRPHC1)*pi/180
+                   if (input$fphcfile==0) {
+                       procParams$phc0 <<- as.numeric(input$USRPHC0)*pi/180
+                       procParams$phc1 <<- as.numeric(input$USRPHC1)*pi/180
+                   } else {
+                       procParams$phc0 <<- 0
+                       procParams$phc1 <<- 0
+                   }
                 } else {
                    procParams$OPTPHC0 <<- ifelse(input$optimphc1==0, TRUE, FALSE) # TRUE
                    procParams$OPTPHC1 <<- ifelse(input$optimphc1==1, TRUE, FALSE)
@@ -441,8 +464,8 @@
                 procParams$TSP <<- ifelse(input$zeroref==1, TRUE, FALSE)
                 CMD <- paste0(CMD, "LB=",input$LB,"; GB=",input$GB, "; " )
                 CMD <- paste0(CMD, "ZF=",ifelse(input$zerofilling==1, input$zffac, 0),"; ")
-                if (input$usrphc==1) {
-                   CMD <- paste0(CMD, "USRPHC=TRUE; ")
+                if (USROK==1 && input$usrphc==1) {
+                   CMD <- ifelse( input$fphcfile==0, paste0(CMD, "USRPHC=TRUE; "), paste0(CMD, "FILEPHC=TRUE; ") )
                    CMD <- paste0(CMD, "PHC0=",as.numeric(input$USRPHC0), "; ")
                    CMD <- paste0(CMD, "PHC1=",as.numeric(input$USRPHC1), "; ")
                 } else {

@@ -17,6 +17,8 @@ function(input, output, session) {
     NameZip <- NULL             # the name of the uploaded ZIP file
     SampleFilename <- 'NA'      # the name of the uploaded Sample file
     SampleFile <- NULL          # the full path name of the uploaded Sample file
+    PHCfilename <- 'NA'         # the name of the uploaded Sample file for phasing
+    PHCfile <- NULL             # the full path name of the uploaded Sample file for phasing
     PCMDFilename <- NULL        # the Macro-commands file for processing
     procParams <- NULL          # Processing Parameters
     outDataViewer <- NULL       # where data will be stored and used by NMRViewer
