@@ -438,6 +438,23 @@ write_qhnmr_wb <- function(wb, outDataViewer, zoneref, zonenoise)
 }
 
 #----
+# Add a 'Phasing' tab
+#----
+add_phasing_wb <- function(wb, outDataViewer, shid)
+{
+     # Styles
+     styBH <- createStyle(fgFill = "#0070C0", halign = "CENTER", textDecoration = "Bold", border = "Bottom", fontColour = "white")
+     if (procParams$INPUT_SIGNAL=='fid' && procParams$PHCFILE) {
+         shid <- shid + 1
+         addWorksheet(wb = wb, sheetName = "Phasing", gridLines = TRUE)
+         phasing <- read.table(file.path(outDataViewer,"phc.txt"), header=T, sep="\t", stringsAsFactors=FALSE)
+         writeData(wb, shid, x = phasing, colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+         addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:ncol(phasing)), gridExpand = TRUE)
+     }
+     shid
+}
+
+#----
 # Add a 'Macro_Cmd' tab
 #----
 add_macrocmd_wb <- function(wb, outDataViewer, shid)
@@ -530,7 +547,7 @@ add_about_wb <- function(wb, outDataViewer, zoneref, zonenoise, shid)
      colnames(infos) <- c("Label","Value")
      writeData(wb, shid, x = infos,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
      addStyle(wb, shid, style = styBH, rows = 1, cols = c(1:ncol(infos)), gridExpand = TRUE)
-     addStyle(wb, shid, style = styBOLD2, rows = c(5,13,21), cols = 1, gridExpand = TRUE)
+     addStyle(wb, shid, style = styBOLD2, rows = c(5,13,22), cols = 1, gridExpand = TRUE)
      setColWidths(wb, shid, cols=1, widths=30, ignoreMergedCells = FALSE)
      setColWidths(wb, shid, cols=2, widths=100, ignoreMergedCells = FALSE)
      shid

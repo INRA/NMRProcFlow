@@ -77,6 +77,7 @@ ui_proc_samples <- column(12,
              selectInput("exportFormat2", "Export Format",
                     c("Comma Separator Value (CSV)" = "csv", "Semicolon Separator Value (CSV)" = "ssv", 
                       "Tabular Separator Value (TXT)" = "tsv" ), selected = "tsv"),
+             checkboxInput("faddphc", "Append the phasing values", FALSE), tags$br(),
              downloadButton("bExportSampl", "Export Samples" )
         )
         )

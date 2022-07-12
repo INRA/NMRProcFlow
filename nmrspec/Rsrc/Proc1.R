@@ -135,6 +135,9 @@
                     if (! file.exists(outDir) ) outDir <<- outDataViewer
                  }
                  do.call(file.remove, list(list.files(outDataViewer, pattern="zones[0-9]_list.in", full.names=T)))
+                 if (!is.null(procParams$PPMNOISERANGE)) {
+                     runjs( paste0('$(".noise").each(function(){ $(this).val( "',procParams$PPMNOISERANGE,'" ); $(this).trigger("change"); });') )
+                 }
                  runjs( paste0("document.title ='",NameZip,"';") )
                  if (file.exists(file.path(outDataViewer,"pcmdfiles"))) {
                     V <- read.table(file.path(outDataViewer,"pcmdfiles"), header=F, stringsAsFactors=FALSE)[,1]

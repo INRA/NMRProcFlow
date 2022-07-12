@@ -304,6 +304,12 @@
                M <- cbind( M, samples[, c(3:DS)] )
                colnames(M) <- c(cnames, factors[-1,2] )
             }
+            if (input$faddphc) {
+               acqpars <- read.table( file.path(outDataViewer,'/list_pars.csv'), header=T, sep=";", stringsAsFactors=FALSE)
+               cnames <- colnames(M)
+               M <- cbind( M, acqpars[, c(9:10)] )
+               colnames(M) <- c(cnames, c('phc0','phc1') )
+            }
             write.table(M, file, sep=ES_sep(), row.names=FALSE, col.names=TRUE)
             runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }, error=function(e) { ERROR$MsgErrProc <- e; }) }

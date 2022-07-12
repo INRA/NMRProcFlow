@@ -367,6 +367,8 @@
              if (input$exportTempl == 'qhnmr') {
                  shid <- write_qhnmr_wb(wb, outDataViewer, zoneref, zonenoise)
              }
+             # Add a 'Phasing' tab if required
+             shid <- add_phasing_wb(wb, outDataViewer, shid)
              # Add a 'Macro_Cmd' tab
              shid <- add_macrocmd_wb(wb, outDataViewer, shid)
              # Add a 'about' tab
