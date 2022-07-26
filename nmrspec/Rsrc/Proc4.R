@@ -152,7 +152,10 @@
              } else {
                  if( !file.exists(file.path(outDataViewer,conf$Rnmr1D_PCMD)) ) file.create(file.path(outDataViewer,conf$Rnmr1D_PCMD))
                  nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
-                 push_STACK(outDataViewer, c(conf$SPEC_PACKED, conf$LOGFILE, conf$PPMRANGE, conf$Rnmr1D_PCMD, zonelist1), nbStackedProc)
+                 listfiles <- c(conf$SPEC_PACKED, conf$LOGFILE, conf$PPMRANGE, conf$Rnmr1D_PCMD, zonelist1)
+                 # free up disk space if necessary
+                 delete_over_limit(outDataViewer, listfiles, limit=conf$undoLimit)
+                 push_STACK(outDataViewer, listfiles, nbStackedProc)
              }
              delete_file(conf$ERRORFILE)
 

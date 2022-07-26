@@ -347,5 +347,5 @@ if (fWriteSpec) {
    close(dfcmd)
 } else {
  # Retrieve the previous saved files
-   pop_STACK(DATADIR, c(conf$SPEC_PACKED, conf$LOGFILE, conf$Rnmr1D_PCMD), get_maxSTACKID(DATADIR,conf$SPEC_PACKED))
+   pop_STACK(DATADIR, c(conf$SPEC_PACKED, conf$LOGFILE, conf$PPMRANGE, conf$Rnmr1D_PCMD), get_maxSTACKID(DATADIR,conf$SPEC_PACKED))
 }

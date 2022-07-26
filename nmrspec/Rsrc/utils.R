@@ -5,6 +5,51 @@ zonelist2 <- c('zones3_list.in', 'zones4_list.in', 'zones5_list.in', 'vsb_list.i
 .toM <- function(x) { M <- matrix(as.numeric(t(x)), nrow=ncol(x), ncol=nrow(x)); M <- t(M); 
                      colnames(M) <- colnames(x); rownames(M) <- rownames(x); M }
 
+#----
+# Disk Usage
+#----
+disk.usage <- function(path = "/opt") {
+   cmd <- sprintf("df %s", path)
+   exec <- system(cmd, intern = TRUE)
+   exec <- strsplit(exec[length(exec)], "[ ]+")[[1]]
+   exec <- as.numeric(exec[3:4])
+   structure(exec, names = c("used", "available"))
+}
+
+#----
+# Free Disk Space
+#----
+free_disk_space <- function(DATADIR, listfiles, ddratio=0.8)
+{
+   tmp<-getwd()
+   setwd(DATADIR)
+   path=dirname(DATADIR)
+   while ( TRUE ) {
+      du <- disk.usage(path)
+      if ( (du[1]/sum(du))<ddratio ) break
+      LIST <- list.files(pattern=paste0(listfiles[1],'.'))
+      if (length(LIST)==0) break
+      index <- substr(LIST[1],nchar(LIST[1])-2, nchar(LIST[1]))
+      for(f in listfiles) unlink(sprintf("%s.%s",f,index))
+   }
+   setwd(tmp)
+   du[1]/sum(du)
+}
+
+delete_over_limit <- function(DATADIR, listfiles, limit=10)
+{
+   tmp<-getwd()
+   setwd(DATADIR)
+   LIST <- list.files(pattern=paste0(listfiles[1],'.'))
+   if (length(LIST)>limit) {
+      LIST <- list.files(pattern=paste0(listfiles[1],'.'))
+      V <- sapply(LIST[1:(length(LIST)-limit)], function(x){ substr(x,nchar(x)-2, nchar(x)) })
+      for(f in listfiles)
+        for (index in V) 
+            unlink(sprintf("%s.%s",f,index))
+   }
+   setwd(tmp)
+}
 
 #----
 # update_autocomplete_input
