@@ -1,5 +1,5 @@
 # ID generateMetadata.R
-# Copyright (C) 2017-2019 INRA
+# Copyright (C) 2017-2023 INRAE
 # Authors: D. Jacob
 #
 
@@ -56,6 +56,11 @@ generateMetadata <- function(RAWDIR, procParams, samples=NULL)
               metadata <- generate_Metadata_RS2D_1r(RAWDIR, procParams )
               break
           }
+          break
+      }
+      # if Magritek without sample file 
+      if ( procParams$VENDOR=="magritek" ) {
+          metadata <- generate_Metadata_Magritek(RAWDIR, procParams )
           break
       }
       # else: Varian, Jeol or nmrML without sample file 
@@ -278,6 +283,41 @@ generate_Metadata_RS2D_1r <- function(RAWDIR, procParams)
    return(metadata)
 }
 
+generate_Metadata_Magritek <- function(RAWDIR, procParams)
+{
+   metadata <- list()
+   ERRORLIST <- c()
+   OKRAW <- 1
+   lstfac <- matrix(c(1,"Samplecode"), nrow=1)
+   RAWPATH <- gsub("//", "/", RAWDIR)
+   if (procParams$INPUT_SIGNAL == "fid") {
+       LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "data.1d$", 
+                     all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   } else {
+       LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "spectrum.1d$", 
+                     all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   }
+   L <- simplify2array(strsplit(LIST,'/'))
+   LIST <- as.data.frame(t(simplify2array(strsplit(LIST,'/'))))
+   
+   nDir <- dim(simplify2array(strsplit(RAWPATH,'/')))[1]
+   LIST <- LIST[, c(-1:-nDir)]
+
+   nr <- dim(LIST)[1]
+   nc <- dim(LIST)[2]
+   MS <- as.matrix(LIST)
+   rawdir <- cbind( sapply(1:nr, function(x){ do.call( paste, c( RAWPATH, as.list(MS[x,1:(nc-2)]), sep="/")) }), basename(MS[,1]), '0' )
+   M <- cbind(LIST[,1],LIST[,1])
+   
+   metadata$ERRORLIST <- ERRORLIST
+   if (OKRAW==1) {
+      metadata$samples <- M
+      metadata$rawids <- gsub("//", "/", rawdir)
+      metadata$factors <- lstfac
+   }
+   return(metadata)
+}
+
 set_Metadata <- function(RAWDIR, procParams, samples)
 {
    if (procParams$VENDOR == "bruker") return (.set_Metadata_Bruker(RAWDIR, procParams, samples))
@@ -285,6 +325,7 @@ set_Metadata <- function(RAWDIR, procParams, samples)
    if (procParams$VENDOR == "nmrml")  return (.set_Metadata_nmrML(RAWDIR, procParams, samples))
    if (procParams$VENDOR == "jeol")   return (.set_Metadata_Jeol(RAWDIR, procParams, samples))
    if (procParams$VENDOR == "rs2d")   return (.set_Metadata_RS2D(RAWDIR, procParams, samples))
+   if (procParams$VENDOR == "magritek")   return (.set_Metadata_Magritek(RAWDIR, procParams, samples))
    return(NULL)
 }
 
@@ -493,6 +534,55 @@ set_Metadata <- function(RAWDIR, procParams, samples)
       metadata$samples <- M
       metadata$rawids <- gsub("//", "/", rawdir)
       metadata$factors <- lstfac
+   }
+   return(metadata)
+}
+
+.set_Metadata_Magritek <- function(RAWDIR, procParams, samples)
+{
+   metadata <- list()
+   if (!is.null(samples)) {
+      samplesize <- dim(samples)
+      nraw <- samplesize[1]
+      nbcol <- samplesize[2]
+      
+      lstfac <- matrix(c(1,"Samplecode"), nrow=1)
+      rawdir <- NULL
+      ERRORLIST <- c()
+      OKRAW <- 1
+
+      RAWPATH <- gsub("//", "/", RAWDIR)
+      LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "spectrum.1d$", 
+                   all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+      for (i in 1:nraw) {
+          if (procParams$INPUT_SIGNAL == "fid") {
+              FileSpectrum  <- paste(samples[i,1], "data.1d", sep="/")
+          } else {
+              FileSpectrum  <- paste(samples[i,1], "spectrum.1d", sep="/")
+          }
+          L <- grep(pattern=FileSpectrum, LIST, value=TRUE)
+          if (length(L)>0) {
+              specdir <- dirname(L[1])
+              rawdir <- rbind( rawdir, c( specdir, dirname(FileSpectrum), dirname(FileSpectrum) ) )
+          } else {
+              ERRORLIST <- c( ERRORLIST, FileSpectrum )
+              OKRAW <- 0
+          }
+      }
+      
+      if (nbcol>2) {
+          M <- samples
+          lstfac <- rbind( lstfac, cbind( c(2:(nbcol-1)), colnames(samples)[c(-1:-2)] ) )
+      } else {
+          M <- cbind(samples[,1], samples[,2])
+      }
+      
+      metadata$ERRORLIST <- ERRORLIST
+      if (OKRAW==1) {
+         metadata$samples <- M
+         metadata$rawids <- gsub("//", "/", rawdir)
+         metadata$factors <- lstfac
+      }
    }
    return(metadata)
 }

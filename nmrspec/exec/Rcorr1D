@@ -158,8 +158,8 @@ repeat {
    CMDINFO <- paste("#\n# Normalisation (",NORM_METH,") of the Intensities based on the selected PPM ranges...\n#\n")
    CMDINFO <- paste0(CMDINFO,"normalisation ",NORM_METH,"\n",paste(zones$min, zones$max, collapse="\n"),"\nEOL\n")
 
-   specMat <- RNorm1D(specMat, NORM_METH, zones)
-
+   specMat <- RNorm1D(specMat, NORM_METH, cbind(zones$min, zones$max))
+   
    # Indicate that it will be needed to save the new spectra matrix
    fWriteSpec <- TRUE
    Write.LOG(LOGFILE,"Rcorr1D: ")

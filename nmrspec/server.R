@@ -57,7 +57,7 @@ function(input, output, session) {
     source("Rsrc/Proc1.R", local=TRUE)     # UI initialization events - Upload & Preprocessing
     source("Rsrc/Proc2.R", local=TRUE)     # Watcher - NMRViewer & Capture
     source("Rsrc/Proc3.R", local=TRUE)     # Samples
-    source("Rsrc/Proc4.R", local=TRUE)     # Processing
+    source("Rsrc/Proc4.R", local=TRUE)     # Processing & Bucketing
 
     #----------------------------------------------------
     # Main

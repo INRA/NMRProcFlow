@@ -305,9 +305,10 @@
                colnames(M) <- c(cnames, factors[-1,2] )
             }
             if (input$faddphc) {
+               if (input$vendor=='bruker') { phccols <- c(9:10) } else { phccols <- c(7:8) }
                acqpars <- read.table( file.path(outDataViewer,'/list_pars.csv'), header=T, sep=";", stringsAsFactors=FALSE)
                cnames <- colnames(M)
-               M <- cbind( M, acqpars[, c(9:10)] )
+               M <- cbind( M, acqpars[, phccols ] )
                colnames(M) <- c(cnames, c('phc0','phc1') )
             }
             write.table(M, file, sep=ES_sep(), row.names=FALSE, col.names=TRUE)

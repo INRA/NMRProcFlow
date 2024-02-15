@@ -97,8 +97,10 @@ ui_proc_process <- column(12,
                "Baseline correction" = "baseline",
                "Alignment" = "ppmalign",
                "PPM shift" = "ppmshift",
-               "Zeroing" = "ppmzero"), selected = "baseline")
-#               "Denoising" = "denoising"), selected = "baseline")
+#               "Denoising" = "denoising",
+               "Zeroing" = "ppmzero",
+#               "Smoothing" = "ppmsmooth"
+			  ), selected = "baseline")
      ),
      column(9,
          # PPM calibration
@@ -188,19 +190,30 @@ ui_proc_process <- column(12,
          # zeroing of some PPM ranges
          conditionalPanel(condition="input.tpreproc=='ppmzero'",
               column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
-              column(3, tags$strong('PPM Ranges to clean:', class="textlabs"),tags$br(), inputTextarea("ppmrange2", supclass="capture treset", nrows=10, ncols=22, value=""))
-         ),
+              column(3, tags$strong('PPM Ranges to clean:', class="textlabs"),tags$br(), 
+                        inputTextarea("ppmrange2", supclass="capture treset", nrows=10, ncols=22, value="")
+              ),
+              column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
+              column(3, checkboxInput("fzeroneg", "Only negative values", FALSE) )
+        ),
+         # Smoothing of some PPM ranges
+         conditionalPanel(condition="input.tpreproc=='ppmsmooth'",
+              column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
+              column(3, tags$strong('PPM Range to smooth:', class="textlabs"),tags$br(), 
+                        inputTextarea("ppmrefrange4", supclass="single", nrows=1, ncols=25, value="")
+
+              ),
+              column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
+              column(3, numericInput("smoothws", "Window size", 10, min = 5, max = 50, step=5) )
+        ),
          # PPM shift
          conditionalPanel(condition="input.tpreproc=='ppmshift'",
               column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
               column(3,
-                    numericInput("ppmdecal", "PPM shift value:", 0, min = -0.1, max = 0.1, step=0.01),
-                    tags$br(),
-                    tags$strong('PPM Ranges to shift:', class="textlabs"),
-                    tags$br(),
-                    inputTextarea("ppmrefrange2", supclass="single", nrows=1, ncols=18, value=""),
-                    tags$br()
-              )
+                    tags$strong('PPM Ranges to shift:', class="textlabs"), tags$br(),
+                    inputTextarea("ppmrefrange2", supclass="single", nrows=1, ncols=25, value="")
+              ),
+              column(3, numericInput("ppmdecal", "PPM shift value:", 0, min = -0.1, max = 0.1, step=0.01))
          ),
          # Denoising
          conditionalPanel(condition="input.tpreproc=='denoising'",

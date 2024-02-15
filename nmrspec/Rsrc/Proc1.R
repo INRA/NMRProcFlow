@@ -13,7 +13,7 @@
    })
    observeEvent( values$header, {
        if (values$header==0 && values$psession==1) {
-          runjs( "document.getElementById('conditionedPanels').style.display = 'none';" )
+          shinyjs::runjs( "document.getElementById('conditionedPanels').style.display = 'none';" )
           hideTab(inputId = "conditionedPanels", target = "Load")
        }
    })
@@ -21,10 +21,10 @@
    ## Extension for Galaxy Interactive Environment
    observeEvent( values$fgalaxy, {
        if (values$fgalaxy==1) {
-          runjs( "document.getElementById('nogalaxy').style.display = 'none';" )
+          shinyjs::runjs( "document.getElementById('nogalaxy').style.display = 'none';" )
        }
        if (values$fgalaxy==2) {
-          runjs( "document.getElementById('egalaxy').style.display = 'none';" )
+          shinyjs::runjs( "document.getElementById('egalaxy').style.display = 'none';" )
        }
    })
 
@@ -35,11 +35,16 @@
    outputOptions(output, 'FormatSelected', suspendWhenHidden=FALSE)
    outputOptions(output, 'FormatSelected', priority=20)
 
+   # Spectrum type depending on the vendor
    observeEvent ( input$vendor, {
        v_options <- c("fid"); names(v_options) <- c('FID'); v_select<-'fid'
        if ( input$vendor %in% c("bruker", "rs2d") ) {
             v_options[length(v_options)+1] <- '1r'; names(v_options)[length(v_options)] <- '1r spectrum';
             v_select<-'fid'
+       }
+       if ( input$vendor %in% c("magritek") ) {
+            v_options <- c("1r"); names(v_options) <- c('1r spectrum')
+            v_select<-'1r'
        }
        updateSelectInput(session, "spectype", choices = v_options, selected=v_select)
    })
@@ -115,61 +120,61 @@
    outputOptions(output, 'SessInit', suspendWhenHidden=FALSE)
    outputOptions(output, 'SessInit', priority=1)
 
-    ##---------------
-    ## SessReload : Reload the session
-    ##---------------
-    output$SessReload <- reactive({
-         values$reload
-         isolate({
-             if (values$reload==1) {
-                 if (! file.exists(file.path(outDataViewer,"userfiles"))) {
-                    outDir <<- outDataViewer
-                    NameZip <<- 'noname.zip'
-                 }
-                 else {
-                    V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
-                    NameZip <<- V[1]
-                    SampleFilename <<- V[2]
-                    outDir <<- dirname(V[3])
-                    unlink(file.path(outDataViewer," zones*"))
-                    if (! file.exists(outDir) ) outDir <<- outDataViewer
-                 }
-                 do.call(file.remove, list(list.files(outDataViewer, pattern="zones[0-9]_list.in", full.names=T)))
-                 if (!is.null(procParams$PPMNOISERANGE)) {
-                     runjs( paste0('$(".noise").each(function(){ $(this).val( "',procParams$PPMNOISERANGE,'" ); $(this).trigger("change"); });') )
-                 }
-                 runjs( paste0("document.title ='",NameZip,"';") )
-                 if (file.exists(file.path(outDataViewer,"pcmdfiles"))) {
-                    V <- read.table(file.path(outDataViewer,"pcmdfiles"), header=F, stringsAsFactors=FALSE)[,1]
-                    PCMDFilename <<- V[1]
-                 }
-                 procJobName <<- 'process'
-                 nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
-                 bsUndoLabel <- ifelse(nbStackedProc>0, paste0(' (',as.character(nbStackedProc),')'), '')
-                 updateButton(session, "undo", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
-                 nbStackedBuc <- get_maxSTACKID(outDataViewer,conf$BUCKET_LIST)
-                 if (file.exists(file.path(outDataViewer,conf$BUCKET_LIST))) nbStackedBuc <- nbStackedBuc + 1
-                 bsUndoLabel <- ifelse(nbStackedBuc>0, paste0(' (',as.character(nbStackedBuc),')'), '')
-                 updateButton(session, "unBucket", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
-                 values$load <- 1
-                 values$proc <- 1
-             }
-         })
-         return(values$reload)
-    })
-    outputOptions(output, 'SessReload', suspendWhenHidden=FALSE)
-    outputOptions(output, 'SessReload', priority=1)
+   ##---------------
+   ## SessReload : Reload the session
+   ##---------------
+   output$SessReload <- reactive({
+        values$reload
+        isolate({
+            if (values$reload==1) {
+                if (! file.exists(file.path(outDataViewer,"userfiles"))) {
+                   outDir <<- outDataViewer
+                   NameZip <<- 'noname.zip'
+                }
+                else {
+                   V <- read.table(file.path(outDataViewer,"userfiles"), header=F, stringsAsFactors=FALSE)[,1]
+                   NameZip <<- V[1]
+                   SampleFilename <<- V[2]
+                   outDir <<- dirname(V[3])
+                   unlink(file.path(outDataViewer," zones*"))
+                   if (! file.exists(outDir) ) outDir <<- outDataViewer
+                }
+                do.call(file.remove, list(list.files(outDataViewer, pattern="zones[0-9]_list.in", full.names=T)))
+                if (!is.null(procParams$PPMNOISERANGE)) {
+                    shinyjs::runjs( paste0('$(".noise").each(function(){ $(this).val( "',procParams$PPMNOISERANGE,'" ); $(this).trigger("change"); });') )
+                }
+                shinyjs::runjs( paste0("document.title ='",NameZip,"';") )
+                if (file.exists(file.path(outDataViewer,"pcmdfiles"))) {
+                   V <- read.table(file.path(outDataViewer,"pcmdfiles"), header=F, stringsAsFactors=FALSE)[,1]
+                   PCMDFilename <<- V[1]
+                }
+                procJobName <<- 'process'
+                nbStackedProc <- get_maxSTACKID(outDataViewer,conf$SPEC_PACKED)
+                bsUndoLabel <- ifelse(nbStackedProc>0, paste0(' (',as.character(nbStackedProc),')'), '')
+                updateButton(session, "undo", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
+                nbStackedBuc <- get_maxSTACKID(outDataViewer,conf$BUCKET_LIST)
+                if (file.exists(file.path(outDataViewer,conf$BUCKET_LIST))) nbStackedBuc <- nbStackedBuc + 1
+                bsUndoLabel <- ifelse(nbStackedBuc>0, paste0(' (',as.character(nbStackedBuc),')'), '')
+                updateButton(session, "unBucket", icon=icon("undo"), label = paste0('Undo',bsUndoLabel), style="primary")
+                values$load <- 1
+                values$proc <- 1
+            }
+        })
+        return(values$reload)
+   })
+   outputOptions(output, 'SessReload', suspendWhenHidden=FALSE)
+   outputOptions(output, 'SessReload', priority=1)
 
-    output$ZipPreLoaded <- reactive({
-          if (values$ziploaded>0) {
-             if (file.exists(file.path(outDir,conf$Rnmr1D_PPCMD))) initPreprocessingParams(file.path(outDir,conf$Rnmr1D_PPCMD))
-             updateTextInput(session, "namezip", value = NameZip)
-             shinyjs::disable("vendor")
-          }
-          return( values$ziploaded )
-    })
-    outputOptions(output, 'ZipPreLoaded', suspendWhenHidden=FALSE)
-    outputOptions(output, 'ZipPreLoaded', priority=20)
+   output$ZipPreLoaded <- reactive({
+         if (values$ziploaded>0) {
+            if (file.exists(file.path(outDir,conf$Rnmr1D_PPCMD))) initPreprocessingParams(file.path(outDir,conf$Rnmr1D_PPCMD))
+            updateTextInput(session, "namezip", value = NameZip)
+            shinyjs::disable("vendor")
+         }
+         return( values$ziploaded )
+   })
+   outputOptions(output, 'ZipPreLoaded', suspendWhenHidden=FALSE)
+   outputOptions(output, 'ZipPreLoaded', priority=20)
 
 ##---------------
 ## Upload & Preprocessing
@@ -188,8 +193,7 @@
             }
             names(parvals) <- parnames;  procpar <- data.frame(t(parvals), stringsAsFactors=FALSE)
             if (! is.null(procpar$Vendor)) {
-               v_options <- c('bruker', 'varian','jeol', 'nmrml', 'rs2d')
-               names(v_options) <- c('Bruker', 'Varian/Agilent', 'Jeol JDF format', 'nmrML v1.0.rc1', 'RS2D SPINit Format')
+               v_options <- optionVendor # optionVendor : see Global.R
                v_select<-tolower(trim(procpar$Vendor))
                updateSelectInput(session, "vendor", choices = v_options, selected=v_select)
             }
@@ -330,6 +334,7 @@
    ## Uploading file : Preparation
    ##---------------
    output$ZipUploaded <- reactive({
+         Sys.sleep(1)
          return(  ifelse( is.null(input$zipfile) , 0, 1 ) )
    })
    outputOptions(output, 'ZipUploaded', suspendWhenHidden=FALSE)
@@ -551,7 +556,7 @@
                                    tags$td(style="float: right;", tags$h4(sess_name)),
                                    tags$td(style="width: 15px;"," ")
                         ))})
-        runjs( paste0("window.history.replaceState(null,'NMRProcFlow', '?", sessionViewer, "'); document.title ='",NameZip,"';") )
+        shinyjs::runjs( paste0("window.history.replaceState(null,'NMRProcFlow', '?", sessionViewer, "'); document.title ='",NameZip,"';") )
         output$jreload <- renderUI({ tags$script(HTML(paste0("document.title ='",gsub("\\..*$", "", NameZip), "';"))) })
         samples <- read.table(file.path(outDataViewer,"samples.csv"), header=F, sep=";", stringsAsFactors=FALSE)
         factors <- read.table(file.path(outDataViewer,"factors"), header=F, sep=";", stringsAsFactors=FALSE)
@@ -625,13 +630,13 @@
    # Reset the session with keeping the ZIP
    observeEvent( input$resetButton, {
          if (input$resetButton>0) {
-            runjs( paste0("window.location.replace('?", AppliReload(1), "');") )
+            shinyjs::runjs( paste0("window.location.replace('?", AppliReload(1), "');") )
          }
    })
    # Full Reset
    observeEvent( input$resetFullButton, {
          if (input$resetFullButton>0) {
-            runjs( paste0("window.location.replace('?", AppliReload(0), "');") )
+            shinyjs::runjs( paste0("window.location.replace('?", AppliReload(0), "');") )
          }
    })
 

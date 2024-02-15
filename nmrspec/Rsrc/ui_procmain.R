@@ -89,7 +89,7 @@ ui_proc_main <- conditionalPanel(condition="output.fileProcessed==1 || output.Se
 ##---------------
 ui_proc <- conditionalPanel(condition="input.conditionedPanels == 'Processing'",
     conditionalPanel(condition="output.fileUploaded==0 && output.SessReload==0",
-        column(12, tags$br(), tags$p("Please, upload a ZIP file of Raw Spectra in order to launch the (pre)processing steps.") )
+        column(12, tags$br(), tags$p( h4("Please, upload a ZIP file of Raw Spectra in order to launch the (pre)processing steps.") ))
      ),
      ui_proc_main
 )

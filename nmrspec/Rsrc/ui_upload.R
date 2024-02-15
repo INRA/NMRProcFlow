@@ -12,33 +12,36 @@ bsModalNoClose <-function(...) {
 ##---------------
 ui_desc <- column(12,
     tags$br(),
-    tags$p("An easy graphical tool dedicated to 1D NMR spectra processing for metabolomics"),
+    tags$p( h3("An easy graphical tool dedicated to 1D NMR spectra processing for metabolomics") ),
     tags$hr()
 )
+
+# optionVendor : see Global.R
+selectVendor <- c("-- Select the input format --"="sinput", optionVendor)
 
 ##---------------
 ## Upload Formular
 ##---------------
-ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.SessReload==0",
+ui_load_form <- conditionalPanel(condition="output.fileUploaded==0 && output.SessReload==0",
     column(4,
-        selectInput("vendor", "Instrument/Vendor/Format:",  c("-- Select the input format --"="sinput", "nmrML v1.0.rc1"="nmrml", "Bruker (TopSpin/X-winnmr)" = "bruker", "Varian/Agilent (VNMRJ)" = "varian", "Jeol (JDF/DELTA)" = "jeol", "RS2D (SPINit)" = "rs2d"), selected = "sinput"),
+        selectInput("vendor", "Instrument/Vendor/Format:",  selectVendor, selected = "sinput"),
         conditionalPanel(condition="output.FormatSelected==1",
-             selectInput("spectype", "Spectra type:", 
+             selectInput("spectype", "Spectra type:", # see Proc1.R: Spectrum type depending on the vendor
                           c("1r spectrum" = "1r", "FID" = "fid"), selected = "fid"),
              conditionalPanel(condition="input.spectype=='fid'",
                  bsButton("bsadvusers", icon=icon("gear"), label = " Parameters", style="primary" ),
                  tags$br(),tags$br()
              ),
-             
+
              conditionalPanel(condition="output.ZipPreLoaded==0",
                  fileInput( 'zipfile', 'ZIP file', accept = c( 'application/zip', '.7z' ) )
              ),
              conditionalPanel(condition="output.ZipPreLoaded==1",
                  disabled( textInput( 'namezip', '') )
              ),
-             
+
              fileInput( 'samplefile', 'Samples file (Tabular format)', accept = c( 'text/plain' ) ),
-             
+
              conditionalPanel(condition="output.ZipUploaded==1 || output.ZipPreLoaded==1",
                  checkboxInput("advancedUsr", "Advanced User", FALSE),
                  conditionalPanel(condition="input.advancedUsr==1",
@@ -66,7 +69,7 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
                conditionalPanel(condition="input.usrphc==0",
                    checkboxInput("optimphc1", "first order phase setting", FALSE),
                    conditionalPanel(condition="input.optimphc1==1",
-                         selectInput("CRITSTEP1", "Criterion for first order phasing optimization:", 
+                         selectInput("CRITSTEP1", "Criterion for first order phasing optimization:",
                                    c("Negative values"="0", "Absolute Positive"="1"), selected = "0")
                    )
                ),
@@ -87,8 +90,8 @@ ui_load_form <-  conditionalPanel(condition="output.fileUploaded==0 && output.Se
                      numericInput("o1ratio", "Fractionnal value of the Sweep Width:", 0.28, min = 0.1, max = 0.5, step=0.1)
                )
            ),
-           column(6, tags$p(class="textlabs", "Advices on parameter setting"), 
-                    tags$br(), tags$br(), 
+           column(6, tags$p(class="textlabs", "Advices on parameter setting"),
+                    tags$br(), tags$br(),
                     tags$p(class="textblock", "First, try phasing without optimizing phase 1 for a fast preprocessing. In many cases, this produces a very acceptable result for fingerprinting approach."),
                     tags$p(class="textblock","If the resulting phasing is not acceptable, then try phasing with optimizing phase 1. The optimization can be done according to 2 criteria. Testing one and then the other in order to obtain the best result."),
                     tags$p(class="textblock","Also consider playing with the LB parameter, either by decreasing or increasing it a little. This improves phasing in some cases."),
@@ -121,9 +124,9 @@ ui_load_watcher <- bsModalNoClose("modalWatcher1", "Log Watcher","goButton", siz
 ## Upload Report
 ##---------------
 ui_load_report <- conditionalPanel(condition="output.fileProcessed==1 || output.SessReload==1",
-    column(6, 
+    column(6,
         verbatimTextOutput("zipLog"), tags$br(), tags$br(),
-        uiOutput("reload"), 
+        uiOutput("reload"),
         bsButton("resetButton", label = "Reset", style="primary" ),
         bsButton("loadlog", label = "Log", type="action", style="primary" ),
         bsModal("modalLoadlog", "Job Watcher", "loadlog", htmlOutput("watcher1b"), size="large" ),

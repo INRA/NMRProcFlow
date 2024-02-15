@@ -11,7 +11,7 @@ options(show.error.locations = TRUE)
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 .N <- function(x) { as.numeric(as.vector(x)) }
 .C <- function(x) { as.vector(x) }
-.toM <- function(x) { M <- matrix(as.numeric(x), nrow=dim(x)[1], ncol=dim(x)[2]); 
+.toM <- function(x) { M <- matrix(as.numeric(x), nrow=dim(x)[1], ncol=dim(x)[2]);
                      colnames(M) <- colnames(x); rownames(M) <- rownames(x); M }
 
 # Init counter
@@ -37,7 +37,7 @@ get_counter <- function(ProgressFile) {
    return( list(value=c, size=n))
 }
 
-### Write within the 'INI.file' file  with the INI format, the 'metalist' list, a list  of lists 
+### Write within the 'INI.file' file  with the INI format, the 'metalist' list, a list  of lists
 #   EXCLU being a list of keys to exclude to the writting
 Write.INI <- function(INI.file, metalist, EXCLU=c())
 {
@@ -162,10 +162,10 @@ generate_Metadata_File <- function(RawZip, DATADIR, procParams)
         min_col <- 2
         if ( procParams$VENDOR=="bruker" || procParams$VENDOR=="rs2d" ) min_col <- 4
         samples <- read.table(SampleFile, sep="\t", header=T,stringsAsFactors=FALSE)
-        if (dim(samples)[2]< min_col) samples <- NULL
+        if (ncol(samples)< min_col) samples <- NULL
    }
    metadata <- generateMetadata(RAWDIR, procParams, samples)
-   
+
    if (length(metadata$ERRORLIST)>0) {
       write.table(metadata$ERRORLIST, file=file.path(DATADIR,'errorlist.csv'), sep=';', row.names=F, col.names=F, quote=F)
    }
@@ -188,12 +188,12 @@ WhittakerSmooth <- function(x,w,lambda,differences=1)
   x=matrix(x,nrow = 1, ncol=length(x))
   L=length(x)
   E=spMatrix(L,L,i=seq(1,L),j=seq(1,L),rep(1,L))
-  D=methods::as(diff(E,1,differences),"dgCMatrix")
-  W=methods::as(spMatrix(L,L,i=seq(1,L),j=seq(1,L),w),"dgCMatrix")
+  D=methods::as(diff(E,1,differences),"CsparseMatrix") # 'dgCMatrix' move to 'CsparseMatrix'
+  W=methods::as(spMatrix(L,L,i=seq(1,L),j=seq(1,L),w),"CsparseMatrix")
   background=solve((W+lambda*t(D)%*%D),t((w*x)));
   return(as.vector(background))
 }
- 
+
 airPLS <- function(x,lambda=100, porder=1, itermax=8)
 {
   x = as.vector(x)
@@ -203,7 +203,7 @@ airPLS <- function(x,lambda=100, porder=1, itermax=8)
   repeat {
      z = WhittakerSmooth(x,w,lambda,porder)
      d = x-z
-     sum_smaller = abs(sum(d[d<0])) 
+     sum_smaller = abs(sum(d[d<0]))
      if(sum_smaller<0.001*sum(abs(x))||i==itermax) break
      w[d>=0] = 0
      w[d<0] = exp(i*abs(d[d<0])/sum_smaller)
@@ -211,7 +211,7 @@ airPLS <- function(x,lambda=100, porder=1, itermax=8)
      w[m] = exp(i*max(d[d<0])/sum_smaller)
      i=i+1
   }
-  return(z) 
+  return(z)
 }
 
 
@@ -224,7 +224,7 @@ airPLS <- function(x,lambda=100, porder=1, itermax=8)
 #   - baselineThresh: removal of all the peaks with intensity lower than this threshold, Default value: 50000
 # Output parameters
 #   - peak lists of the spectra
-detectSpecPeaks <- function (X, nDivRange, scales=seq(1, 16, 2), baselineThresh, SNR.Th=-1, ProgressFile=NULL) 
+detectSpecPeaks <- function (X, nDivRange, scales=seq(1, 16, 2), baselineThresh, SNR.Th=-1, ProgressFile=NULL)
 {
   LOGFILE <- file.path(dirname(ProgressFile),"clupa.out")
   if( !is.null(ProgressFile) ) Write.LOG(LOGFILE,"Ralign1D:  BEGIN detectSpecPeaks");
@@ -276,7 +276,7 @@ detectSpecPeaks <- function (X, nDivRange, scales=seq(1, 16, 2), baselineThresh,
 #   - maxShift:  maximum number of the points for a shift step
 # Output parameters
 #   - aligned spectra: same format as input
-dohCluster <- function (X, peakList, refInd = 1, maxShift = 50, acceptLostPeak = TRUE, ProgressFile=NULL) 
+dohCluster <- function (X, peakList, refInd = 1, maxShift = 50, acceptLostPeak = TRUE, ProgressFile=NULL)
 {
   refSpec = X[refInd, ]
   if( !is.null(ProgressFile) ) init_counter(ProgressFile, nrow(X))
@@ -360,7 +360,7 @@ CluPA <- function(data, reference=reference, nDivRange, scales = seq(1, 16, 2), 
   if( !is.null(ProgressFile) ) Write.LOG(LOGFILE,paste("Ralign1D:  --- Spectra alignment time: ",(endTime[3]-startTime[3])," sec"));
   if( !is.null(ProgressFile) ) Write.LOG(LOGFILE,"Ralign1D:  END CluPA");
 
-  ## Output  
+  ## Output
   return(Y)
 }
 
@@ -414,7 +414,7 @@ RNorm1D <- function(specMat, normmeth, zones)
       SUM <- foreach(i=1:N, .combine='+') %dopar% {
           i1<-length(which(specMat$ppm>max(zones[i,])))
           i2<-which(specMat$ppm<=min(zones[i,]))[1]
-          simplify2array(lapply( 1:specMat$nspec, function(x) { 
+          simplify2array(lapply( 1:specMat$nspec, function(x) {
                 0.5*(specMat$int[x, i1] + specMat$int[x, i2]) + sum(specMat$int[x,(i1+1):(i2-1)])
           }))
       }
@@ -437,7 +437,9 @@ RNorm1D <- function(specMat, normmeth, zones)
    }
 
    # 2/ Apply to each spectrum, its corresponding coefficient
-   V <- lapply( 1:specMat$nspec, function(x) { specMat$int[x,] <<- specMat$int[x,]/COEFF[x] } )
+   MatInt <- specMat$int/COEFF
+   specMat$int <- MatInt
+   #V <- lapply( 1:specMat$nspec, function(x) { specMat$int[x,] <<- specMat$int[x,]/COEFF[x] } )
    return(specMat)
 }
 
@@ -600,12 +602,16 @@ RairPLSbc1D <- function(specMat, zone, clambda, porder=1, ProgressFile=NULL)
    i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
    n <- i2-i1+1
    cmax <- switch(porder, 6, 7, 8)
+   WS <- 30
 
-   lambda <- ifelse (clambda==cmax, 5, 10^(cmax-clambda) )
+   #lambda <- ifelse (clambda==cmax, 5, 10^(cmax-clambda) )
+   lambda <- ifelse( clambda>0, cmax-clambda, abs(clambda) )
+   lambda <- 10^max(lambda,1)
+
    # Baseline Estimation for each spectrum
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
    BLList <- foreach(i=1:specMat$nspec, .combine=cbind) %dopar% {
-       x <- specMat$int[i,c(i1:i2)]
+       x <- Smooth(specMat$int[i,c(i1:i2)],WS)
        bc <- airPLS(x, lambda, porder=porder)
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        bc
@@ -665,11 +671,51 @@ RZero1D <- function(specMat, zones, LOGFILE=NULL, ProgressFile=NULL)
 }
 
 #------------------------------
+# Zeroing the selected PPM ranges
+#------------------------------
+RZeroNeg1D <- function(specMat, zones, LOGFILE=NULL, ProgressFile=NULL)
+{
+   # Zeroing negative values for each PPM range
+   N <- dim(zones)[1]
+   if( !is.null(ProgressFile) ) init_counter(ProgressFile, N)
+
+   for ( i in 1:N ) {
+       i1<-length(which(specMat$ppm>max(zones[i,])))
+       i2<-which(specMat$ppm<=min(zones[i,]))[1]
+       V <- specMat$int[,c(i1:i2)]
+	   V[V<0] <- 0
+	   specMat$int[,c(i1:i2)] <- V
+       if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),")"))
+       if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
+   }
+
+   return(specMat)
+}
+
+#------------------------------
+# Smooth the selected PPM ranges by a line segment
+#------------------------------
+RSmooth1D <- function(specMat, zone, WS, LOGFILE=NULL)
+{
+   # Smooth the PPM range
+   i1 <- ifelse( max(zone)>=specMat$ppm_max, 1, length(which(specMat$ppm>max(zone))) )
+   i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
+   for (k in 1:specMat$nspec) {
+       V <- Smooth(specMat$int[k,c(i1:i2)], WS)
+       n2 <- length(V); n1 <- n2 - WS + 1
+       a <- (V[n2]-V[n1])/(n2-n1)
+       for (j in n1:n2) V[j] <- a*(j-n1) + V[n1]
+       specMat$int[k,c(i1:i2)] <- V
+   }
+   return(specMat)
+}
+
+#------------------------------
 # LS : Alignment of the selected PPM ranges
 #------------------------------
-RAlign1D <- function(specMat, zone, RELDECAL=0.35, idxSref=0, Selected=NULL, fapodize=FALSE, ProgressFile=NULL)
+RAlign1D <- function(specMat, zone, RELDECAL=0.05, idxSref=0, Selected=NULL, fapodize=FALSE, ProgressFile=NULL)
 {
-   # Alignment of each PPM range
+   # Alignment of the PPM range
    NBPASS <- 3
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, NBPASS)
    i1 <- ifelse( max(zone)>=specMat$ppm_max, 1, length(which(specMat$ppm>max(zone))) )
@@ -691,7 +737,7 @@ RCluPA1D <- function(specMat, zonenoise, zone, resolution=0.02, SNR=3, idxSref=0
 {
    i1 <- ifelse( max(zone)>=specMat$ppm_max, 1, length(which(specMat$ppm>max(zone))) )
    i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
-   
+
    # Noise estimation
    if (is.na(zonenoise)) {
        PPM_NOISE_AREA <- c(10.2, 10.5)
@@ -701,7 +747,7 @@ RCluPA1D <- function(specMat, zonenoise, zone, resolution=0.02, SNR=3, idxSref=0
    idx_Noise <- c( length(which(specMat$ppm>PPM_NOISE_AREA[2])),(which(specMat$ppm<=PPM_NOISE_AREA[1])[1]) )
    Vref <- spec_ref(specMat$int)
    ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
-   
+
    # Parameters
    baselineThresh <- SNR*mean( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
    nDivRange <- max( round(resolution/specMat$dppm,0), 64 )
@@ -710,7 +756,7 @@ RCluPA1D <- function(specMat, zonenoise, zone, resolution=0.02, SNR=3, idxSref=0
    # Subpart of spectra
    if( is.null(Selected)) M<-specMat$int[, c(i1:i2) ] else  M<-specMat$int[Selected, c(i1:i2) ];
 
-    M.aligned <- CluPA(M, reference=idxSref, nDivRange, scales = seq(1, 8, 2), 
+    M.aligned <- CluPA(M, reference=idxSref, nDivRange, scales = seq(1, 8, 2),
                           baselineThresh,  SNR.Th = 0.1, maxShift=maxshift, ProgressFile=ProgressFile)
 
    if( is.null(Selected)) specMat$int[ ,c(i1:i2)] <- M.aligned else specMat$int[ Selected,c(i1:i2)] <- M.aligned
@@ -929,6 +975,8 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
    lbSHIFT <- 'shift'
    lbBUCKET <- 'bucket'
    lbZERO <- 'zero'
+   lbZERONEG <- 'zeroneg'
+   lbSMOOTH <- 'smooth'
    EOL <- 'EOL'
 
    SI <- (as.list(specParamsDF[1,]))$SI
@@ -940,9 +988,9 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
    samples <- read.table( 'samples.csv', header=F, sep=";", stringsAsFactors=FALSE)
 
    specMat$fWriteSpec <- FALSE
-   
+
    while ( length(CMD)>0 && CMD[1] != EOL ) {
-   
+
       cmdLine <- CMD[1]
       cmdPars <- unlist(strsplit(cmdLine[1],";"))
       cmdName <- cmdPars[1]
@@ -1151,6 +1199,32 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               CMD <- CMD[-1]
               break
           }
+          if (cmdName == lbZERONEG) {
+              CMD <- CMD[-1]
+              zones2 <- NULL
+              while(CMD[1] != EOL) {
+                  zones2 <- rbind(zones2, as.numeric(unlist(strsplit(CMD[1],";"))))
+                  CMD <- CMD[-1]
+              }
+              Write.LOG(LOGFILE,"Rnmr1D:  Zeroing negative values for the selected PPM ranges ...")
+              specMat <- RZeroNeg1D(specMat, zones2, LOGFILE=LOGFILE, ProgressFile=ProgressFile)
+              specMat$fWriteSpec <- TRUE
+              CMD <- CMD[-1]
+              break
+          }
+          if (cmdName == lbSMOOTH) {
+              params <- as.numeric(cmdPars[-1])
+              if (length(params)>=3) {
+                 PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
+			     WS <- params[3]
+                 Write.LOG(LOGFILE,paste0("Rnmr1D:  Smooth: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
+                 Write.LOG(LOGFILE,paste0("Rnmr1D:     Window size =",WS))
+                 specMat <- RSmooth1D(specMat, PPMRANGE, WS, LOGFILE=LOGFILE)
+                 specMat$fWriteSpec <- TRUE
+                 CMD <- CMD[-1]
+                 break
+              }
+          }
           if (cmdName == lbBUCKET) {
               if ( !( length(cmdPars) >= 6 && cmdPars[2] %in% c('aibin','erva','unif') ) &&
                    !( length(cmdPars) == 2 && cmdPars[2] %in% c('vsb') ) ) {
@@ -1201,7 +1275,7 @@ get_Buckets_table <- function(bucketfile)
       buckets$name <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
       buckets$min <- buckets[,1]-0.5*buckets[,2]
       buckets$max <- buckets[,1]+0.5*buckets[,2]
-     
+
       outtable <- buckets[, c("name", "center", "min", "max", "width") ]
    }
    return(outtable)
@@ -1220,7 +1294,7 @@ get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA
       buckets$min <- buckets[,1]-0.5*abs(buckets[,2])
       buckets$max <- buckets[,1]+0.5*abs(buckets[,2])
       # get index of buckets' ranges
-      buckets_m <- t(simplify2array(lapply( c( 1:(dim(buckets)[1]) ), 
+      buckets_m <- t(simplify2array(lapply( c( 1:(dim(buckets)[1]) ),
                      function(x) { c( length(which(specMat$ppm>buckets[x,]$max)), length(which(specMat$ppm>buckets[x,]$min)) ) }
                     )))
       # Integration
@@ -1276,7 +1350,7 @@ get_SNR_dataset <- function(specMat, bucketfile, zone_noise, ratio=TRUE)
       buckets$min <- buckets[,1]-0.5*buckets[,2]
       buckets$max <- buckets[,1]+0.5*buckets[,2]
       # get index of buckets' ranges
-      buckets_m <- t(simplify2array(lapply( c( 1:(dim(buckets)[1]) ), 
+      buckets_m <- t(simplify2array(lapply( c( 1:(dim(buckets)[1]) ),
                      function(x) { c( length(which(specMat$ppm>buckets[x,]$max)), length(which(specMat$ppm>buckets[x,]$min)) ) }
                     )))
       # Compute Vnoise vector & Maxvals maxtrix
@@ -1294,7 +1368,7 @@ get_SNR_dataset <- function(specMat, bucketfile, zone_noise, ratio=TRUE)
          outdata <- cbind( samples[, -1], Vnoise, MaxVals )
          colnames(outdata) <- c( factors[,2], 'Noise', bucnames )
       }
-      
+
       #outdata <- data.frame(outdata, stringsAsFactors=FALSE)
    }
    return(outdata)

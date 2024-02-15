@@ -61,6 +61,13 @@
                  procParams$RELDECAL <<- input$ppmdecal
                  procParams$PPM_RANGE <<- input$ppmrefrange2
              }
+             if (input$tpreproc=='ppmzero') {
+                 procParams$FZERONEG <<- input$fzeroneg
+             }
+             if (input$tpreproc=='ppmsmooth') {
+                 procParams$PPM_RANGE <<- input$ppmrefrange4
+                 procParams$SMOOTHWS <<- input$smoothws
+             }
          })
          ArrayProc[ALIGN] <<- 1
          return( paste(conf$Rscript_exec,"Ralign1D -p ", as.character(outDataViewer), sep="") )
@@ -128,6 +135,7 @@
                                                'ppmalign'= { cmdR <- get_AlignCmd() },
                                                'ppmshift'= { cmdR <- get_AlignCmd() },
                                                 'ppmzero'= { cmdR <- get_AlignCmd() },
+                                              'ppmsmooth'= { cmdR <- get_AlignCmd() },
                                               'denoising'= { cmdR <- get_CorrCmd()  } )
                     break
                 }

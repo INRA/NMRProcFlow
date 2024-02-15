@@ -55,7 +55,10 @@ Spec1rProcpar <- list (
     PDATA_DIR='pdata/1',       # subdirectory containing the 1r file (bruker's format only)
     CLEANUP_OUTPUT=TRUE,       # Clean up the final output objet
 
-### PRE-PROCESSING
+### PRE-PROCESSING - 1r
+    ZF1R=FALSE,
+
+### PRE-PROCESSING - FID
     LINEBROADENING=TRUE,       # Line Broading
     LB= 0.3,                   # Exponantial Line Broadening parameter
     GB= 0,                     # Gaussian Line Broadening parameter
@@ -66,13 +69,6 @@ Spec1rProcpar <- list (
     O1RATIO=1,                 # Fractionnal value of the Sweep Width for PPM calibration
                                # if not based on the parameter of the spectral region center (O1)
     RABOT=FALSE,               # Zeroing of Negative Values
-
-### Phase Correction
-    OPTPHC0=TRUE,              # Zero order phase optimization
-    OPTPHC1=TRUE,              # Zero order and first order phases optimization
-    OPTCRIT1=2,                # Global criterium for first order phasing optimization (1 for SSpos, 2 for SSneg, 3 for Entropy)
-
-### PRE-PROCESSING
     REMLFREQ=0,                # Remove low frequencies by applying a polynomial subtraction method.
     BLPHC=50,                  # Number of points for baseline smoothing during phasing
     KSIG=2,                    # Number of times the noise signal to be considered
@@ -85,7 +81,12 @@ Spec1rProcpar <- list (
     CRITSTEP2=2,               # Criterium for second step of the first order phasing optimization
     RATIOPOSNEGMIN=0.4,        # Ratio Positive/Negative Minimum
     JGD_INNER=TRUE,            # JEOL : internal (or external) estimation for Group Delay
-    RMS=0
+    RMS=0,
+
+### Phase Correction
+    OPTPHC0=TRUE,              # Zero order phase optimization
+    OPTPHC1=TRUE,              # Zero order and first order phases optimization
+    OPTCRIT1=2                 # Global criterium for first order phasing optimization (1 for SSpos, 2 for SSneg, 3 for Entropy)
 )
 
 #--------------------------------
@@ -264,11 +265,6 @@ Spec1rProcpar <- list (
    if (!file.exists(ACQFILE)) 
        stop("Acquisition parameter File (", ACQFILE, ") does not exist\n")
 
-   # 1r filename
-   SPECFILE <- paste(param$PDATA_DIR,"/1r",sep="")
-   if (!file.exists(SPECFILE))
-       stop("1r File (", SPECFILE, ") does not exist\n")
-
    # Processing parameters filename
    PROCFILE <- paste(param$PDATA_DIR,"/procs",sep="")
    if (!file.exists(PROCFILE)) 
@@ -310,22 +306,53 @@ Spec1rProcpar <- list (
    PHC0 <-  .bruker.get_param(PROC,"PHC0")
    PHC1 <-  .bruker.get_param(PROC,"PHC1")
 
-   # Read the 1r spectrum
+   # Read the 1r/1i spectra
    ENDIAN <- ifelse( BYTORDP==0, "little", "big")
    SIZE <- ifelse( DTYPP==0, 4L, 8L)
    DTYPE <- ifelse( DTYPP==0, "int", "double" )
-   
+
+   # 1r filename
+   SPECFILE <- paste(param$PDATA_DIR,"/1r",sep="")
+   if (!file.exists(SPECFILE))
+       stop("1r File (", SPECFILE, ") does not exist\n")   
    to.read <- file(SPECFILE,"rb")
-   signal <- rev(readBin(to.read, what=DTYPE, n=SI, size=SIZE, endian = ENDIAN))
+   signalR <- rev(readBin(to.read, what=DTYPE, n=SI, size=SIZE, endian = ENDIAN))
    close(to.read)
-   signal <- (2^NC_proc)*signal
-   TD <- SI <- length(signal)
+   signalR <- (2^NC_proc)*signalR
+   TD <- SI <- length(signalR)
+
+   # 1i filename
+   SPECFILE <- paste(param$PDATA_DIR,"/1i",sep="")
+   if (!file.exists(SPECFILE))
+       stop("1i File (", SPECFILE, ") does not exist\n")   
+   to.read = file(SPECFILE,"rb")
+   signalI<-rev(readBin(to.read, what=DTYPE, n=SI, size=SIZE, endian = ENDIAN))
+   close(to.read)
+   signalI <- (2^NC_proc)*signalI
+
+   pmax <- OFFSET
+   pmin <- OFFSET - SW
+
+   # If "ZeroFilling" on the 1r spectrum
+   if (param$ZF1R) {
+      # Compute the fid
+      spec <- complex(real=signalR, imaginary=signalI)
+      fid <- stats::fft(rev(spec), inverse=TRUE)
+      # Insert zeros just before the tail
+      k=0.99
+      tailFID <- fid[round(k*length(fid)):length(fid)]
+      fid <- c( fid[1:(round(k*length(fid))-1)], rep(complex(real=0, imaginary=0), TD), tailFID )
+      # Compute the real spectrum
+      spec <- rev(stats::fft(fid))
+      signalR <- (max(signalR)/max(Re(spec)))*Re(spec)
+      #signalI <- (max(signalI)/max(Im(spec)))*Im(spec)
+      # Change point sizes
+      TD <- SI <- length(signalR)
+   }
 
    setwd(cur_dir)
 
    dppm <- SW/(TD-1)
-   pmax <- OFFSET
-   pmin <- OFFSET - SW
    ppm <- seq(from=pmin, to=pmax, by=dppm)
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, 
@@ -338,7 +365,8 @@ Spec1rProcpar <- list (
    param$ZEROFILLING <- FALSE
    param$LINEBROADENING <- FALSE
 
-   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signal, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
+   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signalR, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
+   #spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signalR, img=signalI, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
 
    spec
 }
@@ -981,6 +1009,116 @@ Spec1rProcpar <- list (
 
 
 
+#--------------------------------
+# Magritek : 1R only
+#--------------------------------
+
+#### Retrieve a parameter value from Magritek acquisition parameters
+#--  internal routine
+#--  ACQ: list of acquisition parameters of the acqu.par file
+#--  paramStr: name of the parameter
+.magritek.get_param <- function (ACQ,paramStr,type="numeric")
+{
+   regexpStr <- paste("^",paramStr," +=",sep="")
+   acqval <-  gsub("^[^=]+= ?","",ACQ[which(simplify2array(regexpr(regexpStr,ACQ))>0)])
+   if (type=="numeric") {
+     acqval <- as.numeric(acqval)
+   } else {
+     acqval <- gsub("\\\"","", acqval)
+   }
+   acqval
+}
+
+# Read Header
+.magritek.read_header <- function(con)
+{
+   revstr <- function(s) paste(rev(strsplit(s,'')[[1]]), collapse='')
+   Header <- list(
+      owner=revstr(readChar(con, 4)),
+      format=revstr(readChar(con, 4)),
+      version=revstr(readChar(con, 4)),
+      dataType=readBin(con, what="int", n=1, size=4, signed=TRUE),
+      xDim=readBin(con, what="int", n=1, size=4, signed=TRUE),
+      yDim=readBin(con, what="int", n=1, size=4, signed=TRUE),
+      zDim=readBin(con, what="int", n=1, size=4, signed=TRUE),
+      qDim=readBin(con, what="int", n=1, size=4, signed=TRUE)
+   )
+   Header
+}
+
+# Read Data
+.magritek.read_data <- function(con, Header) {
+   readpoints <- Header$xDim*12
+   rawR <- readBin(con, what="numeric", n=readpoints, size=4, signed=TRUE, endian = "little")
+   xDim <- Header$xDim
+   X <- rawR[1:xDim]
+   Y <- rawR[ c(rep(FALSE,xDim),((xDim+1):(3*xDim) %% 2)==1) ]
+   Z <- rawR[ c(rep(FALSE,xDim),((xDim+1):(3*xDim) %% 2)==0) ]
+   list( X=X, Y=Y, Z=Z )
+}
+
+#### Read 1r data and the main parameters
+#--  internal routine
+#-- DIR: rs2d directory containing the experience
+.read.1r.magritek <- function(DIR)
+{
+   cur_dir <- getwd()
+   setwd(DIR)
+   
+   # Spectrum filename
+   DATAFILE <- "spectrum.1d"
+   if (!file.exists(DATAFILE)) 
+       stop("DATA File ", DATAFILE, " does not exist\n")
+   # Acquisition parameters filename
+   ACQFILE <- "acqu.par"
+   if (!file.exists(ACQFILE)) 
+       stop("Acquisition parameter File (", ACQFILE, ") does not exist\n")
+
+   # Read Spectrum
+   to.read = file(DATAFILE,"rb")
+   Header <- .magritek.read_header(to.read)
+   rawR <- .magritek.read_data(to.read, Header)
+   close(to.read)
+
+   # ACQ parameters
+   ACQ  <- readLines(ACQFILE)
+   setwd(cur_dir)
+
+   INSTRUMENT <- paste(.magritek.get_param(ACQ,"Spectrometer",type="string"),.magritek.get_param(ACQ,"InstrumentType",type="string"))
+   SFO1 <- .magritek.get_param(ACQ,"b1Freq")
+   PULSEWIDTH <- .magritek.get_param(ACQ,"pulseAmplitude90")
+   TEMP <- .magritek.get_param(ACQ,"CurrentTemperatureMagnet") + 273.15
+   SOLVENT <- .magritek.get_param(ACQ,"Solvent",type="string")
+   NUC <- .magritek.get_param(ACQ,"rxChannel",type="string")
+   NUMBEROFSCANS = .magritek.get_param(ACQ,"nrScans")
+   SOFTWARE <- .magritek.get_param(ACQ,"Software",type="string")
+
+   SW = max(rawR$X) - min(rawR$X)
+   SWH <- SW*SFO1
+   SI <- TD <- length(rawR$X)
+   PULSE <- "zg30"
+   PHC0 <- PHC1 <- 0
+   AQ <- RELAXDELAY <- SPINNINGRATE <- O1 <- GRPDLY <- 0
+   ORIGIN <- PROBE <- ""
+   ORIGPATH <- DIR
+
+   acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, 
+                   PROBE=PROBE, PULSE=PULSE, NUC=NUC, SOLVENT=SOLVENT, TEMP=TEMP, 
+                   RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
+                   TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
+   
+   proc <- list( phc0=PHC0*pi/180, phc1=PHC1*pi/180, SI=SI )
+   
+   dppm <- SW/(SI-1)
+   pmin <- min(rawR$X)
+   pmax <- max(rawR$X)
+   ppm <- rawR$X
+   
+   spec <- list( path=getwd(), param=NULL, acq=acq, proc=proc, fid=NULL, int=rawR$Y, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
+   spec
+}
+
+
 
 #--------------------------------
 # Pre-Processing
@@ -1122,9 +1260,7 @@ Spec1rProcpar <- list (
 
     param$SI <- length(rawspec)
     proc <- list( phc0=0, phc1=0, crit=NULL, RMS=0, SI=length(rawspec))
-    attach(param)
-    if (!exists("phc0") || is.null(phc0)) param$phc0 <- param$phc1 <- 0
-    detach(param)
+    if (! "phc0" %in% names(param) || is.null(param$phc0)) param$phc0 <- param$phc1 <- 0
 
     # PPM Calibration
     m <- proc$SI
@@ -1434,6 +1570,10 @@ Spec1rProcpar <- list (
          spec <- .read.FID.jeol(Input)
          break
       }
+      if (param$VENDOR == "magritek" && param$INPUT_SIGNAL == "1r") {
+         spec <- .read.1r.magritek(Input)
+         break
+      }
       break
    }
 
@@ -1572,7 +1712,7 @@ printSpectrum = function(obj)
 plotSpectrum = function(obj, ppm = c(obj$ppm[1], obj$ppm[obj$proc$SI]), ratio=1, title="", 
                          reverse=TRUE, active=FALSE, col="blue", overlay=FALSE, ovlCol="green" )
 {
-   g <- Finalize(obj, ppm, ratio=ratio)
+   g <- Finalize(obj, ppm, ratio=ratio, reverse=reverse)
    if (nchar(title)==0) title <- g$title
    if (overlay) {
       graphics::lines( g$x, g$y, col=ovlCol )

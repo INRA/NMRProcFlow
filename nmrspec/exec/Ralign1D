@@ -100,28 +100,68 @@ repeat {
    # exit if Zeroing is not invoked
    if (! procParams$TPROC == 'ppmzero' ) break
 
-   # exit if not PPM ranges file
+   # if PPM ranges file for zeroing
    zonesfile <- file.path(DATADIR,'zones2_list.in')
    if (! file.exists(zonesfile)) break
-
-   Write.LOG(LOGFILE,"Ralign1D:  Zeroing the selected PPM ranges ...")
 
    # get the PPM ranges list
    zones <- read.table(zonesfile, header=F, sep="\t")
    zones$min <- zones[,1]-0.5*zones[,2]
    zones$max <- zones[,1]+0.5*zones[,2]
 
-   CMDINFO <- paste0(CMDINFO,paste("#\n# Zeroing the selected zones ...\n#\n"))
-   CMDINFO <- paste0(CMDINFO,"zero\n",paste(zones$min, zones$max, collapse="\n"),"\nEOL\n")
+   if (procParams$FZERONEG) {
+       Write.LOG(LOGFILE,"Ralign1D:  Zeroing negative values for the selected PPM ranges ...")
 
-   # Zeroing each PPM range
-   specMat <- RZero1D(specMat, cbind(zones$min,zones$max), LOGFILE=LOGFILE, ProgressFile=NULL)
+       CMDINFO <- paste0(CMDINFO,paste("#\n# Zeroing negative values for the selected zones ...\n#\n"))
+       CMDINFO <- paste0(CMDINFO,"zeroneg\n",paste(zones$min, zones$max, collapse="\n"),"\nEOL\n")
+
+       # Zeroing negative values for each PPM range
+       specMat <- RZeroNeg1D(specMat, cbind(zones$min,zones$max), LOGFILE=LOGFILE, ProgressFile=NULL)
+   } else {
+       Write.LOG(LOGFILE,"Ralign1D:  Zeroing the selected PPM ranges ...")
+
+       CMDINFO <- paste0(CMDINFO,paste("#\n# Zeroing the selected zones ...\n#\n"))
+       CMDINFO <- paste0(CMDINFO,"zero\n",paste(zones$min, zones$max, collapse="\n"),"\nEOL\n")
+
+       # Zeroing each PPM range
+       specMat <- RZero1D(specMat, cbind(zones$min,zones$max), LOGFILE=LOGFILE, ProgressFile=NULL)
+
+   }
 
    # Indicate that it will be needed to save the new spectra matrix
    fWriteSpec <- TRUE
 
    # remove the PPM ranges file
    unlink(zonesfile)
+
+   Write.LOG(LOGFILE,"Ralign1D: ")
+   break
+}
+
+#------------------------------
+# Smoothing the selected PPM ranges
+#------------------------------
+repeat {
+   # exit if Smoothing is not invoked
+   if (! procParams$TPROC == 'ppmsmooth' ) break
+
+   # get the PPM range
+   zone <- as.numeric(simplify2array(strsplit(procParams$PPM_RANGE, " ")))
+
+   # exit if not PPM ranges file
+   if (is.na(zone)) break
+   zoneref <- c(min(zone), max(zone))
+
+   Write.LOG(LOGFILE,paste0("Ralign1D:  Smooth of the selected zone = (",min(zoneref),",",max(zoneref),") -  Window size =",procParams$SMOOTHWS," ..."));
+
+   CMDINFO <- paste0(CMDINFO,paste("#\n# Smooth of the selected zone (",min(zoneref),",",max(zoneref),")\n#\n"))
+   CMDINFO <- paste0(CMDINFO,paste("smooth",min(zoneref),max(zoneref), procParams$SMOOTHWS))
+
+   # Smooth the selected PPM ranges by a line segment
+   specMat <- RSmooth1D(specMat, zone, procParams$SMOOTHWS, LOGFILE=LOGFILE)
+
+   # Indicate that it will be needed to save the new spectra matrix
+   fWriteSpec <- TRUE
 
    Write.LOG(LOGFILE,"Ralign1D: ")
    break
@@ -185,10 +225,10 @@ repeat {
        }
        if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
 
-       CMDINFO <- paste0(CMDINFO,paste("clupa", PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], zoneref[1], zoneref[2], 
+       CMDINFO <- paste0(CMDINFO,paste("clupa", PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], zoneref[1], zoneref[2],
                            procParams$RESPPM, procParams$SNRBUCLEVEL, procParams$IDXSREF))
        registerDoParallel(cores=env.list$CORES)
-       specMat <- RCluPA1D(specMat, PPM_NOISE_AREA, zoneref, resolution=procParams$RESPPM, 
+       specMat <- RCluPA1D(specMat, PPM_NOISE_AREA, zoneref, resolution=procParams$RESPPM,
                            SNR=procParams$SNRBUCLEVEL, idxSref=procParams$IDXSREF, Selected=Selected, ProgressFile=ProgressFile)
    }
    if (length(Selected)>0) CMDINFO <- paste0(CMDINFO," ",paste(selpar[1,1], selpar[1,2]))

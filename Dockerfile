@@ -67,14 +67,16 @@ ENV APACHE_RUN_USER=www-data \
 
 # Metadata
 LABEL base.image="nmrprocflow:latest" \
-      version="1.4.04" \
+      version="1.4.20" \
       software="NMRProcFlow" \
-      software.version="1.4.04" \
+      software.version="1.4.20" \
       description="An user-friendly tool dedicated to 1D NMR spectra processing (1H, 13C, 31P) for metabolomics" \
       website="https://nmrprocflow.org/" \
       documentation="https://nmrprocflow.org/" \
       license="http://gplv3.fsf.org/" \
       tags="metabolomics"
+
+WORKDIR /var/www/html
 
 # Configuration
 COPY ./nmrspec/conf/apache2.conf /etc/apache2/apache2.conf

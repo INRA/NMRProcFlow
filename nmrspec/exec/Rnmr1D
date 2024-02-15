@@ -98,7 +98,7 @@ specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %d
      NAMEDIR <- ifelse( procParams$VENDOR=='bruker', basename(dirname(ACQDIR)), basename(ACQDIR) )
      PDATA_DIR <- ifelse( procParams$VENDOR=='rs2d', 'Proc', 'pdata' )
      if (procParams$INPUT_SIGNAL=='fid' && procParams$PHCFILE) {
-         n <- which(PHC[,1]==NAMEDIR)
+         n <- which(as.character(PHC[,1])==as.character(NAMEDIR))
          procParams$phc0 <- as.numeric(PHC[n,2])*pi/180
          procParams$phc1 <- as.numeric(PHC[n,3])*pi/180
          procParams$OPTPHC0 <- procParams$OPTPHC1 <- FALSE
@@ -142,6 +142,7 @@ specList <- foreach(x=1:(dim(LIST)[1]), .combine=cbind, .multicombine = TRUE) %d
          fileLog<-file(LOGFILE,"at")
          writeLines(paste0("\n[",x,"/",dim(LIST)[1],"]: ", NAMEDIR," expno=",LIST[x,2]," - procno=",LIST[x,3]," !!! FAILED !!!\n",e), fileLog)
          close(fileLog)
+         #return(list(x, list(path=NULL, param=procParams, acq=NULL, proc=NULL, fid=NULL, int=NULL, img=NULL, dppm=NULL, pmin=NULL, pmax=NULL, ppm=NULL)))
          return(list(x, list(path=NULL, param=procParams, acq=NULL, proc=NULL, fid=NULL, int=NULL, dppm=NULL, pmin=NULL, pmax=NULL, ppm=NULL)))
      })
 }
