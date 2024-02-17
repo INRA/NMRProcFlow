@@ -221,7 +221,7 @@
    ##---------------
    ## Output: Refresh Spectra viewer
    ##    When the user has clicked on the "View Selected Zones" (input$viewZones==1)
-   ##    The "zones_list.in" file that gathering the whole selected zones is created
+   ##    The "bucket_list.in" file that gathering the whole selected zones is created
    ##    and put in the shared data repository (conf$DATASETS). This file is then used by
    ##    the NMRviewer application in order to draw the shaded boxes.
    ##---------------

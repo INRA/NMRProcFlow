@@ -97,10 +97,9 @@ ui_proc_process <- column(12,
                "Baseline correction" = "baseline",
                "Alignment" = "ppmalign",
                "PPM shift" = "ppmshift",
-#               "Denoising" = "denoising",
-               "Zeroing" = "ppmzero",
-#               "Smoothing" = "ppmsmooth"
-			  ), selected = "baseline")
+               "Smoothing" = "ppmsmooth",
+               "Zeroing" = "ppmzero"), selected = "baseline")
+#               "Denoising" = "denoising"), selected = "baseline")
      ),
      column(9,
          # PPM calibration
@@ -213,6 +212,7 @@ ui_proc_process <- column(12,
                     tags$strong('PPM Ranges to shift:', class="textlabs"), tags$br(),
                     inputTextarea("ppmrefrange2", supclass="single", nrows=1, ncols=25, value="")
               ),
+              column(1, tags$img(src="images/img_00.gif", height = 400, width = 1)),
               column(3, numericInput("ppmdecal", "PPM shift value:", 0, min = -0.1, max = 0.1, step=0.01))
          ),
          # Denoising

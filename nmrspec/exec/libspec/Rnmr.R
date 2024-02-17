@@ -167,10 +167,10 @@ Spec1rProcpar <- list (
    PROBE   <- .bruker.get_param(ACQ,"PROBHD",type="string")
    SOLVENT <- .bruker.get_param(ACQ,"SOLVENT",type="string")
    PULSE   <- .bruker.get_param(ACQ,"PULPROG",type="string")
-   TEMP    <- .bruker.get_param(ACQ,"TE",type="string")
-   RELAXDELAY  <- .bruker.get_param(ACQ,"D",type="string",  arrayType=TRUE)[2]
-   PULSEWIDTH <- .bruker.get_param(ACQ,"P",type="string",  arrayType=TRUE)[2]
-   SPINNINGRATE <- .bruker.get_param(ACQ,"MASR",type="string")
+   TEMP    <- .bruker.get_param(ACQ,"TE",type="numeric")
+   RELAXDELAY <- .bruker.get_param(ACQ,"D",type="numeric",  arrayType=TRUE)[2]
+   PULSEWIDTH <- .bruker.get_param(ACQ,"P",type="numeric",  arrayType=TRUE)[1]
+   SPINNINGRATE  <- .bruker.get_param(ACQ,"MASR",type="numeric")
    NUMBEROFSCANS <- .bruker.get_param(ACQ,"NS")
    DUMMYSCANS <- .bruker.get_param(ACQ,"DS")
    NUC     <- .bruker.get_param(ACQ,"NUC1",type="string")
@@ -276,10 +276,10 @@ Spec1rProcpar <- list (
    SOLVENT <- .bruker.get_param(ACQ,"SOLVENT",type="string")
    NUC     <- .bruker.get_param(ACQ,"NUC1",type="string")
    PULSE   <- .bruker.get_param(ACQ,"PULPROG",type="string")
-   TEMP    <- .bruker.get_param(ACQ,"TE",type="string")
-   RELAXDELAY  <- .bruker.get_param(ACQ,"D",type="string",  arrayType=TRUE)[2]
-   PULSEWIDTH <- .bruker.get_param(ACQ,"P",type="string",  arrayType=TRUE)[2]
-   SPINNINGRATE <- .bruker.get_param(ACQ,"MASR",type="string")
+   TEMP    <- .bruker.get_param(ACQ,"TE",type="numeric")
+   RELAXDELAY <- .bruker.get_param(ACQ,"D",type="numeric",  arrayType=TRUE)[2]
+   PULSEWIDTH <- .bruker.get_param(ACQ,"P",type="numeric",  arrayType=TRUE)[1]
+   SPINNINGRATE  <- .bruker.get_param(ACQ,"MASR",type="numeric")
    TD      <- .bruker.get_param(ACQ,"TD")
    SW      <- .bruker.get_param(ACQ,"SW")
    SWH     <- .bruker.get_param(ACQ,"SW_h")
