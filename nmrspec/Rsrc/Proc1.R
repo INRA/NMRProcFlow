@@ -310,7 +310,7 @@
              generate_INI_file(procParams)
 
              # Launch Rnmr1D ...
-             cmdR <- paste(conf$Rscript_exec,"Rnmr1D -i ", as.character(outDir), "  -o ", as.character(outDataViewer), sep="")
+             cmdR <- paste(conf$Rscript_exec,"Rnmr1D ",optDebug," -i ", as.character(outDir), "  -o ", as.character(outDataViewer), sep="")
              RET <- submit_Rscript(outDir, outDataViewer, cmdR)
              if (RET!=0) {
                  ErrMsg <<- "ERROR: error occured while launching"
@@ -458,13 +458,14 @@
                 } else {
                    procParams$OPTPHC0 <<- ifelse(input$optimphc1==0, TRUE, FALSE) # TRUE
                    procParams$OPTPHC1 <<- ifelse(input$optimphc1==1, TRUE, FALSE)
-                   procParams$CRITSTEP1 <<- as.numeric(input$CRITSTEP1)
+                   procParams$CRITSTEP1 <<- 0 # as.numeric(input$CRITSTEP1)
                    procParams$OPTCRIT1 <<- 2
                    procParams$BLPHC <<- 50
                    procParams$KSIG <<- 2
                    procParams$GAMMA <<- 0.005
                 }
                 procParams$RATIOPOSNEGMIN <<- 0.45
+                procParams$KZEROTHRES <<- 250
                 procParams$REVPPM <<- ifelse(input$vendor == 'varian' || input$vendor == 'jeol', TRUE, FALSE)
                 procParams$ZEROFILLING <<- ifelse(input$zerofilling==1, TRUE, FALSE)
                 procParams$ZFFAC <<- as.numeric(input$zffac)
@@ -485,6 +486,13 @@
                     procParams$TSP <<- FALSE
                     procParams$O1RATIO <<- as.numeric(input$o1ratio)
                     CMD <- paste0(CMD, "; O1RATIO=",procParams$O1RATIO)
+                }
+                if (input$advparam==1) optDebug <<- ifelse(input$debugProc==1, '-d', '')
+                if (input$advparam==1 && grepl('=',input$cmdparam)) {
+                    V <- as.vector(simplify2array(strsplit(input$cmdparam,",")))
+                    for (k in 1:length(V))
+                         if (grepl('=',V[k]))
+                             procParams[[ trim(strsplit(V[k],"=")[[1]][1]) ]] <<- trim(strsplit(V[k],"=")[[1]][2])
                 }
             }
             write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), paste0(CMD,"\n"), "wt")

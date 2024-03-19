@@ -1,22 +1,29 @@
 #!/bin/bash
 
+umask 022
+
 INI=/srv/shiny-server/conf/global.ini
 [ ! -f $INI ] && echo "ERROR: File $INI does not exist" && exit 1
+
+INI2=/tmp/global.ini
+cp $INI $INI2
 
 for l in `env`; do 
     e=$(echo "$l" | sed -e 's/\//\\&/g; 1{$s/^$/""/}; 1!s/^/"/; $!s/$/"/')
     k=`echo $e | cut -d'=' -f1`
-    grep -E "^$k=" $INI 1>/dev/null 2>/dev/null
-    [ $? -eq 0 ] && sed -i -e "s/^$k=.*$/$e/" $INI
+    grep -E "^$k=" $INI2 1>/dev/null 2>/dev/null
+    [ $? -eq 0 ] && sed -i -e "s/^$k=.*$/$e/" $INI2
 done
 
 if [ ! -z $GALAXY_URL ]; then
-    grep -E "^GALAXY=" $INI 1>/dev/null 2>/dev/null
-    [ $? -eq 0 ] && sed -i -e "s/^GALAXY=.*$/GALAXY=1/" $INI
+    grep -E "^GALAXY=" $INI2 1>/dev/null 2>/dev/null
+    [ $? -eq 0 ] && sed -i -e "s/^GALAXY=.*$/GALAXY=1/" $INI2
 fi
 
+cp $INI2 $INI
+
 CONF=/var/www/html/nv/etc/nmrview.conf
-cp -f $INI $CONF
+cp -f $INI2 $CONF
 
 DATADIR=`cat $INI | grep DATASETS | cut -d'=' -f2 | tr -d "\n"`
 [ ! -d $DATADIR ] && echo "ERROR: It seems that the DATASETS folder declared in $INI does not exist" && exit 1

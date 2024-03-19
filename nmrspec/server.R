@@ -30,6 +30,7 @@ function(input, output, session) {
     BUCKET <- 3                 # Bucketing
     UNDO <- 4                   # Undo
     ErrMsg <- ''                # Error Message
+    optDebug <- ''              # Debug option during preprocessing
     MsgStyle <- 'danger'        # Style of Message Box
     ArrayProc <- rep(0, NBPROC) # Init the status of each process type
     ImgTermVal <- 1             # Gnuplot Output type (0=> SD, 1=>MD, 2=>HD)

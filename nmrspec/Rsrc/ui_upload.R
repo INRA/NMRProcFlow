@@ -1,6 +1,6 @@
 # Load Frame
 
-bsModalNoClose <-function(...) {
+bsModalNoClose <- function(...) {
   b = bsModal(...)
   b[[2]]$`data-backdrop` = "static"
   b[[2]]$`data-keyboard` = "false"
@@ -67,11 +67,11 @@ ui_load_form <- conditionalPanel(condition="output.fileUploaded==0 && output.Ses
                ),
                checkboxInput("usrphc", "User values for phasing", FALSE),
                conditionalPanel(condition="input.usrphc==0",
-                   checkboxInput("optimphc1", "first order phase setting", FALSE),
-                   conditionalPanel(condition="input.optimphc1==1",
-                         selectInput("CRITSTEP1", "Criterion for first order phasing optimization:",
-                                   c("Negative values"="0", "Absolute Positive"="1"), selected = "0")
-                   )
+                   checkboxInput("optimphc1", "first order phase setting", FALSE)
+                   #conditionalPanel(condition="input.optimphc1==1",
+                   #      selectInput("CRITSTEP1", "Criterion for first order phasing optimization:",
+                   #                c("Negative values"="0", "Absolute Positive"="1"), selected = "0")
+                   #)
                ),
                conditionalPanel(condition="input.usrphc==1",
                    checkboxInput("fphcfile", "Using a file", FALSE),
@@ -88,13 +88,18 @@ ui_load_form <- conditionalPanel(condition="output.fileUploaded==0 && output.Ses
                checkboxInput("o1param", "ignore the parameter of the spectral region center (O1)", FALSE),
                conditionalPanel(condition="input.o1param==1",
                      numericInput("o1ratio", "Fractionnal value of the Sweep Width:", 0.28, min = 0.1, max = 0.5, step=0.1)
+               ),
+               checkboxInput("advparam", "Advanced settings", FALSE),
+               conditionalPanel(condition="input.advparam==1",
+                     textInput("cmdparam", "Set of 'PARAM=value' separated by a comma", value = "", width = '400px', placeholder = ""),
+                     checkboxInput("debugProc", "Processing log more verbose", FALSE)
                )
            ),
            column(6, tags$p(class="textlabs", "Advices on parameter setting"),
                     tags$br(), tags$br(),
                     tags$p(class="textblock", "First, try phasing without optimizing phase 1 for a fast preprocessing. In many cases, this produces a very acceptable result for fingerprinting approach."),
-                    tags$p(class="textblock","If the resulting phasing is not acceptable, then try phasing with optimizing phase 1. The optimization can be done according to 2 criteria. Testing one and then the other in order to obtain the best result."),
-                    tags$p(class="textblock","Also consider playing with the LB parameter, either by decreasing or increasing it a little. This improves phasing in some cases."),
+                    tags$p(class="textblock","If the resulting phasing is not acceptable, then try phasing with optimizing phase 1."),
+					tags$p(class="textblock","In the advanced settings, you can also test KZEROTHRES=5, 100, or 500 successively to see if this improves the phasing."),
                     tags$p(class="textblock", "Remember to use the'reset' button to avoid reloading the ZIP file."),
                     tags$hr(),
                     tags$p(class="textblock", "In order to calibrate the ppm scale when a set of spectra has not been acquired with the same locking frequency, it is possible to ignore the spectral region center parameter due to the fact it exhibes in this case large differences between spectra."),

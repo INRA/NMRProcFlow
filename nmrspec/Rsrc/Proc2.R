@@ -19,7 +19,7 @@
    output$watcher <- renderUI({
         values$jobrun
         values$error
-        if (is.null(procJobName)) return (NULL)
+        if (is.null(procJobName)) return (HTML("<b>Spectra data extraction in progress ...</b>"))
         if (isolate(input$goButton)>1 && procJobName != "preprocess") return (NULL)
         isolate({ renderWatcher(values$jobrun || values$error, 'init', 'preproc', 600); })
    })

@@ -285,7 +285,7 @@ repeat {
 
    # airPLS Baseline Correction
    if (procParams$BCTYPE==4) {
-      Write.LOG(LOGFILE,paste0("Rcorr1D:  airPLS - lambda = ",procParams$LAMBDA));
+      Write.LOG(LOGFILE,paste0("Rcorr1D:  airPLS - lambda = ",procParams$LAMBDA,", order = ",procParams$PORDER));
 
       CMDINFO <- paste("#\n# Baseline Correction: PPM Range = ( ",min(zone)," , ",max(zone)," )\n#\n")
       CMDINFO <- paste0(CMDINFO,paste("airpls",min(zone),max(zone), procParams$LAMBDA, procParams$PORDER, "\n"))

@@ -75,6 +75,7 @@ Spec1rProcpar <- list (
     GAMMA=0.005,               # Penalty factor for the calculation of the entropy
     CPMG=FALSE,                # Indicate if CPMG sequence
     KZERO=0.3,                 # PPM range around the center to be masked during phase correction
+    KZEROTHRES=250,            # Number of times the noise level to consider for removing negative areas in the phasing calculation
     OPTSTEP=TRUE,              # applied the lifting minimum to zero
     OPTCRIT0=0,                # Criterium for zero order phasing optimization (0 for SSneg, 1 for SSpos)
     CRITSTEP1=0,               # Criterium for first step of the first order phasing optimization
@@ -1292,6 +1293,16 @@ Spec1rProcpar <- list (
 # Phase correction
 #--------------------------------
 
+.zeroNegPeaks <- function(spec,Yre)
+{
+   Ythres <- -spec$param$KZEROTHRES*spec$B; n1 <- 0
+   for (k in 1:length(Yre)) {
+       if (Yre[k]<Ythres && n1==0) { n1 <- k; next }
+       if (Yre[k]>Ythres && n1>0) {  Yre[n1:(k-1)] <- 0; n1 <- 0 }
+   }
+   Yre
+}
+
 .computeCrit <- function(spec, phc) {
    V <- spec$data0;
    if (spec$param$REVPPM) V <- rev(V)
@@ -1301,13 +1312,10 @@ Spec1rProcpar <- list (
    n <- round(length(Yre)/24)
    Yre <- Yre[n:(23*n)]
    if (spec$param$BLPHC>0) Yre <- Yre + rep(spec$B/4, length(Yre))
+   #x0 <- 0.5*(spec$pmax-spec$pmin) + spec$param$KZERO*c(-1,1)
+   #Yre[ round(length(Yre)*x0[1]/spec$acq$SW):round(length(Yre)*x0[2]/spec$acq$SW) ] <- 0
+   Yre <- .zeroNegPeaks(spec,Yre)
    entropy <- Fentropy(phc, Re(V),Im(V), spec$param$BLPHC, spec$param$BLPHC, spec$param$KSIG*spec$B, spec$param$GAMMA)
-   x0 <- 0.5*(spec$pmax-spec$pmin) + spec$param$KZERO*c(-1,1)
-   Yre[ round(length(Yre)*x0[1]/spec$acq$SW):round(length(Yre)*x0[2]/spec$acq$SW) ] <- 0
-   #p <- 0.95
-   #v1 <- Yre[Yre>0]; Spos <- sum(v1[v1<quantile(v1,p)])
-   #v2 <- Yre[Yre<0]; Sneg <- sum(abs(v2[abs(v2)<quantile(abs(v2),p)]))
-   #crit <- c( Spos, Sneg, entropy, sum(abs(Yre)) )
    crit <- c( sum(Yre[Yre>0]^2), sum(abs(Yre[Yre<0]^2)), entropy, sum(abs(Yre)) )
    crit
 }
@@ -1337,8 +1345,27 @@ Spec1rProcpar <- list (
    if (spec$param$REVPPM) V <- rev(V)
    SI <- length(V)
    x0 <- 0.5*(spec$pmax-spec$pmin) + spec$param$KZERO*c(-1,1)
-   if (spec$param$DEBUG).v("\n\t%d: -- masking the ppm range = (%3.6f, %3.6f)   ", lopt, x0[1]+spec$pmin, x0[2]+spec$pmin, logfile=spec$param$LOGFILE)
+   if (spec$param$DEBUG) .v("\n\t%d: -- masking the ppm range = (%3.6f, %3.6f)   ", lopt, x0[1]+spec$pmin, x0[2]+spec$pmin, logfile=spec$param$LOGFILE)
    V[ round(SI*x0[1]/spec$acq$SW):round(SI*x0[2]/spec$acq$SW) ] <- 0+0i
+   V
+}
+
+.maskNegPeaks <- function(spec,Y,lopt)
+{
+   V <- spec$data0;
+   if (spec$param$REVPPM) V <- rev(V)
+   SI <- length(V)
+   Ythres <- -spec$param$KZEROTHRES*spec$B
+   n1 <- 0
+   for (k in 1:SI) {
+       if (Y$re[k]<Ythres && n1==0) { n1 <- k; next }
+       if (Y$re[k]>Ythres && n1>0) {
+           x0 <- spec$acq$SW*c(n1,k-1)/SI + spec$pmin
+           if (spec$param$DEBUG) .v("\n\t%d: -- masking the ppm range = (%3.6f, %3.6f)   ", lopt, x0[1], x0[2], logfile=spec$param$LOGFILE)
+           V[n1:(k-1)] <- 0+0i
+           n1 <- 0
+       }
+   }
    V
 }
 
@@ -1362,22 +1389,21 @@ Spec1rProcpar <- list (
    V <- spec$data0
    if (spec$param$REVPPM) V <- rev(V)
    crittype <- spec$param$OPTCRIT0
-   CPMG <- FALSE
    best <- stats::optimize(rms0, interval = c(-2*pi, 2*pi), maximum = FALSE, y = V, B=spec$B, type=crittype)
    L <- .checkPhc(spec, c(best[["minimum"]],0), 0)
    crit0 <- L$crit
    CritID <- spec$param$OPTCRIT1
    if (spec$acq$NUC %in% c('1H','H1','31P')) {
-        V <- .capSolvent(spec,0);
+        #V <- .capSolvent(spec,0);
+        V <- .maskNegPeaks(spec,C_corr_spec_re(list(re=Re(spec$data0),im=Im(spec$data0), phc0=best[["minimum"]], phc1=0)),0);
         best2 <- stats::optimize(rms0, interval = c(-2*pi, 2*pi), maximum = FALSE, y = V, B=spec$B, type=crittype)
         L2 <- .checkPhc(spec, c(best2[["minimum"]],0), 0)
         crit2 <- L2$crit
-        if (crit2[CritID] < crit0[CritID]) { L <- L2; CPMG <- TRUE }
+        if (crit2[CritID] < crit0[CritID]) { L <- L2 }
    }
    spec$proc$crit <- L$crit
    spec$proc$phc0 <- L$phc[1]
    spec$proc$RMS <- L$crit[CritID]
-   spec$param$CPMG <- CPMG
    spec$param$DEBUG <- DEBUG
    if (spec$param$DEBUG) .v("\n\tBest solution: phc0 = %3.6f, Entropy= %2.4e   ", L$phc[1]*180/pi, L$crit[3], logfile=spec$param$LOGFILE)
    spec
@@ -1419,16 +1445,12 @@ Spec1rProcpar <- list (
 
 .optimExec <- function(spec, V, phc, flg, lopt)
 {
-   CPMG <- FALSE
-   spec$param$CPMG <- CPMG
    L <- .optimRun(spec, V, phc, flg, lopt); spec <- L$spec; lopt <- L$lopt
    if ( spec$param$BLPHC>0 && spec$acq$NUC %in% c('1H','H1','31P') ) { # spec$param$BLPHC>0 && 
-        V <- .capSolvent(spec,lopt);
-        spec$param$CPMG <- TRUE
+        #V <- .capSolvent(spec,lopt);
+        V <- .maskNegPeaks(spec,C_corr_spec_re(list(re=Re(spec$data0),im=Im(spec$data0), phc0=spec$proc$phc0, phc1=spec$proc$phc1)),0);
         L <- .optimRun(spec, V, phc, flg, lopt); spec <- L$spec; lopt <- L$lopt
-        CPMG <- L$ret
    }
-   spec$param$CPMG <- CPMG;
    return( list(spec=spec, lopt=lopt) )
 }
 

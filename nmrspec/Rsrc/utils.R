@@ -5,6 +5,8 @@ zonelist2 <- c('zones3_list.in', 'zones4_list.in', 'zones5_list.in', 'vsb_list.i
 .toM <- function(x) { M <- matrix(as.numeric(t(x)), nrow=ncol(x), ncol=nrow(x)); M <- t(M); 
                      colnames(M) <- colnames(x); rownames(M) <- rownames(x); M }
 
+trim = function(x) gsub("^\\s+|\\s+$", "", x)
+
 #----
 # Disk Usage
 #----
@@ -176,9 +178,7 @@ submit_Rscript <- function(outDir, outDataViewer, cmdR)
    writeLines( paste0(cmdR,"\n"), fh)
    writeLines( paste0('RET=$(echo $?)' ,"\n"), fh)
    writeLines( paste0('echo "1" > ',file.path(outDataViewer,conf$semapFileOut),"\n"), fh)
-   #writeLines( paste0('[ -f "',pidfile,'" ] && rm -f ',pidfile,"\n"), fh)
-   #writeLines( paste0('[ $RET -ne 0 ] && echo "ERROR" > ', file.path(outDataViewer,conf$semapFileErr),"\n"), fh)
-   writeLines("exit $RET\n", fh)
+   writeLines( paste0('exit $RET',"\n"), fh)
    close(fh)
 
    delete_file(conf$semapFileIn)

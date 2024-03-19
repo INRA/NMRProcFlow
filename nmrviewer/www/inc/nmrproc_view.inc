@@ -425,19 +425,18 @@ EOT;
 ********************************************************/
     function generate_Spectra_image() {
 
-        list($TMP,$SPEC) = array ( $this->TMP, $this->hPLOT['SPEC'] );
-        if ($SPEC == 0) return 1;
+        if ($this->hPLOT['SPEC'] == 0) return 1;
 
-        list( $PPM1, $PPM2, $GNUPLOT, $img_width, $img_height, $PLOT, $PLOT_SUP, $MIN, $MAX, $IMAX, $SMAX ) = array(
+        list( $PPM1, $PPM2, $GNUPLOT, $img_width, $img_height, $PLOT, $PLOT_SUP, $MIN, $MAX, $IMAX, $SMAX, $TMP ) = array(
               $this->PPM1, $this->PPM2, $this->GNUPLOT, $this->IMGSIZE, $this->IMGHEIGHT, 
-              $this->hPLOT['PLOT'], $this->hPLOT['PLOT_SUP'],
-              $this->hPLOT['YMIN'], $this->hPLOT['YMAX'], $this->hPLOT['IMAX'], $this->SMAX );
+              $this->hPLOT['PLOT'], $this->hPLOT['PLOT_SUP'],  $this->hPLOT['YMIN'], $this->hPLOT['YMAX'], 
+              $this->hPLOT['IMAX'], $this->SMAX, $this->TMP );
 
         # Zoom in Y scale
         $ymax = $MAX;
         $UMAX = pow(10, $this->slider_factor*($SMAX-100)/99)*$IMAX;
         if ($this->SMAX>0 && $UMAX<$MAX) $ymax=$UMAX;
-        $ymin = $this->stacked==0 ? max($MIN, -$ymax/20) : 0 ;
+        $ymin = $this->stacked==0 ? max($MIN, -$ymax/5) : 0 ;
 
         if ($this->imgtype == 'SD')   { $terminal='png font arial 8 noenhanced'; $gridcol= '#D2D4D4'; $ext='.png'; }
         if ($this->imgtype == 'MD')   { $terminal='png truecolor interlace noenhanced font arial 8'; $gridcol= '#D2D4D4'; $ext='.png'; }

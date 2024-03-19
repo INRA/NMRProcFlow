@@ -61,6 +61,9 @@
                  procParams$RELDECAL <<- input$ppmdecal
                  procParams$PPM_RANGE <<- input$ppmrefrange2
              }
+             if (input$tpreproc=='ppmzero') {
+                 procParams$FZERONEG <<- input$fzeroneg
+             }
              if (input$tpreproc=='ppmsmooth') {
                  procParams$PPM_RANGE <<- input$ppmrefrange4
                  procParams$SMOOTHWS <<- input$smoothws
