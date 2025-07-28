@@ -35,7 +35,7 @@ function(input, output, session) {
     ArrayProc <- rep(0, NBPROC) # Init the status of each process type
     ImgTermVal <- 1             # Gnuplot Output type (0=> SD, 1=>MD, 2=>HD)
     USER <- NULL                # User information
-    
+  
     CONNECT  <- reactiveValues(Logged = Logged)
     ERROR <- reactiveValues(MsgErrLog = '', MsgErrLoad='', MsgErrProc='', MsgUpload='' )
     values <- reactiveValues()

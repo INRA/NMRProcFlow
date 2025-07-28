@@ -83,7 +83,6 @@ ui_proc_main <- conditionalPanel(condition="output.fileProcessed==1 || output.Se
      htmlOutput("updateZonelist")
 )
 
-
 ##---------------
 ## Conditional: Input Files are uploaded
 ##---------------

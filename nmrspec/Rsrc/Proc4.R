@@ -95,6 +95,9 @@
    observe ({
          input$tpreproc
          runjs( paste0("document.getElementById('jobname').innerHTML = '",input$tpreproc,"';" ) )
+         if (input$tpreproc=='calibration' && ! is.null(conf$jobname_calibration) && conf$jobname_calibration != 'calibration') {
+             runjs( paste0("jobname_calibration = '",conf$jobname_calibration,"';" ) )
+         }
    })
 
     ## Processing required
@@ -316,7 +319,9 @@
               }
               # get the PPM range of the noise
               zonenoise <- as.numeric(simplify2array(strsplit(trim(input$ppmsnrnoise), " ")))
-              write.table(get_Data_matrix(outDataViewer, zoneref, zonenoise), file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
+              quantlevel <- 4 # input$qtilelevel
+              data_matrix <- get_Data_matrix(outDataViewer, zoneref, zonenoise, quantlevel)
+              write.table(data_matrix, file, sep=DS_sep(), row.names=FALSE, col.names=TRUE)
              runjs( "document.getElementById('Exportmsg').style.display = 'none';" )
          }
     )

@@ -103,6 +103,8 @@ delete_list_file <- function(thelistfile)
 #----
 generate_INI_file <- function(procParams, cores=conf$CORES )
 {
+   if (!is.null(procParams$CPREGEX))
+       procParams$CPREGEX <- gsub("\\\\\\.","\\\\\\\\.", procParams$CPREGEX)
    INI.file <- file.path(outDataViewer,conf$Rnmr1D_INI)
    metalist <- list( 'ENV'=list('PPM_MIN'=conf$PPM_MIN, 'PPM_MAX'=conf$PPM_MAX, 
                                 'PPM_MIN_13C'=conf$PPM_MIN_13C, 'PPM_MAX_13C'=conf$PPM_MAX_13C, 'CORES'=cores), 
@@ -191,6 +193,25 @@ submit_Rscript <- function(outDir, outDataViewer, cmdR)
 }
 
 #----
+# Get the default PPM range for noise
+#----
+get_noiserange <- function()
+{
+   if (!is.null(procParams$PPMNOISERANGE)) {
+       NOISERANGE <- procParams$PPMNOISERANGE
+   } else {
+       NUC <- readLines(file.path(outDataViewer,'nuc.txt'))[1]
+       if (NUC %in% c('H1', '1H')) {
+           NOISERANGE <- "10.5 10.2"
+       } else {
+           V <- as.numeric(unlist(strsplit(readLines(file.path(outDataViewer,conf$PPMRANGE))[1],';')))
+           NOISERANGE <- paste(as.character(round( c(V[1]*0.9, V[1]*0.9 - (V[1]-V[2])*0.1),1)), collapse=" ")
+       }
+   }
+   NOISERANGE
+}
+
+#----
 # Read the specs.pack
 #----
 get_specMat <- function()
@@ -205,13 +226,13 @@ get_specMat <- function()
 #----
 # Get the bucket list where SNR < snrlevel
 #----
-get_Buckets_upperSNR <- function(buckets, outsnr, snrlevel)
+get_Buckets_upperSNR <- function(buckets, outsnr, snrlevel, quantlevel=4)
 {
      bucnames <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
      if (nrow(outsnr)>3) {
         # SNR threshold is applied on the 3rd quantile (1=>0%, 2=>25%, 3=>50%, 4=>75%, 5=>100%)
         if (length(bucnames)>1) {
-            SNRavg <- apply(.toM(outsnr[, bucnames]), 2, quantile)[4,]
+            SNRavg <- apply(.toM(outsnr[, bucnames]), 2, quantile)[quantlevel,]
         } else {
             SNRavg <- quantile(outsnr[, bucnames])[4]
             names(SNRavg) <- bucnames
@@ -227,7 +248,7 @@ get_Buckets_upperSNR <- function(buckets, outsnr, snrlevel)
 #----
 # Get the data matrix
 #----
-get_Data_matrix <- function(outDataViewer, zoneref, zonenoise)
+get_Data_matrix <- function(outDataViewer, zoneref, zonenoise, quantlevel=4)
 {
      specMat <- get_specMat()
      bucketfile <- file.path(outDataViewer,conf$BUCKET_LIST)
@@ -236,7 +257,7 @@ get_Data_matrix <- function(outDataViewer, zoneref, zonenoise)
         outsnr <- get_SNR_dataset(specMat, bucketfile, c(min(zonenoise), max(zonenoise)), ratio=TRUE)
         buckets <- read.table(bucketfile, header=F, sep="\t",stringsAsFactors=FALSE)
         buckets <- buckets[ buckets[,2]>0, ]
-        BUCsel <- get_Buckets_upperSNR(buckets, outsnr, input$snrlevel)
+        BUCsel <- get_Buckets_upperSNR(buckets, outsnr, input$snrlevel, quantlevel=quantlevel)
         outdata <- get_Buckets_dataset(specMat, bucketfile, input$normmeth, zoneref)
         nbfc <- length(colnames(outdata)) - length(buckets[,1])
         if ( length(BUCsel)>1 ) {

@@ -114,7 +114,7 @@ if (!$conf->error) {
 <td><input type="checkbox" id="check"><label for="check">Force the display of the legend</label></td>
 <td><input type="checkbox" name="ordplot" id="ordplot"><label for="ordplot">Reverse the plot order</label></td>
 <td width="15%"><input type="checkbox" name="stack" id="stack"><label for="stack">Stacked spectra</label></td>
-<td style="width:200px;" align="center"><div id="right" class="ui-widget">-</div></td>
+<td style="width:250px;" align="center"><div id="right" class="ui-widget">-</div></td>
 </tr></table>
 </td><td align="right"><bBefore>&#60;-</bBefore><bAfter>-&#62;</bAfter></td><td style="width:20px;">&nbsp;</td></tr></table>
 </td></tr>
@@ -184,6 +184,14 @@ if (!$conf->error) {
    }
 
 // -- End: addOn for capturing a ppm range
+
+   var get_spectrun_obj = function() {
+        return Spectrum;
+   }
+
+   var set_spectrum_SF = function(val) {
+        Spectrum.SF = val;
+   }
 
    var spectrum_select = function(id) {
        $.ajax({

@@ -12,6 +12,14 @@ var ctrlKey = 17;
 var altKey = 18;
 var viewerLoaded=0;
 
+// jobname_calibration can change value (see Proc4.R) if a global variable is defined in the config.ini file
+var jobname_calibration = 'calibration';
+
+var set_spectrum_SF = function(val) {
+     if( $("#ifspecview").get(0) && viewerLoaded==1 )
+        $("#ifspecview").get(0).contentWindow.set_spectrum_SF(val);
+}
+
 var toggle_capturemode = function() {
      do {
         if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
@@ -38,7 +46,7 @@ var refresh_select = function(id) {
 var refresh_spectrum = function(flg=0) {
      do {
         if( ! $("#ifspecview").get(0) || viewerLoaded==0 ) break;
-        if ( $("#jobname").val()=='calibration' && flg) {
+        if ( $("#jobname").val()==jobname_calibration && flg ) {
            $("#ifspecview").get(0).contentWindow.spectrum_reset();
         } else {
            $("#ifspecview").get(0).contentWindow.spectrum_view();

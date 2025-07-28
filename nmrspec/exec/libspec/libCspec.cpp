@@ -1,6 +1,6 @@
 /*
   ID libCspec.cpp
-  Copyright (C) 2015-2022 INRAE
+  Copyright (C) 2015-2025 INRAE
   Authors: D. Jacob
 */
  
@@ -1211,9 +1211,9 @@ double Fmin(SEXP par, SEXP re, SEXP im, int blphc, double B, int flg=0)
    size_t i;
    double phi, Xmin, Xmax, SS;
 
+   // X = real( data * exp(1j * (phase0 + phase1 * x)) )
    NumericVector X(n);
    for (i=0; i<n; i++) {
-       //phi = phc0 + phc1*(i/n-0.5);
        phi = phc0 + phc1*i/n;
        X[i] = cos(phi)*Re[i] - sin(phi)*Im[i];
    }

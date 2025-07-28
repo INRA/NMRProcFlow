@@ -23,6 +23,8 @@ conf <- Parse.INI(conffile, INI.list=conf, section="NMRSPEC")
 
 zipext <- c('zip', '7z')
 
+NOISERANGE <- conf$NOISERANGE # the default PPM range for noise (1H)
+
 if (conf$CORES==0) {
    conf$CORES <- detectCores()
 }

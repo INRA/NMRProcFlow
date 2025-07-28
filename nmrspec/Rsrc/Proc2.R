@@ -89,8 +89,10 @@
    renderViewer <- function (flg) {
          if (flg==0) return(NULL)
          urlviewer <- paste0(conf$ViewerURL, sessionViewer)
+         specParams <- read.table(file.path(outDataViewer,"list_pars.csv"), header=T, sep=";", stringsAsFactors=FALSE)
+         SF <- specParams[1,which(colnames(specParams)=="SF")]
          if(nchar(conf$PROXY_URL_ROOT)>0) urlviewer <- paste0(conf$PROXY_URL_ROOT,'/',urlviewer)
-         return(HTML(paste0('<iframe id="ifspecview" name="ifspecview" src=',urlviewer,' frameborder="0" style="overflow: hidden; min-height:',conf$Viewer_min_Height,'px; width: 100%; border: 0px;" width="100%"></iframe><script>setTimeout(function(){viewerLoaded=1; toggle_capturemode();}, 1000);</script>')))
+         return(HTML(paste0('<iframe id="ifspecview" name="ifspecview" src=',urlviewer,' frameborder="0" style="overflow: hidden; min-height:',conf$Viewer_min_Height,'px; width: 100%; border: 0px;" width="100%"></iframe><script>setTimeout(function(){viewerLoaded=1; toggle_capturemode(); set_spectrum_SF(',SF,');}, 1000);</script>')))
    }
 
    ##---------------

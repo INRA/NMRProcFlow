@@ -67,9 +67,9 @@ ENV APACHE_RUN_USER=www-data \
 
 # Metadata
 LABEL base.image="nmrprocflow:latest" \
-      version="1.4.22" \
+      version="1.4.26" \
       software="NMRProcFlow" \
-      software.version="1.4.20" \
+      software.version="1.4.26" \
       description="An user-friendly tool dedicated to 1D NMR spectra processing (1H, 13C, 31P) for metabolomics" \
       website="https://nmrprocflow.org/" \
       documentation="https://nmrprocflow.org/" \

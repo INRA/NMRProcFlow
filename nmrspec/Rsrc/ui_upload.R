@@ -63,7 +63,7 @@ ui_load_form <- conditionalPanel(condition="output.fileUploaded==0 && output.Ses
                numericInput("GB", "Gauss. Line Broadening:", 0, min = 0, max = 1, step=0.1),
                checkboxInput("zerofilling", "Zero filling", TRUE),
                conditionalPanel(condition="input.zerofilling==1",
-                     selectInput("zffac", "Max factor for Zero Filling:", c("x4"="4" , "x2"="2" ), selected = "2")
+                     selectInput("zffac", "Max factor for Zero Filling:", c("x8"="8" , "x4"="4" , "x2"="2" ), selected = "2")
                ),
                checkboxInput("usrphc", "User values for phasing", FALSE),
                conditionalPanel(condition="input.usrphc==0",
@@ -85,6 +85,15 @@ ui_load_form <- conditionalPanel(condition="output.fileUploaded==0 && output.Ses
                ),
                checkboxInput("rabot", "Zeroing of Negative Values", FALSE),
                checkboxInput("zeroref", "TSP/TMS/DSS", FALSE),
+               conditionalPanel(condition="input.zeroref==1 && input.usrphc==0 && input.optimphc1==0",
+                     checkboxInput("adjpztsp", "Ajust zero order phase based on TSP peak", TRUE),
+                     conditionalPanel(condition="input.adjpztsp==1",
+                         checkboxInput("mvpztsp", "adjustment of the mean value close to the TSP", FALSE)
+                     ),
+                     conditionalPanel(condition="input.mvpztsp==1",
+                         numericInput("dhzpzrange", "HZ width:", 250, min = 50, max = 350, step=50)
+                     )
+               ),
                checkboxInput("o1param", "ignore the parameter of the spectral region center (O1)", FALSE),
                conditionalPanel(condition="input.o1param==1",
                      numericInput("o1ratio", "Fractionnal value of the Sweep Width:", 0.28, min = 0.1, max = 0.5, step=0.1)

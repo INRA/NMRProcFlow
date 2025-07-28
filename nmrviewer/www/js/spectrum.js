@@ -52,7 +52,10 @@ var ObjImage = function () {
    this.container = '#MAINSPEC';
    this.selppm    = 'selppm';
    this.unit      = 'ppm';
-   
+
+   // Spectrometer frequency (MHz) - cf cursorMove
+   this.SF        = 0;
+
    // AJAX parameters
    this.AJ_PROG   = '';
    this.params    = '';
@@ -120,8 +123,8 @@ var ObjImage = function () {
        var xmax = this.x2 - this.x1 - 1;
        if (x<0) x=0;
        if (x>xmax) x=xmax;
-           val = this.xneg ? Math.round(1000*(this.Xmax + (x/xmax)*(this.Xmin-this.Xmax)) )/1000 :
-                             Math.round(1000*((x/xmax)*(this.Xmax-this.Xmin) + this.Xmin) )/1000;
+           val = this.xneg ? Math.round(10000*(this.Xmax + (x/xmax)*(this.Xmin-this.Xmax)) )/10000 :
+                             Math.round(10000*((x/xmax)*(this.Xmax-this.Xmin) + this.Xmin) )/10000;
        return val;
    }
 
@@ -149,11 +152,14 @@ var ObjImage = function () {
           if (x>0 && x<=xmax) {
               this.cursorDraw(this.xpos + this.ox)
               var val = this.getVal(x);
+			  var valHZ = '';
+              if (this.SF>0)
+                    valHZ = (this.xneg && val<this.val)  ? ' - '+sprintf("%07.1f",(this.val-val)*this.SF)+' Hz' : ' - '+sprintf("%07.1f",(val-this.val)*this.SF)+' Hz';
               if (this.mDwn)
-                    (this.xneg && val<this.val)  ? $(this.msg).text(this.unit+' : max='+sprintf("%07.4f",this.val)+' - min='+sprintf("%07.4f",val)) :
-                                $(this.msg).text(this.unit+' : min='+sprintf("%07.4f",this.val)+' - max='+sprintf("%07.4f",val));
+                    (this.xneg && val<this.val)  ? $(this.msg).text(this.unit+' : max='+sprintf("%08.4f",this.val)+' - min='+sprintf("%08.4f",val)+valHZ) : 
+                                                   $(this.msg).text(this.unit+' : min='+sprintf("%08.4f",this.val)+' - max='+sprintf("%08.4f",val)+valHZ);
               else
-                    $(this.msg).text(this.unit+' = '+sprintf("%07.4f",val));
+                    $(this.msg).text(this.unit+' = '+sprintf("%08.4f",val));
           }
        }
    }

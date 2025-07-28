@@ -123,7 +123,8 @@ repeat {
    CMDINFO <- paste("#\n# Calibration: PPM REF =",ppmref,", Zone Ref = ( ",min(zoneref)," , ",max(zoneref)," )\n#\n")
    CMDINFO <- paste0(CMDINFO,paste("calibration",min(zoneref),max(zoneref),ppmref,min(PPM_NOISE_AREA),max(PPM_NOISE_AREA) ),"\n")
 
-   specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref)
+   registerDoParallel(cores=env.list$CORES)
+   specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref, ProgressFile=ProgressFile)
    Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(specMat$ppm_max,";",specMat$ppm_min), mode="wt")
    Write.LOG(LOGFILE,paste("Rcorr1D:  New PPM Range = (",specMat$ppm_min,",",specMat$ppm_max,")"))
 

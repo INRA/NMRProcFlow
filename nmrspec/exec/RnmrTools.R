@@ -18,7 +18,7 @@ trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 init_counter <- function(ProgressFile, n) {
     fh<-file(ProgressFile,"wt"); writeLines(as.character(n), fh); close(fh)
     dirout <- file.path(dirname(ProgressFile),".out")
-    if( file.exists(dirout) )  unlink(dirout, recursive=TRUE)
+    if( file.exists(dirout) ) unlink(dirout, recursive=TRUE)
     dir.create(dirout)
 }
 
@@ -32,17 +32,17 @@ inc_counter <- function(ProgressFile, i) {
 
 # Read the counter
 get_counter <- function(ProgressFile) {
-   n <- as.numeric(readLines(ProgressFile))
-   c <- length(list.files(path=file.path(dirname(ProgressFile),".out"), pattern="*.out", all.files=FALSE, full.names=FALSE))
-   return( list(value=c, size=n))
+    n <- as.numeric(readLines(ProgressFile))
+    c <- length(list.files(path=file.path(dirname(ProgressFile),".out"), pattern="*.out", all.files=FALSE, full.names=FALSE))
+    return( list(value=c, size=n))
 }
 
 ### Write within the 'INI.file' file  with the INI format, the 'metalist' list, a list  of lists
 #   EXCLU being a list of keys to exclude to the writting
 Write.INI <- function(INI.file, metalist, EXCLU=c())
 {
-  INI.list <- c()
-  for (i in 1:length(metalist)) {
+   INI.list <- c()
+   for (i in 1:length(metalist)) {
       section <- names(metalist)[i]
       INI.list <- c( INI.list, paste0('[',section,']') )
       M<-unlist(eval(parse(text=paste0('metalist$',section))))
@@ -59,42 +59,42 @@ Write.INI <- function(INI.file, metalist, EXCLU=c())
 #   Get the INI.list as an initial list to add or replace the couple of values (key=value)
 Parse.INI <- function(INI.file, INI.list=list(), section="PROCPARAMS")
 {
-  connection <- file(INI.file)
-  Lines  <- readLines(connection)
-  close(connection)
-
-  Lines <- chartr("[]", "==", Lines)  # change section headers
-
-  connection <- textConnection(Lines)
-  d <- read.table(connection, as.is = TRUE, sep = "=", fill = TRUE)
-  close(connection)
-
-  L <- d$V1 == ""                    # location of section breaks
-  d <- subset(transform(d, V3 = V2[which(L)[cumsum(L)]])[1:3], V1 != "")
-  d <- d[d$V3 == section,]
-
-  #INI.list <- list()
-  for( i in 1:dim(d)[1] ) {
-       if (! is.na(suppressWarnings(as.numeric(d$V2[i])))) {
-           eval(parse(text=paste0('INI.list$',d$V1[i], '<-', as.numeric(d$V2[i]))))
-           next
-       }
-       if (! is.na(suppressWarnings(as.logical(d$V2[i])))) {
-           eval(parse(text=paste0('INI.list$',d$V1[i], '<-', as.logical(d$V2[i]))))
-           next
-       }
-       eval(parse(text=paste0('INI.list$',d$V1[i], '<-"', d$V2[i],'"')))
-  }
-  return(INI.list)
+   connection <- file(INI.file)
+   Lines  <- readLines(connection)
+   close(connection)
+   
+   Lines <- chartr("[]", "==", Lines)  # change section headers
+   
+   connection <- textConnection(Lines)
+   d <- read.table(connection, as.is = TRUE, sep = "=", fill = TRUE)
+   close(connection)
+   
+   L <- d$V1 == ""                    # location of section breaks
+   d <- subset(transform(d, V3 = V2[which(L)[cumsum(L)]])[1:3], V1 != "")
+   d <- d[d$V3 == section,]
+   
+   #INI.list <- list()
+   for( i in 1:dim(d)[1] ) {
+        if (! is.na(suppressWarnings(as.numeric(d$V2[i])))) {
+            eval(parse(text=paste0('INI.list$',d$V1[i], '<-', as.numeric(d$V2[i]))))
+            next
+        }
+        if (! is.na(suppressWarnings(as.logical(d$V2[i])))) {
+            eval(parse(text=paste0('INI.list$',d$V1[i], '<-', as.logical(d$V2[i]))))
+            next
+        }
+        eval(parse(text=paste0('INI.list$',d$V1[i], '<-"', d$V2[i],'"')))
+   }
+   return(INI.list)
 }
 
 ### Write within the 'LOG.file' file, the 'textline' text
 #   mode : can be either 'at' for 'appending' mode or 'wt' for 'writing' mode
 Write.LOG <- function(LOG.file, textline="", mode="at")
 {
-  fileLog<-file(LOG.file,mode)
-  writeLines(textline, fileLog)
-  close(fileLog)
+   fileLog<-file(LOG.file,mode)
+   writeLines(textline, fileLog)
+   close(fileLog)
 }
 
 ### Management of the historic of processings, (i.e. the sucessive versions of the matrix of the binary spectra, i.e. the specs.pack file)
@@ -103,9 +103,9 @@ Write.LOG <- function(LOG.file, textline="", mode="at")
 
 get_maxSTACKID <- function(DATADIR, FILENAME)
 {
-  lstFiles <- list.files(path=DATADIR, full.names=FALSE, recursive = FALSE)
-  if (length( grep(paste0(FILENAME,'.[0-9]'), lstFiles) )==0) return(0)
-  return(max(as.numeric(gsub(paste0(FILENAME,'.'), '', lstFiles[grep(paste0(FILENAME,'.[0-9]'), lstFiles)]))))
+   lstFiles <- list.files(path=DATADIR, full.names=FALSE, recursive = FALSE)
+   if (length( grep(paste0(FILENAME,'.[0-9]'), lstFiles) )==0) return(0)
+   return(max(as.numeric(gsub(paste0(FILENAME,'.'), '', lstFiles[grep(paste0(FILENAME,'.[0-9]'), lstFiles)]))))
 }
 
 push_STACK <- function (DATADIR, listfiles, STACKID)
@@ -367,32 +367,37 @@ CluPA <- function(data, reference=reference, nDivRange, scales = seq(1, 16, 2), 
 #------------------------------
 # Calibration ot the PPM Scale
 #------------------------------
-RCalib1D <- function(specMat, PPM_NOISE_AREA, zoneref, ppmref)
+RCalib1D <- function(specMat, PPM_NOISE_AREA, zoneref, ppmref, ProgressFile=NULL)
 {
    i1<-length(which(specMat$ppm>max(zoneref)))
    i2<-which(specMat$ppm<=min(zoneref))[1]
    PPM_MIN <- -1000
    PPM_MAX <- 1000
 
-   # PPM calibration of each spectrum
-   Tdecal <- NULL
-   for ( i in 1:specMat$nspec ) {
+   # Compute the shift of each spectrum
+   if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
+   Tdecal <- foreach::foreach(i=1:specMat$nspec, .combine=c) %dopar% {
        i0 <- i1 + which(specMat$int[i, i1:i2]==max(specMat$int[i, i1:i2])) - 1
        ppm0 <- specMat$ppm_max - (i0-1)*specMat$dppm
-       dppmref <- ppm0 - ppmref
-       Tdecal <- c(Tdecal, dppmref)
-       PPM_MIN <- max(PPM_MIN, specMat$ppm_min-dppmref)
-       PPM_MAX <- min(PPM_MAX, specMat$ppm_max-dppmref)
+       if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
+       return(ppm0 - ppmref)
    }
+
+   # Compute the new full ppm range
+   PPM_MIN <- max(PPM_MIN, specMat$ppm_min-Tdecal)
+   PPM_MAX <- min(PPM_MAX, specMat$ppm_max-Tdecal)
+
+   # PPM calibration of each spectrum
    N <- length(seq(from=PPM_MIN, to=PPM_MAX, by=specMat$dppm))
-   M <- NULL
-   for(i in 1:specMat$nspec) {
+   if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
+   M <- foreach::foreach(i=1:specMat$nspec, .combine=rbind) %dopar% {
        ppm <- specMat$ppm - Tdecal[i]
        P <- ppm>PPM_MIN & ppm<=PPM_MAX
        V <- specMat$int[i,P]
        if (length(V)<N) { V <- c(V, rep(0,N-length(V)) ) }
        if (length(V)>N) { V <- V[1:N] }
-       M <- rbind(M, V)
+       if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
+       return(V)
    }
    specMat$int <- M
    specMat$ppm_min <- PPM_MIN
@@ -448,7 +453,6 @@ RNorm1D <- function(specMat, normmeth, zones)
 #------------------------------
 RGbaseline1D <- function(specMat,PPM_NOISE_AREA, zone, WS, NEIGH, ProgressFile=NULL)
 {
-
    NFAC <- 1.5
    NEGFAC <- 10
    NBPASS <- 2
@@ -602,7 +606,6 @@ RairPLSbc1D <- function(specMat, zone, clambda, porder=1, ProgressFile=NULL)
    i2 <- ifelse( min(zone)<=specMat$ppm_min, specMat$size - 1, which(specMat$ppm<=min(zone))[1] )
    n <- i2-i1+1
    cmax <- switch(porder, 6, 7, 8)
-   WS <- 30
 
    #lambda <- ifelse (clambda==cmax, 5, 10^(cmax-clambda) )
    lambda <- ifelse( clambda>0, cmax-clambda, abs(clambda) )
@@ -611,8 +614,7 @@ RairPLSbc1D <- function(specMat, zone, clambda, porder=1, ProgressFile=NULL)
    # Baseline Estimation for each spectrum
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
    BLList <- foreach(i=1:specMat$nspec, .combine=cbind) %dopar% {
-       x <- Smooth(specMat$int[i,c(i1:i2)],WS)
-       bc <- airPLS(x, lambda, porder=porder)
+       bc <- airPLS(specMat$int[i,c(i1:i2)], lambda, porder=porder)
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        bc
    }
@@ -939,7 +941,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
 #------------------------------
 check_MacroCmdFile <- function(CMD.filename) {
    ret <- 1
-   allowKW <- c( 'align', 'warp', 'clupa', 'shift', 'gbaseline', 'baseline', 'qnmrbline', 'airpls', 'binning', 'calibration', 'normalisation', 'denoising', 'bucket', 'zero', 'EOL' )
+   allowKW <- c( 'align', 'warp', 'clupa', 'shift', 'gbaseline', 'baseline', 'qnmrbline', 'airpls', 'binning', 'calibration', 'normalisation', 'denoising', 'bucket', 'zero', 'zeroneg', 'smooth', 'EOL' )
 
    tryCatch({
       # Read the macrocommand file
@@ -1003,7 +1005,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  PPMREF <- params[3]
                  PPM_NOISE <- ifelse( length(params)==5, c( min(params[4:5]), max(params[4:5]) ), c( 10.2, 10.5 ) )
                  Write.LOG(LOGFILE, paste0("Rnmr1D:  Calibration: PPM REF =",PPMREF,", Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],")"));
-                 specMat <- RCalib1D(specMat, PPM_NOISE, PPMRANGE, PPMREF)
+                 specMat <- RCalib1D(specMat, PPM_NOISE, PPMRANGE, PPMREF, ProgressFile=ProgressFile)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
               }
@@ -1284,7 +1286,7 @@ get_Buckets_table <- function(bucketfile)
 #----
 # Generates the buckets data set
 #----
-get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA)
+get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA, YMAX=FALSE)
 {
    outdata <- NULL
    if ( file.exists(bucketfile) ) {
@@ -1293,41 +1295,69 @@ get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA
       buckets <- buckets[ buckets[,2]>0, ]
       buckets$min <- buckets[,1]-0.5*abs(buckets[,2])
       buckets$max <- buckets[,1]+0.5*abs(buckets[,2])
+
       # get index of buckets' ranges
-      buckets_m <- t(simplify2array(lapply( c( 1:(dim(buckets)[1]) ),
-                     function(x) { c( length(which(specMat$ppm>buckets[x,]$max)), length(which(specMat$ppm>buckets[x,]$min)) ) }
-                    )))
+      buckets_m <- t(simplify2array(lapply( c( 1:(dim(buckets)[1]) ),  function(x){ 
+             c(length(which(specMat$ppm>buckets[x,]$max)), length(which(specMat$ppm>buckets[x,]$min)))} )))
+
+      # Takes the maximum intensity in the interval of each bucket rather than the integration
+      if (YMAX) {
+          buckets_IntVal <- NULL
+          for (n in 1:specMat$nspec)
+              buckets_IntVal <- rbind(buckets_IntVal, unlist(lapply(1:nrow(buckets_m), function(k){
+                       max( specMat$int[n, buckets_m[k,1]:buckets_m[k,2] ] ) })))
+      } else {
       # Integration
-      buckets_IntVal <- C_all_buckets_integrate (specMat$int, buckets_m, 0)
-      if (norm_meth == 'CSN') {
-          buckets_IntVal <- C_buckets_CSN_normalize( buckets_IntVal )
+          buckets_IntVal <- C_all_buckets_integrate (specMat$int, buckets_m, 0)
+          if (norm_meth == 'CSN') {
+              buckets_IntVal <- C_buckets_CSN_normalize( buckets_IntVal )
+          }
+          if (norm_meth == 'PQN') {
+              buckets_IntVal_CSN <- C_buckets_CSN_normalize( buckets_IntVal )
+              bucVref_IntVal <- C_MedianSpec(buckets_IntVal_CSN)
+              bucRatio <- sweep(buckets_IntVal_CSN, 2, bucVref_IntVal, "/")
+              Coeff <- apply(bucRatio,1,median)
+              buckets_IntVal <- sweep(buckets_IntVal_CSN, 1, Coeff, "/")
+          }
       }
-      if (norm_meth == 'PQN') {
-          buckets_IntVal_CSN <- C_buckets_CSN_normalize( buckets_IntVal )
-          bucVref_IntVal <- C_MedianSpec(buckets_IntVal_CSN)
-          bucRatio <- buckets_IntVal_CSN / bucVref_IntVal
-          Coeff <- apply(bucRatio,1,median)
-          buckets_IntVal <- buckets_IntVal_CSN / Coeff
-      }
+
       # if supplied, integrate of all spectra within the PPM range of the reference signal
-      # Vref <- 0*c(1:specMat$nspec)
       if (! is.na(zoneref)) {
           istart <- length(which(specMat$ppm>max(zoneref)))
           iend <- length(which(specMat$ppm>min(zoneref)))
           Vref <- C_spectra_integrate (specMat$int, istart, iend)
           buckets_IntVal <- buckets_IntVal/Vref
       }
+      # Bucket names
+      bucnames <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
+
       # read samples
       samplesFile <- file.path(dirname(bucketfile),'samples.csv')
       samples <- read.table(samplesFile, header=F, sep=";", stringsAsFactors=FALSE)
+
       # read factors
       factorsFile <- file.path(dirname(bucketfile),"factors")
       factors <- read.table(factorsFile, header=F, sep=";", stringsAsFactors=FALSE)
-      # write the data table
-      bucnames <- gsub("^(-?\\d+)","B\\1", gsub("\\.", "_", gsub(" ", "", sprintf("%7.4f",buckets[,1]))) )
-      outdata <- cbind( samples[, -1], buckets_IntVal )
-      colnames(outdata) <- c( factors[,2], bucnames )
+
+      # Get Vendor and Pulse information
+      Vendor <- toupper(readLines(file.path(dirname(bucketfile),'origin.txt'))[1])
+      paramsFile <- file.path(dirname(bucketfile),'list_pars.csv')
+      paramsDF <- read.table(paramsFile, header=T, sep=";", stringsAsFactors=FALSE)
+      PULSE <- toupper((as.list(paramsDF[1,]))$PULSE)
+
+      # Get the P15 parameter if Vendor == bruker and PULSE <=> cp (See Rnmr1D)
+      is_cp <- length(grep(conf$CPREGEX, PULSE))>0
+      if (Vendor == "BRUKER" && is_cp) {
+          P15 <- paramsDF$P15
+          outdata <- cbind( samples[, -1], P15, buckets_IntVal )
+          colnames(outdata) <- c( factors[,2], 'P15', bucnames )
+      } else {
+          outdata <- cbind( samples[, -1], buckets_IntVal )
+          colnames(outdata) <- c( factors[,2], bucnames )
+      }
    }
+ 
+   # return the data table
    return(outdata)
 }
 
