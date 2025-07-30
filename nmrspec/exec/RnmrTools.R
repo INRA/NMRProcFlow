@@ -367,17 +367,25 @@ CluPA <- function(data, reference=reference, nDivRange, scales = seq(1, 16, 2), 
 #------------------------------
 # Calibration ot the PPM Scale
 #------------------------------
-RCalib1D <- function(specMat, PPM_NOISE_AREA, zoneref, ppmref, ProgressFile=NULL)
+RCalib1D <- function(specMat, PPM_NOISE_AREA, zoneref, ppmref, type='s', ProgressFile=NULL)
 {
    i1<-length(which(specMat$ppm>max(zoneref)))
    i2<-which(specMat$ppm<=min(zoneref))[1]
    PPM_MIN <- -1000
    PPM_MAX <- 1000
+   N <- round((specMat$ppm_max-specMat$ppm_min)/specMat$dppm)
+   DMIN <- round(15*N/65535)
 
    # Compute the shift of each spectrum
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
    Tdecal <- foreach::foreach(i=1:specMat$nspec, .combine=c) %dopar% {
-       i0 <- i1 + which(specMat$int[i, i1:i2]==max(specMat$int[i, i1:i2])) - 1
+       if (type=='d') {
+           V <- order(specMat$int[i, i1:i2], decreasing=T)
+           k <- 2; while(abs(V[k]-V[k-1])<DMIN) k <- k+1
+           i0 <- i1 + round(0.5*(V[1]+V[k])) - 1
+       } else {
+           i0 <- i1 + which(specMat$int[i, i1:i2]==max(specMat$int[i, i1:i2])) - 1
+       }
        ppm0 <- specMat$ppm_max - (i0-1)*specMat$dppm
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        return(ppm0 - ppmref)
@@ -1003,9 +1011,11 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               if (length(params)>=3) {
                  PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
                  PPMREF <- params[3]
-                 PPM_NOISE <- ifelse( length(params)==5, c( min(params[4:5]), max(params[4:5]) ), c( 10.2, 10.5 ) )
-                 Write.LOG(LOGFILE, paste0("Rnmr1D:  Calibration: PPM REF =",PPMREF,", Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],")"));
-                 specMat <- RCalib1D(specMat, PPM_NOISE, PPMRANGE, PPMREF, ProgressFile=ProgressFile)
+                 PPM_NOISE <- ifelse( length(params)>4, c( min(params[4:5]), max(params[4:5]) ), c( 10.2, 10.5 ) )
+                 CALIBTYPE <- ifelse( length(params)==6, params[6], 's' )
+                 Write.LOG(LOGFILE, paste0("Rnmr1D:  Calibration: PPM REF =",PPMREF,", Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],"), Type = ",CALIBTYPE));
+                 registerDoParallel(cores=NCPU)
+                 specMat <- RCalib1D(specMat, PPM_NOISE, PPMRANGE, PPMREF, CALIBTYPE, ProgressFile=ProgressFile)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
               }
@@ -1017,6 +1027,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  params <- as.numeric(params)
                  PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Normalisation: Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],")"));
+                 registerDoParallel(cores=NCPU)
                  specMat <- RNorm1D(specMat, normmeth='CSN', zones=matrix(PPMRANGE,nrow=1, ncol=2))
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
@@ -1031,6 +1042,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  }
                  Write.LOG(LOGFILE,"Rnmr1D:  Normalisation of the Intensities based on the selected PPM ranges...")
                  Write.LOG(LOGFILE,paste0("Rnmr1D:     Method =",NORM_METH))
+                 registerDoParallel(cores=NCPU)
                  specMat <- RNorm1D(specMat, normmeth=NORM_METH, zones=zones)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
@@ -1164,6 +1176,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  idxSref=params[7]
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Alignment: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
                  Write.LOG(LOGFILE,paste0("Rnmr1D:     CluPA - Resolution =",RESOL," - SNR threshold=",SNR, " - Reference=",idxSref))
+                 registerDoParallel(cores=NCPU)
                  specMat <- RCluPA1D(specMat, PPM_NOISE, PPMRANGE, RESOL, SNR, idxSref, Selected=Selected, ProgressFile=ProgressFile)
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]

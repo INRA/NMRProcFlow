@@ -105,10 +105,16 @@ ui_proc_process <- column(12,
          # PPM calibration
          conditionalPanel(condition="input.tpreproc=='calibration'",
               column(4,
-                  tags$strong('Range of the PPM reference:', class="textlabs"),tags$br(), inputTextarea("ppmrefrange", supclass="single", nrows=1, ncols=18, value=""),
-                  numericInput("ppmref", "PPM value of the center of resonance:", 0, min = 0, max = 12, step=0.1),
+                  selectInput("calibtype", "Pattern type:",
+                         c("Singulet" = "s", "Doublet" = "d"), selected = "s"),
                   tags$strong('noisy PPM range:', class="textlabs"),tags$br(), inputTextarea("ppmnoiserange4", supclass="single noise", nrows=1, ncols=18, value=NOISERANGE),
                   bsTooltip("ppmnoiserange4", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
+              ),
+              column(4,
+                  tags$strong('Range of the PPM reference:', class="textlabs"),tags$br(), inputTextarea("ppmrefrange", supclass="single", nrows=1, ncols=18, value=""),
+                  bsTooltip("ppmrefrange", "Select a ppm area around a signal to calibrate", "bottom", options = list(container = "body")),
+                  numericInput("ppmref", "PPM value of the center of pattern:", 0, min = 0, max = 12, step=0.1),
+                  bsTooltip("calibtype", "Select the signal shape. Calibration is done on the maximum value (singlet) or the central value (doublet)", "bottom", options = list(container = "body"))
               )
          ),
          # Normalisation

@@ -117,14 +117,15 @@ repeat {
    zoneref <- c(min(zone), max(zone))
 
    ppmref <- procParams$PPM_REF
+   type <- procParams$CALIBTYPE
    Write.LOG(LOGFILE,paste("Rcorr1D:  PPM REF =",ppmref,", Zone Ref = (",min(zoneref),",",max(zoneref),")"))
    Write.LOG(LOGFILE,"Rcorr1D: ")
 
-   CMDINFO <- paste("#\n# Calibration: PPM REF =",ppmref,", Zone Ref = ( ",min(zoneref)," , ",max(zoneref)," )\n#\n")
-   CMDINFO <- paste0(CMDINFO,paste("calibration",min(zoneref),max(zoneref),ppmref,min(PPM_NOISE_AREA),max(PPM_NOISE_AREA) ),"\n")
+   CMDINFO <- paste("#\n# Calibration: PPM REF =",ppmref,", Zone Ref = ( ",min(zoneref)," , ",max(zoneref)," ), Type =",type,"\n#\n")
+   CMDINFO <- paste0(CMDINFO,paste("calibration",min(zoneref),max(zoneref),ppmref,min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),type ),"\n")
 
    registerDoParallel(cores=env.list$CORES)
-   specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref, ProgressFile=ProgressFile)
+   specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref, type, ProgressFile=ProgressFile)
    Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(specMat$ppm_max,";",specMat$ppm_min), mode="wt")
    Write.LOG(LOGFILE,paste("Rcorr1D:  New PPM Range = (",specMat$ppm_min,",",specMat$ppm_max,")"))
 

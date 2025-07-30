@@ -12,6 +12,7 @@
                  procParams$PPM_RANGE <<- input$ppmrefrange
                  procParams$PPMNOISERANGE <<- input$ppmnoiserange4
                  procParams$PPM_REF <<- input$ppmref
+                 procParams$CALIBTYPE <<- input$calibtype
              }
              if (input$tpreproc=='normalisation') {
                  procParams$NORM_METH <<- input$normeth

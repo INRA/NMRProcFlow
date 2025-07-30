@@ -352,7 +352,7 @@ set_Metadata <- function(RAWDIR, procParams, samples)
           } else {
               FileSpectrum <- paste(FileSpectrum, "pdata",samples[i,4], "1r", sep="/")
           }
-          L <- grep(pattern=FileSpectrum, LIST, value=TRUE)
+          L <- grep(pattern=paste0("/",FileSpectrum), LIST, value=TRUE)
           if (length(L)>0) {
               specdir <- dirname(L[1])
               if (procParams$INPUT_SIGNAL == "1r") specdir <- dirname(dirname(specdir))

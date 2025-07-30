@@ -1621,8 +1621,8 @@ Spec1rProcpar <- list (
       while(nloop<20) {
           best <- stats::optim(par=phc, fn=sumneg, method="Nelder-Mead", y = fspec,  n1=n1, n2=n2, control=list(maxit=200))
           nloop <- nloop + 1
-          if (abs(best$par[1])<6.28 && abs(best$par[2])<3.14) break
-          phc <- c( runif(1,0,3.14), runif(1,0,3.14) )
+          if (abs(best$par[1])<9.425 && abs(best$par[2])<1.571) break
+          phc <- c( runif(1,0,3.14), runif(1,-0.7854,0.7854) )
       }
       if (spec$param$DEBUG) .v("\n\t%d: KSTART = %1.2f , KSTOP = %1.2f, nloop = %d", 
                                 0, spec$param$KSTART, spec$param$KSTOP, nloop, logfile=spec$param$LOGFILE)
