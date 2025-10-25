@@ -54,6 +54,12 @@ ui_proc_buttons <- column(4,
               bsTooltip("cmdlog", "View the Macro Command file", "bottom", options = list(container = "body")),
               bsModal("modalCmdlog", "Macro-Commands","cmdlog", size="large", htmlOutput("viewCmd", style = "overflow:auto;"), tags$br(), downloadButton("exportCMD", "Export Macro commands" ) )
           ),
+          conditionalPanel(condition="input.condProcPanels == 'Bucketing'",
+              tags$br(),
+              bsButton("bcmdlog", icon=icon("file-text-o"), label = "CMD", style="info" ),
+              bsTooltip("bcmdlog", "View the Bucket Command file", "bottom", options = list(container = "body")),
+              bsModal("modalBCmdlog", "Bucket-Commands","bcmdlog", size="large", htmlOutput("viewBCmd", style = "overflow:auto;"), tags$br(), downloadButton("exportBCMD", "Export Bucket commands" ) )
+          ),
           tags$br(), tags$br()
      )
 )

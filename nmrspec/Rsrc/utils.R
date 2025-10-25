@@ -124,6 +124,71 @@ get_INI_params <- function()
    procParams
 }
 
+# ------------------------------------
+# Split the macro-command file into processing and bucketing files
+# ------------------------------------
+
+SplitCMD <- function(outDataViewer, PROC.cmd, BUC.cmd)
+{
+    procfile <- file.path(outDataViewer, PROC.cmd)
+    bucfile <- file.path(outDataViewer, BUC.cmd)
+
+    # ---- Reading the macro command file ----
+    lines <- readLines(procfile, warn = FALSE)
+    
+    # ---- Variables de travail ----
+    bucket_blocks <- list()
+    other_blocks  <- list()
+    current_block <- character()
+    
+    # Determines if a block contains a "bucket" command
+    is_bucket_block <- function(block_lines) {
+        any(grepl("^(bucket)\\b", block_lines, ignore.case = TRUE))
+    }
+
+    # ---- Main loop ----
+    for (i in seq_along(lines)) {
+        line <- lines[i]
+      
+        # If we encounter an empty line and we have a block in progress, we end it
+        if (trimws(line) == "" && length(current_block) > 0) {
+            # Decides where to send the block
+            if (is_bucket_block(current_block)) {
+                bucket_blocks[[length(bucket_blocks) + 1]] <- current_block
+            } else {
+                other_blocks[[length(other_blocks) + 1]] <- current_block
+            }
+            current_block <- character()
+        } else {
+            # Otherwise, the line is added to the current block
+            if (trimws(line) != "") current_block <- c(current_block, line)
+        }
+    }
+
+    # Process the last block (if the file does not end with a blank line)
+    if (length(current_block) > 0) {
+        if (is_bucket_block(current_block)) {
+            bucket_blocks[[length(bucket_blocks) + 1]] <- current_block
+        } else {
+            other_blocks[[length(other_blocks) + 1]] <- current_block
+        }
+    }
+
+    # Save Processing commands
+    PROCTXT <- unlist(lapply(other_blocks, function(b) c(b, "")))
+    if (! is.null(PROCTXT)) { 
+        writeLines(PROCTXT[-length(PROCTXT)], procfile)
+    } else {
+        file.remove(procfile)
+    }
+
+    # Save bucketing commands
+    BUCTXT <- unlist(lapply(bucket_blocks, function(b) c(b, "")))
+    if (! is.null(BUCTXT)) {
+        writeLines(BUCTXT[-length(BUCTXT)], bucfile)
+    }
+}
+
 #----
 # Write the selected Zones List (ppmlist) to a file (zonesfile)
 #----
@@ -545,6 +610,30 @@ add_macrocmd_wb <- function(wb, outDataViewer, shid)
         cmdPreproc <- readLines(file.path(outDataViewer,conf$Rnmr1D_PPCMD))[1]
         writeData(wb, shid, x = cmdPreproc,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
         setColWidths(wb, shid, cols=1, widths=100, ignoreMergedCells = FALSE)
+     }
+     shid
+}
+
+#----
+# Add a 'Bucket_Cmd' tab
+#----
+add_bucketcmd_wb <- function(wb, outDataViewer, shid)
+{
+     # Styles
+     styREM  <- createStyle(fontColour = "darkgreen", borderStyle="none", fgFill="white")
+     styBOLD <- createStyle(fontColour = "darkblue", textDecoration = "Bold", borderStyle="none", fgFill="white")
+     # Bucket_Cmd
+     if (file.exists(file.path(outDataViewer,conf$Rnmr1D_BCMD))) {
+        shid <- shid + 1
+        addWorksheet(wb = wb, sheetName = "Bucket-CMD", gridLines = TRUE)
+        cmdlines <- readLines(file.path(outDataViewer,conf$Rnmr1D_BCMD))
+        writeData(wb, shid, x = cmdlines,  colNames=TRUE, rowNames=FALSE, withFilter = FALSE)
+        setColWidths(wb, shid, cols=1, widths=100, ignoreMergedCells = FALSE)
+        addStyle(wb, shid, style = styREM, rows = 1, cols = 1, gridExpand = TRUE)
+        L <- grep("^#", cmdlines)
+        for (i in 1:length(L)) addStyle(wb, shid, style = styREM, rows = L[i], cols = 1, gridExpand = TRUE)
+        v <- 1:length(cmdlines); L <- v[! v %in% L]
+        for (i in 1:length(L)) addStyle(wb, shid, style = styBOLD, rows = L[i], cols = 1, gridExpand = TRUE)
      }
      shid
 }

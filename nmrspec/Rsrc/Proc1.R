@@ -541,7 +541,7 @@
                     CMD <- paste0(CMD, "; ADV=",trim(gsub('=',':',input$cmdparam)))
                 }
             }
-            write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), paste0(CMD,"\n"), "wt")
+            write_textlines(file.path(outDataViewer,conf$Rnmr1D_PPCMD), CMD, "wt")
             values$error <- 0
             ERROR$MsgErrLoad <- ''
             closeAlert(session, "ErrAlertLoadId")
@@ -617,12 +617,16 @@
 
         # Set a default ppm range for noise
         NOISERANGE <<- get_noiserange()
-		updateTextAreaInput(session, "ppmnoiserange", value = NOISERANGE)
-		updateTextAreaInput(session, "ppmnoiserange2", value = NOISERANGE)
-		updateTextAreaInput(session, "ppmnoiserange3", value = NOISERANGE)
-		updateTextAreaInput(session, "ppmnoiserange4", value = NOISERANGE)
-		updateTextAreaInput(session, "ppmnoiserange4", value = NOISERANGE)
-		updateTextAreaInput(session, "ppmsnrnoise", value = NOISERANGE)
+        updateTextAreaInput(session, "ppmnoiserange", value = NOISERANGE)
+        updateTextAreaInput(session, "ppmnoiserange2", value = NOISERANGE)
+        updateTextAreaInput(session, "ppmnoiserange3", value = NOISERANGE)
+        updateTextAreaInput(session, "ppmnoiserange4", value = NOISERANGE)
+        updateTextAreaInput(session, "ppmnoiserange4", value = NOISERANGE)
+        updateTextAreaInput(session, "ppmsnrnoise", value = NOISERANGE)
+
+        # Split the macro-command file into processing and bucketing files
+        if (file.exists(file.path(outDataViewer,conf$Rnmr1D_PCMD)))
+            SplitCMD(outDataViewer, conf$Rnmr1D_PCMD, conf$Rnmr1D_BCMD)
 
         # Trace some information ...
         SpecSize <- file.info(file.path(outDataViewer,conf$SPEC_PACKED))$size
@@ -640,7 +644,7 @@
             "The macro-command file for processing = ", PCMDFilename, "\n",
             "The number of Spectra = ", nrow(samples), "\n",
             "The number of Factors = ", nrow(factors)-1, "\n",
-			#"The defaut ppm noise range = [",paste0(NOISERANGE,collapse=","),"]\n",
+            #"The defaut ppm noise range = [",paste0(NOISERANGE,collapse=","),"]\n",
             "----\n",
            sep="")
    })

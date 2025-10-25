@@ -71,6 +71,7 @@ specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm
 
 # Rnmr1D macrocommand file
 CMD.filename <- file.path(DATADIR,conf$Rnmr1D_PCMD)
+CMDINFO <- ''
 
 Write.LOG(LOGFILE,"Rcorr1D: ")
 fWriteSpec <- FALSE

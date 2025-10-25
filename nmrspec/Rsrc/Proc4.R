@@ -216,7 +216,7 @@
                  isolate({ values$updatevent <- values$updatevent + 1; })
              }
              if (nbStackedBuc==0) {
-                 delete_file(conf$BUCKET_LIST); delete_file(conf$LOGFILE2)
+                 delete_file(conf$BUCKET_LIST); delete_file(conf$LOGFILE2); delete_file(conf$Rnmr1D_BCMD)
              }
              toggleModal(session, "modalUnBuc", toggle = "close")
              html <- paste0('<script>refresh_spectrum(0);</script>')
@@ -388,6 +388,8 @@
              shid <- add_phasing_wb(wb, outDataViewer, shid)
              # Add a 'Macro_Cmd' tab
              shid <- add_macrocmd_wb(wb, outDataViewer, shid)
+             # Add a 'Bucket_Cmd' tab
+             shid <- add_bucketcmd_wb(wb, outDataViewer, shid)
              # Add a 'about' tab
              shid <- add_about_wb(wb, outDataViewer, zoneref, zonenoise, shid)
              # Save the Workbook
@@ -457,15 +459,52 @@
          if ( file.exists(cmdfile2) ) {
              if ( ! file.exists(cmdfile1) ) file.copy(cmdfile2, file, overwrite = TRUE)
              if ( file.exists(cmdfile1) ) file.append(file,cmdfile2)
+         } else {
+             write_textlines(file, "")
          }
     }
     output$exportCMD <- downloadHandler(
          filename = function() { get_CMD_filename() },
          content = function(file) { get_CMD_content(file) }
     )
+
+    ##---------------
+    ## Output: View the Bucket Command file
+    ##---------------
+    output$viewBCmd <- renderUI({
+         input$bcmdlog
+         html <- '<pre>No bucketing jobs</pre>'
+         if (file.exists(file.path(outDataViewer,conf$Rnmr1D_BCMD))) {
+             html <- paste('<!-- ', paste(sample(c(0:9, letters[1:6]),30, replace=TRUE),collapse=""), '--><div id="viewBCmd">',
+                           '<pre>', paste(readLines(file.path(outDataViewer,conf$Rnmr1D_BCMD)),collapse="\n"),'</pre></div>',
+                           '<script>$( "#viewBCmd" ).css( "height", ( 2*$( window ).height()/3)+"px" );</script>', sep="")
+         }
+         return(HTML(html))
+    })
+    outputOptions(output, 'viewCmd', priority=5)
+
+
+    ##---------------
+    ## Export Bucket commands
+    ##---------------
+    get_BCMD_filename <- function () { paste0('NP_bucket_cmd_',gsub("\\..*$", "", NameZip), '.txt' ) }
+    get_BCMD_content <- function(file, append=FALSE) {
+         cmdfile <- file.path(outDataViewer,conf$Rnmr1D_BCMD)
+         if ( file.exists(cmdfile) ) 
+             if (append) { file.append(file,cmdfile) }
+             else        { file.copy(cmdfile, file, overwrite = TRUE) }
+    }
+    output$exportBCMD <- downloadHandler(
+         filename = function() { get_BCMD_filename() },
+         content = function(file) { get_BCMD_content(file) }
+    )
+
+    ##---------------
+    ## Export Macro + Bucket commands
+    ##---------------
     output$exportCMD2 <- downloadHandler(
          filename = function() { get_CMD_filename() },
-         content = function(file) { get_CMD_content(file) }
+         content = function(file) { get_CMD_content(file); get_BCMD_content(file, append=TRUE) }
     )
 
     ##---------------
@@ -473,8 +512,8 @@
     ##---------------
 
     observeEvent( input$exportCMD3, {
-           values$uploadmsg <- 1
            runjs( "document.getElementById('uploadmsg').style.display = 'block';" )
+           values$uploadmsg <- 1
     })
     
     observeEvent( values$uploadmsg, {

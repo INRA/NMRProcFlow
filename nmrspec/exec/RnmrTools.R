@@ -374,7 +374,7 @@ RCalib1D <- function(specMat, PPM_NOISE_AREA, zoneref, ppmref, type='s', Progres
    PPM_MIN <- -1000
    PPM_MAX <- 1000
    N <- round((specMat$ppm_max-specMat$ppm_min)/specMat$dppm)
-   DMIN <- round(15*N/65535)
+   DMIN <- round(10*N/65535)
 
    # Compute the shift of each spectrum
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
@@ -582,8 +582,9 @@ Rqnmrbc1D <- function(specMat, PPM_NOISE_AREA, zone, ProgressFile=NULL)
 
    # Baseline Estimation for each spectrum
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, specMat$nspec)
+   inoise <- length(which(specMat$ppm>PPM_NOISE_AREA[2])):(which(specMat$ppm<=PPM_NOISE_AREA[1])[1])
    BLList <- foreach(i=1:specMat$nspec, .combine=cbind) %dopar% {
-       specSig <- fitdistr(specMat$int[i,length(which(specMat$ppm>PPM_NOISE_AREA[2])):(which(specMat$ppm<=PPM_NOISE_AREA[1])[1])], "normal")$estimate[2]
+       specSig <- fitdistr(specMat$int[i,inoise], "normal")$estimate[2]
        x <- specMat$int[i,c(i1:i2)]
        bc <- 0*rep(1:n)
        for (l in 1:NLOOP) {
@@ -838,6 +839,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
    BUC.filename <- 'SpecBuckets.txt'
    BUC.cmd <- 'SpecBucCmd.lst'
    NUC <- readLines('nuc.txt')
+   wrtCMD <- FALSE
 
    # Limit size of buckets
    MAXBUCKETS<-2000
@@ -854,7 +856,11 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
       Vref <- spec_ref(specMat$int)
       ynoise <- C_noise_estimation(Vref,idx_Noise[1],idx_Noise[2])
       Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
-      Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %f",Algo,PPM_NOISE_AREA[1],PPM_NOISE_AREA[2], resol, snr), mode="at")
+      if (wrtCMD) {
+          Write.LOG(BUC.cmd,sprintf("#\n# Bucketing - Method: %s, Noise Zone = (%f,%f), Resolution = %f, SNR =  %d\n#",
+               toupper(algo), PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], resol, snr), mode="at")
+          Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %d",Algo, PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], resol, snr), mode="at")
+      }
    }
 
    if (Algo %in% c('aibin')) {
@@ -889,7 +895,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
       bdata$BUCMIN <- 0.001
    }
 
-   if (Algo=='vsb') {
+   if (Algo=='vsb' && wrtCMD) {
       Write.LOG(BUC.cmd,sprintf("bucket %s",Algo), mode="at")
    }
 
@@ -898,7 +904,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
    N <- dim(zones)[1]
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, N)
    buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
-       Write.LOG(BUC.cmd,paste(min(zones[i,]), max(zones[i,])), mode="at")
+       if (wrtCMD) Write.LOG(BUC.cmd,paste(min(zones[i,]), max(zones[i,])), mode="at")
        i2<-which(specMat$ppm<=min(zones[i,]))[1]
        i1<-length(which(specMat$ppm>max(zones[i,])))
        if (Algo=='aibin') {
@@ -929,7 +935,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
        }
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
-   Write.LOG(BUC.cmd,"EOL\n", mode="at")
+   if (wrtCMD) Write.LOG(BUC.cmd,"EOL\n", mode="at")
 
    if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Total Buckets =",dim(buckets_zones)[1]))
 
@@ -1231,7 +1237,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
               params <- as.numeric(cmdPars[-1])
               if (length(params)>=3) {
                  PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
-			     WS <- params[3]
+                 WS <- params[3]
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Smooth: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
                  Write.LOG(LOGFILE,paste0("Rnmr1D:     Window size =",WS))
                  specMat <- RSmooth1D(specMat, PPMRANGE, WS, LOGFILE=LOGFILE)
@@ -1275,6 +1281,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
    }
    return(specMat)
 }
+
 
 #----
 # Generates the buckets table

@@ -75,11 +75,15 @@ specMat <- readSpecMatrix(specPackFile)
 specMat$dppm <- (specMat$ppm_max - specMat$ppm_min)/(specMat$size - 1)
 specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
 
+# Rnmr1D macrocommand file
+CMD.filename <- file.path(DATADIR,conf$Rnmr1D_BCMD)
+
 Write.LOG(LOGFILE,"Rbuc1D: ")
 fWriteSpec <- FALSE
 
 # the buckets' file
 bucketfile <- file.path(DATADIR,conf$BUCKET_LIST)
+CMDINFO <- ''
 
 Write.LOG(LOGFILE,paste0("Rbuc1D:  Bucketing method = ",procParams$BUCMETH));
 
@@ -135,11 +139,16 @@ repeat {
    bucsize <- procParams$UNIF_R
    Write.LOG(LOGFILE,paste("Rbuc1D:  PPM Resolution = ",bucsize))
 
+   CMDINFO <- paste0("#\n# Bucketing - Method: Uniform, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",buczise,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
+   CMDINFO <- paste0(CMDINFO,paste("bucket unif",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),bucsize,procParams$SNRBUCLEVEL),"\n")
+   for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
+   CMDINFO <- paste0(CMDINFO,"EOL\n")
+
    buckets_zones <- NULL
    registerDoParallel(cores=env.list$CORES)
 
    # For each PPM range
-   N <- dim(zones)[1]
+   N <- nrow(zones)
    buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
       i2<-which(specMat$ppm<=zones$min[i])[1]
       i1<-length(which(specMat$ppm>zones$max[i]))
@@ -176,6 +185,12 @@ repeat {
    # exit if not PPM ranges file
    vsbfile <- file.path(DATADIR,'vsb_list.in')
    if (! file.exists(vsbfile)) break
+
+   CMDINFO <- paste0("#\n# Bucketing - Method: VSB\n#\n")
+   CMDINFO <- paste0(CMDINFO,"bucket vsb\n")
+   vsblist <- read.table(vsbfile, header=F, sep="\t",stringsAsFactors=FALSE)
+   for(i in 1:nrow(vsblist)) CMDINFO <- paste0(CMDINFO, paste(vsblist[i,1],vsblist[i,2]),"\n")
+   CMDINFO <- paste0(CMDINFO,"EOL\n")
 
    if (! file.exists(bucketfile) || procParams$BUCAPPEND==FALSE) {
        file.rename(vsbfile, bucketfile)
@@ -248,10 +263,15 @@ repeat {
       bdata$BUCMIN <- 0.003
    }
 
+   CMDINFO <- paste0("#\n# Bucketing - Method: AIBIN, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",procParams$AIBIN_R,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
+   CMDINFO <- paste0(CMDINFO,paste("bucket aibin",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),procParams$AIBIN_R,procParams$SNRBUCLEVEL),"\n")
+   for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
+   CMDINFO <- paste0(CMDINFO,"EOL\n")
+
    registerDoParallel(cores=env.list$CORES)
 
    buckets_zones <- NULL
-   N <- dim(zones)[1]
+   N <- nrow(zones)
    init_counter(ProgressFile, N)
    buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
        i2<-which(specMat$ppm<=zones$min[i])[1]
@@ -267,6 +287,7 @@ repeat {
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(buckets_zones)[1]))
+
    if (dim(buckets_zones)[1]>2) {
        buckets_zones <- buckets_zones[order(buckets_zones[,1]), ]
    }
@@ -323,10 +344,15 @@ repeat {
    bdata$ppm_min <- specMat$ppm_min
    bdata$BUCMIN <- 0.001
 
+   CMDINFO <- paste0("#\n# Bucketing - Method: ERVA, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",procParams$ERVA_R,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
+   CMDINFO <- paste0(CMDINFO,paste("bucket erva",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),procParams$ERVA_R,procParams$SNRBUCLEVEL),"\n")
+   for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
+   CMDINFO <- paste0(CMDINFO,"EOL\n")
+
    registerDoParallel(cores=env.list$CORES)
 
    buckets_zones <- NULL
-   N <- dim(zones)[1]
+   N <- nrow(zones)
    init_counter(ProgressFile, N)
    buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
        i2<-which(specMat$ppm<=zones$min[i])[1]
@@ -494,6 +520,10 @@ if (fWriteSpec) {
  # Write the new spectra matrix if needed
    Write.LOG(LOGFILE,"Rbuc1D:  Write the specs.pack...")
    writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
+ # Append in the macro-command file
+   dfcmd <- file(CMD.filename, "at")
+   writeLines(CMDINFO,dfcmd)
+   close(dfcmd)
 } else {
  # Retrieve the previous saved files
    pop_STACK(DATADIR, c(conf$BUCKET_LIST, conf$LOGFILE2), get_maxSTACKID(DATADIR,conf$BUCKET_LIST))
