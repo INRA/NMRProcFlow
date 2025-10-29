@@ -1013,12 +1013,12 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
 
       repeat {
           if (cmdName == lbCALIB) {
-              params <- as.numeric(cmdPars[-1])
+              params <- as.numeric(cmdPars[c(-1,-7)])
               if (length(params)>=3) {
                  PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
                  PPMREF <- params[3]
                  PPM_NOISE <- ifelse( length(params)>4, c( min(params[4:5]), max(params[4:5]) ), c( 10.2, 10.5 ) )
-                 CALIBTYPE <- ifelse( length(params)==6, params[6], 's' )
+                 CALIBTYPE <- ifelse(  cmdPars[7] %in% c('s','d'), cmdPars[7], 's' )
                  Write.LOG(LOGFILE, paste0("Rnmr1D:  Calibration: PPM REF =",PPMREF,", Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],"), Type = ",CALIBTYPE));
                  registerDoParallel(cores=NCPU)
                  specMat <- RCalib1D(specMat, PPM_NOISE, PPMRANGE, PPMREF, CALIBTYPE, ProgressFile=ProgressFile)
