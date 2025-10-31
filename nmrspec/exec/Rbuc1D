@@ -360,11 +360,13 @@ repeat {
        Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
        Mbuc[] <- 0
        buckets_m <- C_erva_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
-       Write.LOG(LOGFILE,paste("Rbuc1D:  Zone",i,"= (",zones$min[i],",",zones$max[i],"), Nb Buckets =",dim(buckets_m)[1]))
        inc_counter(ProgressFile, i)
        # Keep only the buckets for which the SNR average is greater than SNRBUCLEVEL
        MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
        buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,stats::quantile)[4,]>procParams$SNRBUCLEVEL), ]
+       V <- abs(specMat$ppm[buckets_m[,2]] - specMat$ppm[buckets_m[,1]])
+       buckets_m <- buckets_m[ which(V>5*specMat$dppm), ]
+       Write.LOG(LOGFILE,paste("Rbuc1D:  Zone",i,"= (",zones$min[i],",",zones$max[i],"), Nb Buckets =",dim(buckets_m)[1]))
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    Write.LOG(LOGFILE,paste("Rbuc1D:  Total Buckets =",dim(buckets_zones)[1]))

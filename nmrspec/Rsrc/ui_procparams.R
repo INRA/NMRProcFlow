@@ -104,6 +104,8 @@ ui_proc_process <- column(12,
      column(9,
          # PPM calibration
          conditionalPanel(condition="input.tpreproc=='calibration'",
+              checkboxInput("shiftcalib", "Apply only a PPM shift:", FALSE),
+              conditionalPanel(condition="input.shiftcalib==0", column(12,
               column(4,
                   selectInput("calibtype", "Pattern type:",
                          c("Singulet" = "s", "Doublet" = "d"), selected = "s"),
@@ -115,7 +117,11 @@ ui_proc_process <- column(12,
                   bsTooltip("ppmrefrange", "Select a ppm area around a signal to calibrate", "bottom", options = list(container = "body")),
                   numericInput("ppmref", "PPM value of the center of pattern:", 0, min = 0, max = 12, step=0.1),
                   bsTooltip("ppmnoiserange4", "select a PPM range for estimate the standard deviation of the noise", "bottom", options = list(container = "body"))
-              )
+              ))),
+              conditionalPanel(condition="input.shiftcalib==1", column(4,
+                  numericInput("ppmshift2", "PPM shitf value:", 0, min = 0, max = 100, step=1),
+                  bsTooltip("ppmshift2", "PPM shitf value to be applied on the whole spectra", "bottom", options = list(container = "body"))
+              ))
          ),
          # Normalisation
          conditionalPanel(condition="input.tpreproc=='normalisation'",

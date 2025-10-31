@@ -93,40 +93,55 @@ check_Vnoise <- function(specMat, PPM_NOISE_AREA)
 tryCatch({
 
 #------------------------------
-# Calibration ot the PPM Scale
+# Calibration of the PPM Scale
 #------------------------------
 repeat {
    # exit if PPM calibration is not invoked
    if (! procParams$PPM_CALIBRATION ) break
 
    Write.LOG(LOGFILE,"Rcorr1D:  Calibration of the PPM Scale ...");
-   zone <- as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " ")))
-   if (is.na(zone)) {
-       PPM_NOISE_AREA <- c(10.2, 10.5)
+ 
+   #if based on a PPM shift
+   if (procParams$SHIFTCALIB ) {
+        ppmshift <- procParams$PPM_SHIFT
+        specMat$ppm_min <- specMat$ppm_min + ppmshift
+        specMat$ppm_max <- specMat$ppm_max + ppmshift
+        specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
+        
+        CMDINFO <- paste("#\n# Calibration: PPM shift =",ppmshift,"\n#\n")
+        CMDINFO <- paste0(CMDINFO,paste("calibration",ppmshift,"\n"))
+        
+        Write.LOG(LOGFILE,paste0("Rcorr1D:  PPM shift value = ",ppmshift))
+        Write.LOG(LOGFILE,"Rcorr1D: ")
    } else {
-       PPM_NOISE_AREA <- c(min(zone), max(zone))
-   }
-   if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
-
-   Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"))
-
-   # get the PPM range
-   zone <- as.numeric(simplify2array(strsplit(procParams$PPM_RANGE, " ")))
-
-   # exit if not PPM ranges file
-   if (is.na(zone)) break
-   zoneref <- c(min(zone), max(zone))
-
-   ppmref <- procParams$PPM_REF
-   type <- procParams$CALIBTYPE
-   Write.LOG(LOGFILE,paste("Rcorr1D:  PPM REF =",ppmref,", Zone Ref = (",min(zoneref),",",max(zoneref),")"))
-   Write.LOG(LOGFILE,"Rcorr1D: ")
-
-   CMDINFO <- paste("#\n# Calibration: PPM REF =",ppmref,", Zone Ref = ( ",min(zoneref)," , ",max(zoneref)," ), Type =",type,"\n#\n")
-   CMDINFO <- paste0(CMDINFO,paste("calibration",min(zoneref),max(zoneref),ppmref,min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),type ),"\n")
-
-   registerDoParallel(cores=env.list$CORES)
-   specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref, type, ProgressFile=ProgressFile)
+        zone <- as.numeric(simplify2array(strsplit(procParams$PPMNOISERANGE, " ")))
+        if (is.na(zone)) {
+            PPM_NOISE_AREA <- c(10.2, 10.5)
+        } else {
+            PPM_NOISE_AREA <- c(min(zone), max(zone))
+        }
+        if ( check_Vnoise(specMat, PPM_NOISE_AREA) ) break
+        
+        Write.LOG(LOGFILE,paste0("Rcorr1D:  Noisy PPM Range = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," )"))
+        
+        # get the PPM range
+        zone <- as.numeric(simplify2array(strsplit(procParams$PPM_RANGE, " ")))
+        
+        # exit if not PPM ranges file
+        if (is.na(zone)) break
+        zoneref <- c(min(zone), max(zone))
+        
+        ppmref <- procParams$PPM_REF
+        type <- procParams$CALIBTYPE
+        Write.LOG(LOGFILE,paste("Rcorr1D:  PPM REF =",ppmref,", Zone Ref = (",min(zoneref),",",max(zoneref),")"))
+        Write.LOG(LOGFILE,"Rcorr1D: ")
+        
+        CMDINFO <- paste("#\n# Calibration: PPM REF =",ppmref,", Zone Ref = ( ",min(zoneref)," , ",max(zoneref)," ), Type =",type,"\n#\n")
+        CMDINFO <- paste0(CMDINFO,paste("calibration",min(zoneref),max(zoneref),ppmref,min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),type ),"\n")
+        
+        registerDoParallel(cores=env.list$CORES)
+        specMat <- RCalib1D(specMat, PPM_NOISE_AREA, zoneref, ppmref, type, ProgressFile=ProgressFile)
+   } 
    Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(specMat$ppm_max,";",specMat$ppm_min), mode="wt")
    Write.LOG(LOGFILE,paste("Rcorr1D:  New PPM Range = (",specMat$ppm_min,",",specMat$ppm_max,")"))
 

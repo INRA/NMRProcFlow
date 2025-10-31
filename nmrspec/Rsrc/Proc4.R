@@ -8,11 +8,16 @@
              procParams$PPM_NORMALISATION <<- ifelse(input$tpreproc=='normalisation', TRUE, FALSE)
              procParams$BASELINECOR <<- ifelse(input$tpreproc=='baseline', TRUE, FALSE)
              procParams$DENOISING <<- ifelse(input$tpreproc=='denoising', TRUE, FALSE)
-             if (input$tpreproc=='calibration') {
+             if (input$tpreproc=='calibration' && ! input$shiftcalib) {
                  procParams$PPM_RANGE <<- input$ppmrefrange
                  procParams$PPMNOISERANGE <<- input$ppmnoiserange4
                  procParams$PPM_REF <<- input$ppmref
                  procParams$CALIBTYPE <<- input$calibtype
+                 procParams$SHIFTCALIB <<- FALSE
+             }
+             if (input$tpreproc=='calibration' && input$shiftcalib) {
+                 procParams$PPM_SHIFT <<- input$ppmshift2
+                 procParams$SHIFTCALIB <<- TRUE
              }
              if (input$tpreproc=='normalisation') {
                  procParams$NORM_METH <<- input$normeth
@@ -99,6 +104,11 @@
          if (input$tpreproc=='calibration' && ! is.null(conf$jobname_calibration) && conf$jobname_calibration != 'calibration') {
              runjs( paste0("jobname_calibration = '",conf$jobname_calibration,"';" ) )
          }
+   })
+
+   observe ({
+         input$bucmeth
+         runjs( paste0("document.getElementById('jobname').innerHTML = '",input$bucmeth,"';" ) )
    })
 
     ## Processing required

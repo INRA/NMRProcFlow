@@ -29,7 +29,7 @@ ui_load_form <- conditionalPanel(condition="output.fileUploaded==0 && output.Ses
              selectInput("spectype", "Spectra type:", # see Proc1.R: Spectrum type depending on the vendor
                           c("1r spectrum" = "1r", "FID" = "fid"), selected = "fid"),
              conditionalPanel(condition="input.spectype=='fid'",
-                 bsButton("bsadvusers", icon=icon("gear"), label = " Parameters", style="primary" ),
+                 bsButton("bsadvusers", icon=icon("gear"), label = " Settings", style="primary" ),
                  tags$br(),tags$br()
              ),
 

@@ -916,6 +916,8 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
           Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
           Mbuc[] <- 0
           buckets_m <- C_erva_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
+          V <- abs(specMat$ppm[buckets_m[,2]] - specMat$ppm[buckets_m[,1]])
+          buckets_m <- buckets_m[ which(V>5*specMat$dppm), ]
        }
        if (Algo=='unif') {
           seq_buc <- seq(i1, i2, round(resol/specMat$dppm))
@@ -926,13 +928,13 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
           buckets_m <- matrix( c( i1, i2 ), nrow=1, ncol=2, byrow=T )
        }
 
-       if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",dim(buckets_m)[1]))
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        # Keep only the buckets for which the SNR average is greater than 'snr'
        if (dim(buckets_m)[1]>1) {
           MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
           buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>snr), ]
        }
+       if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",dim(buckets_m)[1]))
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    if (wrtCMD) Write.LOG(BUC.cmd,"EOL\n", mode="at")
@@ -1022,6 +1024,15 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  Write.LOG(LOGFILE, paste0("Rnmr1D:  Calibration: PPM REF =",PPMREF,", Zone Ref = (",PPMRANGE[1],",",PPMRANGE[2],"), Type = ",CALIBTYPE));
                  registerDoParallel(cores=NCPU)
                  specMat <- RCalib1D(specMat, PPM_NOISE, PPMRANGE, PPMREF, CALIBTYPE, ProgressFile=ProgressFile)
+                 specMat$fWriteSpec <- TRUE
+                 CMD <- CMD[-1]
+              }
+              if (length(params)==1) {
+                 ppmshift <- params[1]
+                 Write.LOG(LOGFILE, paste0("Rnmr1D:  Calibration: PPM shift =",ppmshift));
+                 specMat$ppm_min <- specMat$ppm_min + ppmshift
+                 specMat$ppm_max <- specMat$ppm_max + ppmshift
+                 specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
                  specMat$fWriteSpec <- TRUE
                  CMD <- CMD[-1]
               }

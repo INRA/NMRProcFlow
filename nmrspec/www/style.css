@@ -136,3 +136,7 @@ border-radius: 0px;
   font-size: 14px;
   color: #555;
 }
+
+.modal-footer {
+	border-top: 0px;
+}
