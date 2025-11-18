@@ -312,6 +312,7 @@
                  write_textlines(LOGFILE, "ERROR: Some information regarding raw data are not consistent; Here is the list below\n")
                  ERRORLIST <- read.table(file.path(outDataViewer,"errorlist.csv"), header=F, sep=";", stringsAsFactors=FALSE)
                  write_textlines(LOGFILE, paste0(paste(ERRORLIST[,1], collapse="\n"),"\n") )
+                 RET <- 0
              }
              if ( RET == 0 ) {
                  ErrMsg <<- "ERROR: Some errors occur while attempting to generate metadata files. <br> Please, click the on 'Log' button to see.<br>"

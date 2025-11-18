@@ -349,6 +349,14 @@ repeat {
    for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
    CMDINFO <- paste0(CMDINFO,"EOL\n")
 
+   # if CP sequence then withdrraw the first spectra from the kinetics (tc<TCmin)
+   idx <- 1:specMat$nspec
+   if ('P15' %in% colnames(specParamsDF)) {
+       TCmin <- ifelse(!is.null(procParams$TCmin), procParams$TCmin, 100)
+       idx <- which(specParamsDF$P15>=TCmin)
+       Write.LOG(LOGFILE,paste("Rbuc1D:  CP sequence: TCmin = ",TCmin))
+   }
+   
    registerDoParallel(cores=env.list$CORES)
 
    buckets_zones <- NULL
@@ -359,7 +367,7 @@ repeat {
        i1<-length(which(specMat$ppm>zones$max[i]))
        Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
        Mbuc[] <- 0
-       buckets_m <- C_erva_buckets(specMat$int, Mbuc, Vref, bdata, i1, i2)
+       buckets_m <- C_erva_buckets(specMat$int[idx,], Mbuc, Vref, bdata, i1, i2)
        inc_counter(ProgressFile, i)
        # Keep only the buckets for which the SNR average is greater than SNRBUCLEVEL
        MaxVals <- C_maxval_buckets (specMat$int, buckets_m)

@@ -107,6 +107,7 @@ specList <- foreach(x=1:nrow(LIST), .combine=cbind, .multicombine = TRUE) %dopar
      procParams$LOGFILE <- paste0(RAWDIR,'/',NAMEDIR,'.log')
      procParams$PDATA_DIR <- file.path(PDATA_DIR,LIST[x,3])
      if (file.exists(procParams$LOGFILE)) unlink(procParams$LOGFILE)
+
      errMsg <- NULL
      tryCatch({
          spec <- Spec1rDoProc(Input=ACQDIR,param=procParams)

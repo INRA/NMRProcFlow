@@ -1443,8 +1443,9 @@ Spec1rProcpar <- list (
    pulse1 <- length(grep(spec$param$CPREGEX, toupper(spec$acq$PULSE)))>0
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
-   if (! spec$param$TSP && (pulse1 || pulse2 || pulse3)) {
-       if (pulse1) {
+   pulse4 <- length(grep("proton.jxp", tolower(spec$acq$PULSE)))>0
+   if (! spec$param$TSP && (pulse1 || pulse2 || pulse3 || pulse4)) {
+       if (pulse1 || pulse4) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
            if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
        }
@@ -1601,8 +1602,9 @@ Spec1rProcpar <- list (
    pulse1 <- length(grep(spec$param$CPREGEX, toupper(spec$acq$PULSE)))>0
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
-   if (pulse1 || pulse2 || pulse3) {
-      if (pulse1) {
+   pulse4 <- length(grep("proton.jxp", tolower(spec$acq$PULSE)))>0
+   if (pulse1 || pulse2 || pulse3 || pulse4 ) {
+      if (pulse1 || pulse4) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
            if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
       }
@@ -1621,7 +1623,8 @@ Spec1rProcpar <- list (
       while(nloop<20) {
           best <- stats::optim(par=phc, fn=sumneg, method="Nelder-Mead", y = fspec,  n1=n1, n2=n2, control=list(maxit=200))
           nloop <- nloop + 1
-          if (abs(best$par[1])<9.425 && abs(best$par[2])<1.571) break
+          if (pulse4 && abs(best$par[1])<9.425 && abs(best$par[2])<3.14) break
+          if (!pulse4 && abs(best$par[1])<9.425 && abs(best$par[2])<1.571) break
           phc <- c( runif(1,0,3.14), runif(1,-0.7854,0.7854) )
       }
       if (spec$param$DEBUG) .v("\n\t%d: KSTART = %1.2f , KSTOP = %1.2f, nloop = %d", 
@@ -1702,9 +1705,10 @@ Spec1rProcpar <- list (
    logfile <- param$LOGFILE
 
    fok <- TRUE
-   if (!dir.exists(Input)) Input <- dirname(Input)
-   if (!dir.exists(Input)) fok <- FALSE
-
+   if (param$VENDOR %in% c("bruker","rs2d","magritek")) {
+       if (!dir.exists(Input)) Input <- dirname(Input)
+       if (!dir.exists(Input)) fok <- FALSE
+   }
    if(param$DEBUG) {
       if (!dir.exists(Input)) {
          .v("Path %s does not exist! \n",Input,logfile=logfile)
