@@ -139,10 +139,11 @@ repeat {
    bucsize <- procParams$UNIF_R
    Write.LOG(LOGFILE,paste("Rbuc1D:  PPM Resolution = ",bucsize))
 
-   CMDINFO <- paste0("#\n# Bucketing - Method: Uniform, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",buczise,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
+   CMDINFO <- paste0("#\n# Bucketing - Method: Uniform, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",bucsize,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
    CMDINFO <- paste0(CMDINFO,paste("bucket unif",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),bucsize,procParams$SNRBUCLEVEL),"\n")
    for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
    CMDINFO <- paste0(CMDINFO,"EOL\n")
+
 
    buckets_zones <- NULL
    registerDoParallel(cores=env.list$CORES)
@@ -155,8 +156,8 @@ repeat {
       seq_buc <- seq(i1, i2, round(bucsize/specMat$dppm))
       n_bucs <- length(seq_buc) - 1
       buckets_m <- cbind ( seq_buc[1:n_bucs], seq_buc[2:(n_bucs+1)])
-      MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
-      buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>procParams$SNRBUCLEVEL), ]
+      #MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
+      #buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>procParams$SNRBUCLEVEL), ]
       Write.LOG(LOGFILE,paste("Rbuc1D:  Zone",i,"= (",zones$min[i],",",zones$max[i],"), Nb Buckets =",dim(buckets_m)[1]))
       cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
