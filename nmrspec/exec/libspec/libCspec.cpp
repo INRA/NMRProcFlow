@@ -1030,7 +1030,7 @@ SEXP C_maxval_buckets (SEXP x, SEXP b)
    int n_bucs = Buc.nrow();
    int k,m;
 
-   //Matrix of the Buckets' maxval : 1 row = 1 spectrum, 1 column = 1 bucket
+   //Matrix of the Buckets' maxval : row =>  spectrum, column = bucket
    NumericMatrix M(n_specs, n_bucs);
 
    // for each spectrum

@@ -860,8 +860,8 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
       Vnoise <- abs( C_noise_estimate(specMat$int, idx_Noise[1],idx_Noise[2], 1) )
       if (wrtCMD) {
           Write.LOG(BUC.cmd,sprintf("#\n# Bucketing - Method: %s, Noise Zone = (%f,%f), Resolution = %f, SNR =  %d\n#",
-               toupper(algo), PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], resol, snr), mode="at")
-          Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %d",Algo, PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], resol, snr), mode="at")
+               toupper(algo), PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], resol, snr))
+          Write.LOG(BUC.cmd,sprintf("bucket %s %f %f %f %d",Algo, PPM_NOISE_AREA[1], PPM_NOISE_AREA[2], resol, snr))
       }
    }
 
@@ -912,7 +912,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
    N <- dim(zones)[1]
    if( !is.null(ProgressFile) ) init_counter(ProgressFile, N)
    buckets_zones <- foreach(i=1:N, .combine=rbind) %dopar% {
-       if (wrtCMD) Write.LOG(BUC.cmd,paste(min(zones[i,]), max(zones[i,])), mode="at")
+       if (wrtCMD) Write.LOG(BUC.cmd,paste(min(zones[i,]), max(zones[i,])))
        i2<-which(specMat$ppm<=min(zones[i,]))[1]
        i1<-length(which(specMat$ppm>max(zones[i,])))
        if (Algo=='aibin') {
@@ -923,7 +923,7 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
        if (Algo=='erva') {
           Mbuc <- matrix(, nrow = MAXBUCKETS, ncol = 2)
           Mbuc[] <- 0
-          buckets_m <- C_erva_buckets(specMat$int, Mbuc[idx, ], Vref, bdata, i1, i2)
+          buckets_m <- C_erva_buckets(specMat$int[idx, ], Mbuc, Vref, bdata, i1, i2)
           V <- abs(specMat$ppm[buckets_m[,2]] - specMat$ppm[buckets_m[,1]])
           buckets_m <- buckets_m[ which(V>5*specMat$dppm), ]
        }
@@ -935,19 +935,20 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
        if (Algo=='vsb') {
           buckets_m <- matrix( c( i1, i2 ), nrow=1, ncol=2, byrow=T )
        }
-
        if( !is.null(ProgressFile) ) inc_counter(ProgressFile, i)
        # Keep only the buckets for which the SNR average is greater than 'snr'
-       if (dim(buckets_m)[1]>1) {
+       if (nrow(buckets_m)>1) {
           MaxVals <- C_maxval_buckets (specMat$int, buckets_m)
-          buckets_m <- buckets_m[ which( apply(t(MaxVals/(2*Vnoise)),1,quantile)[4,]>snr), ]
+          bucsel <- which( apply(t(MaxVals/(2*Vnoise)),1,stats::quantile)[4,]>snr )
+          buckets_m <- buckets_m[ bucsel, ]
        }
-       if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",dim(buckets_m)[1]))
+       if( !is.null(LOGFILE) )
+          Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",nrow(buckets_m)))
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    if (wrtCMD) Write.LOG(BUC.cmd,"EOL\n", mode="at")
 
-   if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Total Buckets =",dim(buckets_zones)[1]))
+   if( !is.null(LOGFILE) ) Write.LOG(LOGFILE,paste("Rnmr1D:     Total Buckets =",nrow(buckets_zones)))
 
    if( buckets_zones[1,1]>buckets_zones[1,2] )  {  colnames(buckets_zones) <- c('max','min') }
                                           else  {  colnames(buckets_zones) <- c('min','max') }
@@ -1124,7 +1125,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                  PPMRANGE <- c( min(params[1:2]), max(params[1:2]) )
                  LAMBDA <- params[3]
                  Write.LOG(LOGFILE,paste0("Rnmr1D:  Baseline Correction: PPM Range = ( ",min(PPMRANGE)," , ",max(PPMRANGE)," )"))
-                 Write.LOG(LOGFILE,paste("Rnmr1D:     Type=airPLS, lambda=",LAMBDA, ", order=",porder))
+                 Write.LOG(LOGFILE,paste0("Rnmr1D:     Type=airPLS, lambda=",LAMBDA, ", order=",porder))
                  registerDoParallel(cores=NCPU)
                  specMat <- RairPLSbc1D(specMat, PPMRANGE, LAMBDA, porder=porder, ProgressFile=ProgressFile)
                  specMat$fWriteSpec <- TRUE
@@ -1282,7 +1283,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                   params <- as.numeric(cmdPars[-c(1:2)])
                   PPM_NOISE <- c( min(params[1:2]), max(params[1:2]) )
                   resol <- params[3]; snr <- params[4];
-                  Write.LOG(LOGFILE,paste0("Rnmr1D:     ",toupper(cmdPars[2])," - Resolution =",resol," - SNR threshold=",snr))
+                  Write.LOG(LOGFILE,paste0("Rnmr1D:     ",toupper(cmdPars[2])," - Resolution=",resol," - SNR threshold=",snr))
               } else {
                   PPM_NOISE <- NULL
                   resol <- 0; snr <- 0;
