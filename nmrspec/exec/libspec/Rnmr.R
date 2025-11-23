@@ -881,10 +881,13 @@ Spec1rProcpar <- list (
    to.read = file(FILE,"rb")
    seek(to.read,where=Header$Data_Start, origin="start")
    if (Header$Data_Type==1) { # One_D - 64 bits
+       #data_offset <- Header$Data_Offset_Start[1]
+       #readpoints <-  Header$Data_Offset_Stop[1]-Header$Data_Offset_Start[1]+1;
+       data_offset <- Header$Data_Length/16L
+       readpoints <-  data_offset
        seek(to.read,where=Header$Data_Offset_Start[1], origin="current")
-       readpoints <-  Header$Data_Offset_Stop[1]-Header$Data_Offset_Start[1]+1;
        rawR <- readBin(to.read, what="numeric", n=readpoints, size=8L, endian = endian)
-       seek(to.read,where=Header$Data_Offset_Start[1], origin="current")
+       seek(to.read,where=Header$data_offset, origin="current")
        rawI <- readBin(to.read, what="numeric", n=readpoints, size=8L, endian = endian)
        fid  <- complex(real=rawR, imaginary=rawI)
    }
