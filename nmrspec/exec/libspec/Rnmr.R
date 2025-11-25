@@ -881,8 +881,6 @@ Spec1rProcpar <- list (
    to.read = file(FILE,"rb")
    seek(to.read,where=Header$Data_Start, origin="start")
    if (Header$Data_Type==1) { # One_D - 64 bits
-       #data_offset <- Header$Data_Offset_Start[1]
-       #readpoints <-  Header$Data_Offset_Stop[1]-Header$Data_Offset_Start[1]+1;
        data_offset <- Header$Data_Length/16L
        readpoints <-  data_offset
        seek(to.read,where=Header$Data_Offset_Start[1], origin="current")
@@ -1446,7 +1444,7 @@ Spec1rProcpar <- list (
    pulse1 <- length(grep(spec$param$CPREGEX, toupper(spec$acq$PULSE)))>0
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
-   pulse4 <- length(grep("proton.jxp", tolower(spec$acq$PULSE)))>0
+   pulse4 <- length(grep("(proton.jxp|single_pulse.jxp)", tolower(spec$acq$PULSE)))>0
    if (! spec$param$TSP && (pulse1 || pulse2 || pulse3 || pulse4)) {
        if (pulse1 || pulse4) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
@@ -1605,7 +1603,7 @@ Spec1rProcpar <- list (
    pulse1 <- length(grep(spec$param$CPREGEX, toupper(spec$acq$PULSE)))>0
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
-   pulse4 <- length(grep("proton.jxp", tolower(spec$acq$PULSE)))>0
+   pulse4 <- length(grep("(proton.jxp|single_pulse.jxp)", tolower(spec$acq$PULSE)))>0
    if (pulse1 || pulse2 || pulse3 || pulse4 ) {
       if (pulse1 || pulse4) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
@@ -1713,7 +1711,7 @@ Spec1rProcpar <- list (
        if (!dir.exists(Input)) fok <- FALSE
    }
    if(param$DEBUG) {
-      if (!dir.exists(Input)) {
+      if (!dir.exists(Input) && !file.exists(Input)) {
          .v("Path %s does not exist! \n",Input,logfile=logfile)
       } else {
          if(param$INPUT_SIGNAL == "fid") {
