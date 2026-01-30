@@ -86,6 +86,7 @@
              procParams$SNRBUCLEVEL <<- input$snrbuclev
              procParams$PPMREFINT <<- input$ppmnrefint
              procParams$BUCAPPEND <<- ifelse(input$fbucappend==1, TRUE, FALSE)
+             procParams$BUCSAVE <<- ifelse(input$fbucsave==1, TRUE, FALSE)
              procParams$UNIF_R <<- input$unif_size
              procParams$AIBIN_R <<- input$aibin_r
              procParams$ERVA_R <<- input$erva_r

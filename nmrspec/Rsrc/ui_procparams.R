@@ -262,7 +262,9 @@ ui_proc_bucket <- column(12,
          conditionalPanel(condition="input.bucmeth!='bucreset'",
              tags$br(),
              checkboxInput("fbucappend", "Append the new buckets:", TRUE),
-             bsTooltip("fbucappend", "Append the new buckets to existing ones", "bottom", options = list(container = "body"))
+             checkboxInput("fbucsave", "Save bucket commands:", TRUE),
+             bsTooltip("fbucappend", "Append the new buckets to existing ones", "bottom", options = list(container = "body")),
+             bsTooltip("fbucsave", "Save the commands into the macro-command file", "bottom", options = list(container = "body"))
          ),
          conditionalPanel(condition="input.bucmeth=='bucreset'", 
              tags$strong('PPM Ranges to merge:', class="textlabs"),tags$br(),  inputTextarea("ppmrange5", supclass="capture treset", nrows=10, ncols=25, value="")

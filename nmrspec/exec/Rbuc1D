@@ -139,11 +139,12 @@ repeat {
    bucsize <- procParams$UNIF_R
    Write.LOG(LOGFILE,paste("Rbuc1D:  PPM Resolution = ",bucsize))
 
-   CMDINFO <- paste0("#\n# Bucketing - Method: Uniform, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",bucsize,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
-   CMDINFO <- paste0(CMDINFO,paste("bucket unif",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),bucsize,procParams$SNRBUCLEVEL),"\n")
-   for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
-   CMDINFO <- paste0(CMDINFO,"EOL\n")
-
+   if (procParams$BUCSAVE) {
+       CMDINFO <- paste0("#\n# Bucketing - Method: Uniform, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",bucsize,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
+       CMDINFO <- paste0(CMDINFO,paste("bucket unif",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),bucsize,procParams$SNRBUCLEVEL),"\n")
+       for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
+       CMDINFO <- paste0(CMDINFO,"EOL\n")
+   }
 
    buckets_zones <- NULL
    registerDoParallel(cores=env.list$CORES)
@@ -187,12 +188,14 @@ repeat {
    vsbfile <- file.path(DATADIR,'vsb_list.in')
    if (! file.exists(vsbfile)) break
 
-   CMDINFO <- paste0("#\n# Bucketing - Method: VSB\n#\n")
-   CMDINFO <- paste0(CMDINFO,"bucket vsb\n")
-   vsblist <- read.table(vsbfile, header=F, sep="\t",stringsAsFactors=FALSE)
-   for(i in 1:nrow(vsblist)) CMDINFO <- paste0(CMDINFO, paste(vsblist[i,1],vsblist[i,2]),"\n")
-   CMDINFO <- paste0(CMDINFO,"EOL\n")
-
+   if (procParams$BUCSAVE) {
+       CMDINFO <- paste0("#\n# Bucketing - Method: VSB\n#\n")
+       CMDINFO <- paste0(CMDINFO,"bucket vsb\n")
+       vsblist <- read.table(vsbfile, header=F, sep="\t",stringsAsFactors=FALSE)
+       for(i in 1:nrow(vsblist))
+          CMDINFO <- paste0(CMDINFO, paste(vsblist[i,1]-0.5*vsblist[i,2], vsblist[i,1]+0.5*vsblist[i,2]),"\n")
+       CMDINFO <- paste0(CMDINFO,"EOL\n")
+   }
    if (! file.exists(bucketfile) || procParams$BUCAPPEND==FALSE) {
        file.rename(vsbfile, bucketfile)
    } else {
@@ -264,11 +267,12 @@ repeat {
       bdata$BUCMIN <- 0.003
    }
 
-   CMDINFO <- paste0("#\n# Bucketing - Method: AIBIN, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",procParams$AIBIN_R,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
-   CMDINFO <- paste0(CMDINFO,paste("bucket aibin",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),procParams$AIBIN_R,procParams$SNRBUCLEVEL),"\n")
-   for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
-   CMDINFO <- paste0(CMDINFO,"EOL\n")
-
+   if (procParams$BUCSAVE) {
+       CMDINFO <- paste0("#\n# Bucketing - Method: AIBIN, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",procParams$AIBIN_R,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
+       CMDINFO <- paste0(CMDINFO,paste("bucket aibin",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),procParams$AIBIN_R,procParams$SNRBUCLEVEL),"\n")
+       for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
+       CMDINFO <- paste0(CMDINFO,"EOL\n")
+   }
    registerDoParallel(cores=env.list$CORES)
 
    buckets_zones <- NULL
@@ -345,11 +349,12 @@ repeat {
    bdata$ppm_min <- specMat$ppm_min
    bdata$BUCMIN <- 0.001
 
-   CMDINFO <- paste0("#\n# Bucketing - Method: ERVA, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",procParams$ERVA_R,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
-   CMDINFO <- paste0(CMDINFO,paste("bucket erva",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),procParams$ERVA_R,procParams$SNRBUCLEVEL),"\n")
-   for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
-   CMDINFO <- paste0(CMDINFO,"EOL\n")
-
+   if (procParams$BUCSAVE) {
+       CMDINFO <- paste0("#\n# Bucketing - Method: ERVA, Noise Zone = ( ",min(PPM_NOISE_AREA)," , ",max(PPM_NOISE_AREA)," ), Resolution = ",procParams$ERVA_R,", SNR = ",procParams$SNRBUCLEVEL,"\n#\n")
+       CMDINFO <- paste0(CMDINFO,paste("bucket erva",min(PPM_NOISE_AREA),max(PPM_NOISE_AREA),procParams$ERVA_R,procParams$SNRBUCLEVEL),"\n")
+       for(i in 1:nrow(zones)) CMDINFO <- paste0(CMDINFO, paste(zones$min[i],zones$max[i]),"\n")
+       CMDINFO <- paste0(CMDINFO,"EOL\n")
+   }
    # if CP sequence then withdrraw the first spectra from the kinetics (tc<TCmin)
    idx <- 1:specMat$nspec
    if ('P15' %in% colnames(specParamsDF)) {
