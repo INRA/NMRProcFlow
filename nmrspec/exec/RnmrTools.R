@@ -942,8 +942,12 @@ RBucket1D <- function(specMat, Algo, resol, snr, zones, zonenoise, LOGFILE=NULL,
           bucsel <- which( apply(t(MaxVals/(2*Vnoise)),1,stats::quantile)[4,]>snr )
           buckets_m <- buckets_m[ bucsel, ]
        }
-       if( !is.null(LOGFILE) )
-          Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",nrow(buckets_m)))
+       if( !is.null(LOGFILE) ) {
+          #Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(zones[i,]),",",max(zones[i,]),"), Nb Buckets =",nrow(buckets_m)))
+          vr <- 4
+          p1 <- round(specMat$ppm[i1],vr); p2 <- round(specMat$ppm[i2],vr)
+          Write.LOG(LOGFILE,paste("Rnmr1D:     Zone",i,"= (",min(p1,p2),",",max(p1,p2),"), Nb Buckets =",nrow(buckets_m)))
+        }
        cbind( specMat$ppm[buckets_m[,1]], specMat$ppm[buckets_m[,2]] )
    }
    if (wrtCMD) Write.LOG(BUC.cmd,"EOL\n", mode="at")
@@ -1268,7 +1272,7 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
           }
           if (cmdName == lbBUCKET) {
               if ( !( length(cmdPars) >= 6 && cmdPars[2] %in% c('aibin','erva','unif') ) &&
-                   !( length(cmdPars) == 2 && cmdPars[2] %in% c('vsb') ) ) {
+                   !( length(cmdPars) <= 3 && cmdPars[2] %in% c('vsb') ) ) {
                  CMD <- CMD[-1]
                  break;
               }
@@ -1283,11 +1287,11 @@ RProcCMD1D <- function(specMat, specParamsDF, CMDTEXT, NCPU=1, LOGFILE=NULL, Pro
                   params <- as.numeric(cmdPars[-c(1:2)])
                   PPM_NOISE <- c( min(params[1:2]), max(params[1:2]) )
                   resol <- params[3]; snr <- params[4];
-                  Write.LOG(LOGFILE,paste0("Rnmr1D:     ",toupper(cmdPars[2])," - Resolution=",resol," - SNR threshold=",snr))
+                  Write.LOG(LOGFILE,paste0("Rnmr1D:  ",toupper(cmdPars[2])," - Resolution=",resol," - SNR threshold=",snr))
               } else {
                   PPM_NOISE <- NULL
                   resol <- 0; snr <- 0;
-                  Write.LOG(LOGFILE,paste0("Rnmr1D:     ",toupper(cmdPars[2])))
+                  Write.LOG(LOGFILE,paste0("Rnmr1D:  ",toupper(cmdPars[2])))
               }
               registerDoParallel(cores=NCPU)
               RBucket1D(specMat, cmdPars[2], resol, snr, zones, PPM_NOISE, LOGFILE=LOGFILE, ProgressFile=ProgressFile)
@@ -1387,7 +1391,7 @@ get_Buckets_dataset <- function(specMat, bucketfile, norm_meth='CSN', zoneref=NA
 
       # Get the P15 parameter if Vendor == bruker and PULSE <=> cp (See Rnmr1D)
       is_cp <- length(grep(conf$CPREGEX, PULSE))>0
-      if (Vendor == "BRUKER" && is_cp) {
+      if (tolower(Vendor) == "bruker" && is_cp) {
           P15 <- paramsDF$P15
           outdata <- cbind( samples[, -1], P15, buckets_IntVal )
           colnames(outdata) <- c( factors[,2], 'P15', bucnames )

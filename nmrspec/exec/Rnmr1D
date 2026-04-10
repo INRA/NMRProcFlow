@@ -187,61 +187,11 @@ tryCatch({
        close(fh)
     }
 
-    Write.LOG(LOGFILE, "Rnmr1D:  Generate the final matrix of spectra...\n")
-
-    M <- NULL
-    N <- dim(LIST)[1]
-    vpmin<-0; vpmax<-0
-    init_counter(ProgressFile, N)
-
-    # Memory allocation if first row - faster than using rbind
-    NCOL <- ifelse(N>1, length(specList[,1]$int), length(specList$int))
-    M <- matrix(0, nrow = N, ncol = NCOL + 1000)
-
-    NCOL <- 0
-    for(i in 1:N) {
-        if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
-        #if (spec$acq$NUC == "13C") { PPM_MIN <- PPM_MIN_13C; PPM_MAX <- PPM_MAX_13C; }
-        P <- spec$ppm>PPM_MIN & spec$ppm<=PPM_MAX
-        V <- spec$int[P]
-        vppm <- spec$ppm[P]
-        if (PPM_MIN<spec$pmin) {
-            nbzeros <- round((spec$pmin - PPM_MIN)/spec$dppm)
-            vpmin <- vpmin + spec$pmin - nbzeros*spec$dppm
-            V <- c( rep(0,nbzeros), V )
-        } else {
-            vpmin <- vpmin + vppm[1]
-        }
-        if (PPM_MAX>spec$pmax) {
-            nbzeros <- round((PPM_MAX - spec$pmax)/spec$dppm)
-            vpmax <- vpmax + spec$pmax + nbzeros*spec$dppm
-            V <- c( V, rep(0,nbzeros) )
-        } else {
-            vpmax <- vpmax + vppm[length(vppm)]
-        }
-        #M <- rbind(M,rev(V))
-        M[i, 1:length(V)] <- rev(V)
-        NCOL <- max(NCOL, length(V))
-
-        #n <- n + 1
-        inc_counter(ProgressFile, i)
-    }
-    M <- M[, 1:NCOL]
-    unlink(ProgressFile)
-
     cur_dir <- getwd()
     setwd(DATADIR)
+    N <- nrow(LIST)
 
-    Write.LOG(LOGFILE, "Rnmr1D:  Write the list_1r.txt file ...\n")
-
-    speclstname <- ifelse( N>1, basename(dirname(sapply(c(1:N), function(x) {specList[,x]$path}))), basename(dirname(spec$path)) )
-    write.table(speclstname, file='list_1r.txt', sep="", row.names=F, col.names=F, quote=F)
-
-    Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
-
-    specs.pack <- conf$SPEC_PACKED
-    if (file.exists(specs.pack)) unlink(specs.pack)
-    writeSpecMatrix(M, (vpmin/N), (vpmax/N), specs.pack)
+    #-------------
 
     Write.LOG(LOGFILE, "Rnmr1D:  Write the list_pars.csv file ...\n")
 
@@ -307,46 +257,119 @@ tryCatch({
     # Write the parameter information to a file in the workspace
     write.table(PARS, file='list_pars.csv', sep=";", row.names=F, col.names=T, quote=F)
 
+    # Write the list_1r.txt file
+    speclstname <- ifelse( N>1, basename(dirname(sapply(c(1:N), function(x) {specList[,x]$path}))), basename(dirname(spec$path)) )
+    write.table(speclstname, file='list_1r.txt', sep="", row.names=F, col.names=F, quote=F)
+
     # Write some spectra metadata to a file in the workspace
     Write.LOG('origin.txt', paste(procParams$VENDOR, procParams$INPUT_SIGNAL, sep="\n"))
 
-    setwd(cur_dir)
+    #-------------
 
-  # Rnmr1D processing macrocommand file
-    CMD.filename <- file.path(DATADIR, conf$Rnmr1D_PCMD)
-    if (file.exists(CMD.filename)) {
+    # Check if all spectra sizes are equal
+    N <- nrow(LIST)
+    V <- NULL
+    ERRSIZE <- FALSE
+    for(i in 1:N) {
+        if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
+        V <- c(V, length(spec$int))
+    }
+    if (length(unique(V))>1) {
+       ERRSIZE <- TRUE
+       fh<-file(paste0(DATADIR,'/',conf$semapFileErr),"at")
+       writeLines("The spectra have different sizes" , fh)
+       close(fh)
+       Write.LOG(LOGFILE, "Rnmr1D:  ERROR: The spectra have different sizes\n")
+       setwd(cur_dir)
+    }
 
-        Write.LOG(LOGFILE,"Rnmr1D: ------------------------------------")
-        Write.LOG(LOGFILE,"Rnmr1D: Process the Macro-commands file")
-        Write.LOG(LOGFILE,"Rnmr1D: ------------------------------------")
-        Write.LOG(LOGFILE,"Rnmr1D: ")
-
-      # Read the specs.pack -> specMat
-        specPackFile <- file.path(DATADIR,conf$SPEC_PACKED)
-        specMat <- readSpecMatrix(specPackFile)
-        specMat$dppm <- (specMat$ppm_max - specMat$ppm_min)/(specMat$size - 1)
-        specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
-
-      # specParams
-        specParamFile <- file.path(DATADIR,"list_pars.csv")
-        specParamsDF <- read.table(specParamFile, header=T, sep=";", stringsAsFactors=FALSE)
-
-      # Read the macrocommand file
-        CMDTEXT <- gsub("\t", "", readLines(CMD.filename))
-
-      # Process the Macro-commands file
-        cur_dir <- getwd()
-        setwd(DATADIR)
-        specMat <- RProcCMD1D(specMat, specParamsDF, CMDTEXT, NCPU=env.list$CORES, LOGFILE=LOGFILE, ProgressFile=ProgressFile)
-        setwd(cur_dir)
-
-      # Write the new spectra matrix if needed
-        if (specMat$fWriteSpec) {
-           Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
-           Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(specMat$ppm_max,";",specMat$ppm_min), mode="wt")
-           writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
+    # OK all spectra sizes are equal
+    if (!ERRSIZE) {
+        Write.LOG(LOGFILE, "Rnmr1D:  Generate the final matrix of spectra...\n")
+    
+        M <- NULL
+        N <- nrow(LIST)
+        vpmin<-0; vpmax<-0
+        init_counter(ProgressFile, N)
+    
+        # Memory allocation if first row - faster than using rbind
+        NCOL <- ifelse(N>1, length(specList[,1]$int), length(specList$int))
+        M <- matrix(0, nrow = N, ncol = NCOL + 1000)
+    
+        NCOL <- 0
+        for(i in 1:N) {
+            if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
+            P <- spec$ppm>PPM_MIN & spec$ppm<=PPM_MAX
+            V <- spec$int[P]
+            vppm <- spec$ppm[P]
+            if (PPM_MIN<spec$pmin) {
+                nbzeros <- round((spec$pmin - PPM_MIN)/spec$dppm)
+                vpmin <- vpmin + spec$pmin - nbzeros*spec$dppm
+                V <- c( rep(0,nbzeros), V )
+            } else {
+                vpmin <- vpmin + vppm[1]
+            }
+            if (PPM_MAX>spec$pmax) {
+                nbzeros <- round((PPM_MAX - spec$pmax)/spec$dppm)
+                vpmax <- vpmax + spec$pmax + nbzeros*spec$dppm
+                V <- c( V, rep(0,nbzeros) )
+            } else {
+                vpmax <- vpmax + vppm[length(vppm)]
+            }
+            #M <- rbind(M,rev(V))
+            M[i, 1:length(V)] <- rev(V)
+            NCOL <- max(NCOL, length(V))
+    
+            #n <- n + 1
+            inc_counter(ProgressFile, i)
         }
-
+        M <- M[, 1:NCOL]
+        unlink(ProgressFile)
+    
+    
+        Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
+    
+        specs.pack <- conf$SPEC_PACKED
+        if (file.exists(specs.pack)) unlink(specs.pack)
+        writeSpecMatrix(M, (vpmin/N), (vpmax/N), specs.pack)
+    
+        setwd(cur_dir)
+    
+      # Rnmr1D processing macrocommand file
+        CMD.filename <- file.path(DATADIR, conf$Rnmr1D_PCMD)
+        if (file.exists(CMD.filename)) {
+    
+            Write.LOG(LOGFILE,"Rnmr1D: ------------------------------------")
+            Write.LOG(LOGFILE,"Rnmr1D: Process the Macro-commands file")
+            Write.LOG(LOGFILE,"Rnmr1D: ------------------------------------")
+            Write.LOG(LOGFILE,"Rnmr1D: ")
+    
+          # Read the specs.pack -> specMat
+            specPackFile <- file.path(DATADIR,conf$SPEC_PACKED)
+            specMat <- readSpecMatrix(specPackFile)
+            specMat$dppm <- (specMat$ppm_max - specMat$ppm_min)/(specMat$size - 1)
+            specMat$ppm <- rev(seq(from=specMat$ppm_min, to=specMat$ppm_max, by=specMat$dppm))
+    
+          # specParams
+            specParamFile <- file.path(DATADIR,"list_pars.csv")
+            specParamsDF <- read.table(specParamFile, header=T, sep=";", stringsAsFactors=FALSE)
+    
+          # Read the macrocommand file
+            CMDTEXT <- gsub("\t", "", readLines(CMD.filename))
+    
+          # Process the Macro-commands file
+            cur_dir <- getwd()
+            setwd(DATADIR)
+            specMat <- RProcCMD1D(specMat, specParamsDF, CMDTEXT, NCPU=env.list$CORES, LOGFILE=LOGFILE, ProgressFile=ProgressFile)
+            setwd(cur_dir)
+    
+          # Write the new spectra matrix if needed
+            if (specMat$fWriteSpec) {
+               Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
+               Write.LOG(paste0(DATADIR,'/',conf$PPMRANGE), paste0(specMat$ppm_max,";",specMat$ppm_min), mode="wt")
+               writeSpecMatrix(specMat$int, specMat$ppm_min, specMat$ppm_max, specPackFile)
+            }
+        }
     }
 
     # the Supevisor Log file

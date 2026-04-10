@@ -68,8 +68,10 @@ Spec1rProcpar <- list (
     ZEROFILLING=FALSE,         # Zero Filling
     ZFFAC=4,                   # Max factor for Zero Filling
     TSP=FALSE,                 # PPM referencing
+    PTMAX=256,                 # Max spectra size (Ko)
     O1RATIO=1,                 # Fractionnal value of the Sweep Width for PPM calibration
                                # if not based on the parameter of the spectral region center (O1)
+    TDFILESIZE=FALSE,          # Calculate TD based on the fid filesize instead of taking its value in the acqus file
     RABOT=FALSE,               # Zeroing of Negative Values
     AJUSTBL=FALSE,             # Ajust Baseline at the final step
     REMLFREQ=0,                # Remove low frequencies by applying a polynomial subtraction method.
@@ -93,7 +95,7 @@ Spec1rProcpar <- list (
     OPTCRIT1=2,                # Global criterium for first order phasing optimization (1 for SSpos, 2 for SSneg, 3 for Entropy)
     ADJPZTSP=FALSE,            # Ajust phc0 based on TSP peak : active / desactivate
     DHZPZTSP=7,                # Ajust phc0 based on TSP peak : HZ range around TSP peak
-    DPHCPZTSP = 0.8,           # Ajust phc0 based on TSP peak : phase range around previous estimated value
+    DPHCPZTSP = 1.2,           # Ajust phc0 based on TSP peak : phase range around previous estimated value
     MVPZTSP=FALSE,             # Ajust phc0 based on TSP peak : adjustment of the mean value close to the TSP
     MVPZFAC=1.25,              # Acceptance of entropy multiplied by this factor
     DHZPZRANGE=250,            # Ajust phc0 based on mean spectrum on the ppm range closed to the TSP peak
@@ -161,7 +163,7 @@ Spec1rProcpar <- list (
 #### Read FID data and the main parameters needed to generate the real spectrum
 #--  internal routine
 #-- DIR: bruker directory containing the FID
-.read.FID.bruker <- function(DIR)
+.read.FID.bruker <- function(DIR, param=Spec1rProcpar)
 {
    cur_dir <- getwd()
    setwd(DIR)
@@ -186,6 +188,7 @@ Spec1rProcpar <- list (
    SPINNINGRATE  <- .bruker.get_param(ACQ,"MASR",type="numeric")
    NUMBEROFSCANS <- .bruker.get_param(ACQ,"NS")
    DUMMYSCANS <- .bruker.get_param(ACQ,"DS")
+   RG      <- .bruker.get_param(ACQ,"RG")
    NUC     <- .bruker.get_param(ACQ,"NUC1",type="string")
    TD      <- .bruker.get_param(ACQ,"TD")
    SW      <- .bruker.get_param(ACQ,"SW")
@@ -205,7 +208,8 @@ Spec1rProcpar <- list (
 
    SIZE <- ifelse( DTYPA==0, 4L, 8L)
    DTYPE <- ifelse( DTYPA==0, "int", "double" )
-   
+
+   if (param$TDFILESIZE) TD <- file.info(FIDFILE)$size/SIZE
    to.read <- file(FIDFILE,"rb")
    signal <- readBin(to.read, what=DTYPE, n=TD, size=SIZE, endian = ENDIAN)
    close(to.read)
@@ -248,7 +252,7 @@ Spec1rProcpar <- list (
       GRPDLY <- tryCatch({
                    group_delay_matrix[toString(DECIM), toString(DSPFVS)]
                 },  error = function(e) { 
-                  .estime_grpdelay(fid)
+                   tryCatch({ .estime_grpdelay(fid) },  error = function(e) { 0 })
                 })
    }
    if (is.null(GRPDLY) || is.na(GRPDLY) ||  length(GRPDLY)==0 || GRPDLY<0)  GRPDLY <- 0
@@ -256,7 +260,7 @@ Spec1rProcpar <- list (
    setwd(cur_dir)
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, 
-                PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, TEMP=TEMP, NUC=NUC, 
+                PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, TEMP=TEMP, NUC=NUC, RECVGAIN=RG,
                 NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, OFFSET=O1/SFO1,
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY, P15=P15 )
@@ -295,6 +299,7 @@ Spec1rProcpar <- list (
    P15     <- .bruker.get_param(ACQ,"P",type="numeric",  arrayType=TRUE)[16]
    SPINNINGRATE  <- .bruker.get_param(ACQ,"MASR",type="numeric")
    NUMBEROFSCANS <- .bruker.get_param(ACQ,"NS")
+   RG      <- .bruker.get_param(ACQ,"RG")
    TD      <- .bruker.get_param(ACQ,"TD")
    SW      <- .bruker.get_param(ACQ,"SW")
    SWH     <- .bruker.get_param(ACQ,"SW_h")
@@ -360,7 +365,7 @@ Spec1rProcpar <- list (
       # Compute the real spectrum
       spec <- rev(stats::fft(fid))
       signalR <- (max(signalR)/max(Re(spec)))*Re(spec)
-      #signalI <- (max(signalI)/max(Im(spec)))*Im(spec)
+      signalI <- (max(signalI)/max(Im(spec)))*Im(spec)
       # Change point sizes
       TD <- SI <- length(signalR)
    }
@@ -372,7 +377,7 @@ Spec1rProcpar <- list (
 
    acq <- list( INSTRUMENT=INSTRUMENT, SOFTWARE=SOFTWARE, ORIGIN=ORIGIN, ORIGPATH=ORIGPATH, 
                 PROBE=PROBE, PULSE=PULSE, NUC=NUC, NUMBEROFSCANS=NUMBEROFSCANS, SOLVENT=SOLVENT, TEMP=TEMP, 
-                RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH,
+                RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH, RECVGAIN=RG,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY, P15=P15 )
 
    proc <- list( phc0=PHC0*pi/180, phc1=PHC1*pi/180, SI=SI )
@@ -380,8 +385,8 @@ Spec1rProcpar <- list (
    param$ZEROFILLING <- FALSE
    param$LINEBROADENING <- FALSE
 
-   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signalR, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
    #spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signalR, img=signalI, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
+   spec <- list( path=DIR, param=param, acq=acq, proc=proc, fid=NULL, int=signalR, dppm=dppm, pmin=pmin, pmax=pmax, ppm=ppm )
 
    spec
 }
@@ -601,6 +606,7 @@ Spec1rProcpar <- list (
    SWH  <-  .varian.get_param(ACQ,"sw")
    SFO1 <- .varian.get_param(ACQ,"sfrq")
    REFFRQ <- .varian.get_param(ACQ,"reffrq")
+   GAIN <- .varian.get_param(ACQ,"gain")
    O1   <- .varian.get_param(ACQ,"tof")
    OFFSET <- 1e6*(1- REFFRQ/SFO1)
    SW   <- SWH/SFO1
@@ -677,7 +683,7 @@ Spec1rProcpar <- list (
 
    acq <- list( INSTRUMENT="VARIAN", SOFTWARE="VnmrJ", ORIGIN="VARIAN", ORIGPATH=ORIGPATH, PROBE=PROBE, PULSE=PULSE, SOLVENT=SOLVENT, 
                 RELAXDELAY=RELAXDELAY, SPINNINGRATE=SPINNINGRATE, PULSEWIDTH=PULSEWIDTH, TEMP=TEMP, NUC=NUC,
-                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, OFFSET=OFFSET,
+                NUMBEROFSCANS=NUMBEROFSCANS, DUMMYSCANS=DUMMYSCANS, OFFSET=OFFSET, RECVGAIN=GAIN,
                 TD=TD, SW=SW, SWH=SWH, SFO1=SFO1, O1=O1, GRPDLY=GRPDLY )
    spec <- list( path=DIR, acq=acq, fid=fid )
 
@@ -905,7 +911,7 @@ Spec1rProcpar <- list (
 
    acq <- list( INSTRUMENT="JEOL", SOFTWARE=gp('version','undef'),
                 ORIGIN=Header$File_Identifier, ORIGPATH=Header$Title, SOLVENT=procpar$solvent$value, TEMP=procpar$temp_set$value, 
-                PROBE=procpar$x_probe_map$value, PULSE=procpar$experiment$value, NUC=NUC,
+                PROBE=procpar$x_probe_map$value, PULSE=procpar$experiment$value, NUC=NUC, RECVGAIN=procpar$recvr_gain$value,
                 NUMBEROFSCANS=procpar$total_scans$value, DUMMYSCANS=procpar$x_prescans$value, PULSEWIDTH=procpar$x_pulse$value,
                 RELAXDELAY=procpar$relaxation_delay$value, SPINNINGRATE=procpar$spin_set$value, TD=procpar$x_points$value, 
                 SW=procpar$x_sweep$value/Header$Base_Freq[1], SWH=procpar$x_sweep$value, OFFSET=procpar$x_offset$value,
@@ -1241,10 +1247,10 @@ Spec1rProcpar <- list (
     spec$fid0 <- .groupDelay_correction(spec, param)
     rawspec <- transform2spec(spec$fid0)
     spec$data0 <- rawspec
-   
+
     ### Zero filling
     if (param$ZEROFILLING) {
-       TDMAX <- min(param$ZFFAC*td,131072)
+       TDMAX <- min(param$ZFFAC*td,param$PTMAX*1024)
        if(param$DEBUG) .v("\tZero Filling (x%d)\n", round(TDMAX/td), logfile=logfile)
        while ((td/TDMAX) < 1 ) {
           td <- length(spec$fid)
@@ -1311,7 +1317,8 @@ Spec1rProcpar <- list (
 
 .zeroNegPeaks <- function(spec,Yre)
 {
-   Ythres <- -spec$param$KZEROTHRES*spec$B; n1 <- 0
+   Ythres <- -spec$param$KZEROTHRES*spec$B
+   n1 <- 0
    for (k in 1:length(Yre)) {
        if (Yre[k]<Ythres && n1==0) { n1 <- k; next }
        if (Yre[k]>Ythres && n1>0) {  Yre[n1:(k-1)] <- 0; n1 <- 0 }
@@ -1328,8 +1335,6 @@ Spec1rProcpar <- list (
    n <- round(length(Yre)/24)
    Yre <- Yre[n:(23*n)]
    if (spec$param$BLPHC>0) Yre <- Yre + rep(spec$B/4, length(Yre))
-   #x0 <- 0.5*(spec$pmax-spec$pmin) + spec$param$KZERO*c(-1,1)
-   #Yre[ round(length(Yre)*x0[1]/spec$acq$SW):round(length(Yre)*x0[2]/spec$acq$SW) ] <- 0
    Yre <- .zeroNegPeaks(spec,Yre)
    entropy <-  tryCatch({
          Fentropy(phc, Re(V),Im(V), spec$param$BLPHC, spec$param$BLPHC, spec$param$KSIG*spec$B, spec$param$GAMMA)
@@ -1408,8 +1413,7 @@ Spec1rProcpar <- list (
        Yrot <- C_corr_spec_re(list(re=Re(y),im=Im(y), phc0=ang, phc1=0))
        Yre <- Yrot$re
        a <- (Yre[n2]-Yre[n1])/(n2-n1);  b <- (Yre[n1]*n2-Yre[n2]*n1)/(n2-n1)
-       #10000000*sum(sapply(n1:n2, function(k){ Y<-a*k + b; ifelse(Yre[k]<Y, abs(Y - Yre[k]), 0) }))
-       10000000*sum(sapply(n1:n2, function(k){ Y<-a*k + b; ifelse(Yre[k]<Y, (Y - Yre[k])*(Y - Yre[k]), 0) }))
+       10000000*sum(sapply(n1:n2, function(k){ Y<-0.5*(a*k + b); ifelse(Yre[k]<Y, (Y - Yre[k])*(Y - Yre[k]), 0) }))
    }
 
    mean0 <- function(ang, y, n1, n2) {
@@ -1434,7 +1438,8 @@ Spec1rProcpar <- list (
    CritID <- spec$param$OPTCRIT1
    if (spec$acq$NUC %in% c('1H','H1','31P')) {
        #V <- .capSolvent(spec,0);
-       V <- .maskNegPeaks(spec,C_corr_spec_re(list(re=Re(spec$data0),im=Im(spec$data0), phc0=best[["minimum"]], phc1=0)),0);
+       Y <- C_corr_spec_re(list(re=Re(spec$data0), im=Im(spec$data0), phc0=best[["minimum"]], phc1=0))
+       V <- tryCatch({ .maskNegPeaks(spec,Y,0) },  error = function(e) { spec$data0 })
        best2 <- stats::optimize(rms0, interval = c(-2*pi, 2*pi), maximum = FALSE, y = V, B=spec$B, type=crittype)
        L2 <- .checkPhc(spec, c(best2[["minimum"]],0), 0)
        if (L2$crit[CritID] < crit0[CritID]) { L <- L2; crit0 <- L2$crit }
@@ -1445,12 +1450,13 @@ Spec1rProcpar <- list (
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
    pulse4 <- length(grep("(proton.jxp|single_pulse.jxp)", tolower(spec$acq$PULSE)))>0
-   if (! spec$param$TSP && (pulse1 || pulse2 || pulse3 || pulse4)) {
+   pulse5 <- length(grep("ZGPR", toupper(spec$acq$PULSE)))>0
+   if (! spec$param$TSP && (pulse1 || pulse2 || pulse3 || pulse4 || pulse5)) {
        if (pulse1 || pulse4) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
            if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
        }
-       if (pulse2 || pulse3) {
+       if (pulse2 || pulse3 || pulse5) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.18
            if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.47
        }
@@ -1499,7 +1505,7 @@ Spec1rProcpar <- list (
            best2 <- stats::optimize(sumneg0, interval = c(phc0-dPHC, phc0+dPHC), maximum = FALSE, y = fspec, n1=n0-dN, n2=n0+dN)
            phc0 <- best2[["minimum"]]
            L2 <- .checkPhc(spec, c(phc0,0), 0)
-           cond <- (! L2$crit[CritID] > 1.25* crit0[CritID]) || (! L2$crit[3] > 1.25* crit0[3]) 
+           cond <- (! L2$crit[CritID] > 1.25* crit0[CritID]) || (! L2$crit[3] > 1.25* crit0[3])
            if (cond) { L <- L2; crit0 <- L2$crit }
            # adjustment of the mean value close to the TSP
            if (spec$param$MVPZTSP) {
@@ -1597,19 +1603,21 @@ Spec1rProcpar <- list (
    sumneg <- function(par, y, n1, n2) {
       Yrot <- C_corr_spec_re(list(re=Re(y),im=Im(y), phc0=par[1], phc1=par[2]))
       Yre <- Yrot$re
-      10000000*sum(sapply(n1:n2, function(k){ ifelse(Yre[k]<0, Yre[k]*Yre[k],0) }))
+      a <- (Yre[n2]-Yre[n1])/(n2-n1);  b <- (Yre[n1]*n2-Yre[n2]*n1)/(n2-n1)
+      10000000*sum(sapply(n1:n2, function(k){ Y<-0.5*(a*k) + b; ifelse(Yre[k]<Y, (Y - Yre[k])*(Y - Yre[k]), 0) }))
    }
 
    pulse1 <- length(grep(spec$param$CPREGEX, toupper(spec$acq$PULSE)))>0
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
    pulse4 <- length(grep("(proton.jxp|single_pulse.jxp)", tolower(spec$acq$PULSE)))>0
-   if (pulse1 || pulse2 || pulse3 || pulse4 ) {
+   pulse5 <- length(grep("ZGPR", toupper(spec$acq$PULSE)))>0
+   if (pulse1 || pulse2 || pulse3 || pulse4 || pulse5) {
       if (pulse1 || pulse4) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
            if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
       }
-      if (pulse2 || pulse3) {
+      if (pulse2 || pulse3 || pulse5) {
            if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.18
            if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.47
       }
@@ -1621,7 +1629,7 @@ Spec1rProcpar <- list (
       n2 <- round(spec$param$KSTOP*length(fspec))
       phc <- c(spec$proc$phc0, spec$proc$phc1)
       nloop <- 0
-      while(nloop<20) {
+      while(nloop<3) {
           best <- stats::optim(par=phc, fn=sumneg, method="Nelder-Mead", y = fspec,  n1=n1, n2=n2, control=list(maxit=200))
           nloop <- nloop + 1
           if (pulse4 && abs(best$par[1])<9.425 && abs(best$par[2])<3.14) break
@@ -1733,7 +1741,7 @@ Spec1rProcpar <- list (
          break
       }
       if (param$VENDOR == "bruker" && param$INPUT_SIGNAL == "fid") {
-         spec <- .read.FID.bruker(Input)
+         spec <- .read.FID.bruker(Input,param)
          break
       }
       if (param$VENDOR == "bruker" && param$INPUT_SIGNAL == "1r") {
