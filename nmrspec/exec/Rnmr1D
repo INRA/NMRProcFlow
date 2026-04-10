@@ -326,7 +326,8 @@ tryCatch({
         M <- M[, 1:NCOL]
         unlink(ProgressFile)
     
-    
+        #-------------
+
         Write.LOG(LOGFILE, "Rnmr1D:  Write the spec.pack file ...\n")
     
         specs.pack <- conf$SPEC_PACKED
@@ -334,6 +335,8 @@ tryCatch({
         writeSpecMatrix(M, (vpmin/N), (vpmax/N), specs.pack)
     
         setwd(cur_dir)
+
+        #-------------
     
       # Rnmr1D processing macrocommand file
         CMD.filename <- file.path(DATADIR, conf$Rnmr1D_PCMD)
