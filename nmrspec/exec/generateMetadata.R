@@ -78,6 +78,7 @@ generate_Metadata_Bruker_fid <- function(RAWDIR, procParams)
    lstfac <- matrix(c(1,"Samplecode"), nrow=1)
    RAWPATH <- gsub("//", "/", RAWDIR)
    LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "fid$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   LIST <- LIST[grepl("/fid$", LIST)]
    if ( "character" %in% class(LIST) && length(LIST)==0 ) return(NULL)
    L <- simplify2array(strsplit(LIST,'/'))
    if (! "matrix" %in% class(L)) {
@@ -151,6 +152,7 @@ generate_Metadata_Bruker_1r <- function(RAWDIR, procParams)
    RAWPATH <- gsub("//", "/", RAWDIR)
 
    LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "1r$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   LIST <- LIST[grepl("/1r$", LIST)]
    if ( "character" %in% class(LIST) && length(LIST)==0 ) return(NULL)
    L <- simplify2array(strsplit(LIST,'/'))
    if (! "matrix" %in% class(L)) {
@@ -229,6 +231,7 @@ generate_Metadata_RS2D_fid <- function(RAWDIR, procParams)
    lstfac <- matrix(c(1,"Samplecode"), nrow=1)
    RAWPATH <- gsub("//", "/", RAWDIR)
    LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "data.dat$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   LIST <- LIST[grepl("/data.dat$", LIST)]
    LIST <- grep(pattern = "/Proc/", LIST, value = TRUE, invert=TRUE)
 
    rawdir <- cbind( dirname(LIST), rep(0, length(LIST)), rep(0, length(LIST)) )
@@ -251,6 +254,7 @@ generate_Metadata_RS2D_1r <- function(RAWDIR, procParams)
    lstfac <- matrix(c(1,"Samplecode"), nrow=1)
    RAWPATH <- gsub("//", "/", RAWDIR)
    LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "data.dat$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   LIST <- LIST[grepl("/data.dat$", LIST)]
    LIST <- dirname(grep(pattern = "/Proc/", LIST, value = TRUE, invert=FALSE))
 
    L <- simplify2array(strsplit(LIST,'/'))
@@ -293,9 +297,11 @@ generate_Metadata_Magritek <- function(RAWDIR, procParams)
    if (procParams$INPUT_SIGNAL == "fid") {
        LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "data.1d$", 
                      all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+       LIST <- LIST[grepl("/data.1d$", LIST)]
    } else {
        LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "spectrum.1d$", 
                      all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+       LIST <- LIST[grepl("/spectrum.1d$", LIST)]
    }
    L <- simplify2array(strsplit(LIST,'/'))
    LIST <- as.data.frame(t(simplify2array(strsplit(LIST,'/'))))
@@ -344,7 +350,7 @@ set_Metadata <- function(RAWDIR, procParams, samples)
 
       pattern <- ifelse(procParams$INPUT_SIGNAL == "fid", "fid$", "1r$")
       LIST <-  gsub("//", "/", list.files(path = RAWDIR, pattern = pattern, all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
-
+      LIST <- LIST[grepl(paste0("/",pattern), LIST)]
       for (i in 1:nraw) {
           FileSpectrum <- paste(samples[i,1],samples[i,3], sep="/")
           if (procParams$INPUT_SIGNAL == "fid") {
@@ -395,6 +401,7 @@ set_Metadata <- function(RAWDIR, procParams, samples)
 
       LIST <-  gsub("//", "/", list.files(path = RAWDIR, pattern = "data.dat$",
                      all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+      LIST <- LIST[grepl("/data.dat$", LIST)]
 
       for (i in 1:nraw) {
           if (procParams$INPUT_SIGNAL == "fid") {
@@ -439,6 +446,8 @@ set_Metadata <- function(RAWDIR, procParams, samples)
    OKRAW <- 1
 
    LIST <- gsub('//', '/', list.files(path = RAWDIR, pattern = "fid$", all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+   LIST <- LIST[grepl("/fid$", LIST)]
+
    if ( "character" %in% class(LIST) && length(LIST)==0 ) return(0)
 
    if (!is.null(samples)) {
@@ -556,6 +565,7 @@ set_Metadata <- function(RAWDIR, procParams, samples)
       RAWPATH <- gsub("//", "/", RAWDIR)
       LIST <- gsub("//", "/", list.files(path = RAWPATH, pattern = "spectrum.1d$", 
                    all.files = FALSE, full.names = TRUE, recursive = TRUE, ignore.case = FALSE, include.dirs = FALSE))
+      LIST <- LIST[grepl("/spectrum.1d$", LIST)]
       for (i in 1:nraw) {
           if (procParams$INPUT_SIGNAL == "fid") {
               FileSpectrum  <- paste(samples[i,1], "data.1d", sep="/")
