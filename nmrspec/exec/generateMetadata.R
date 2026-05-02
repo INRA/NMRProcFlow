@@ -97,10 +97,10 @@ generate_Metadata_Bruker_fid <- function(RAWDIR, procParams)
    }
    LIST <- as.data.frame(t(simplify2array(strsplit(LIST,'/'))))
 
-   nDir <- dim(simplify2array(strsplit(RAWPATH,'/')))[1]
+   nDir <- nrow(simplify2array(strsplit(RAWPATH,'/')))
    LIST <- LIST[, c(-1:-nDir)]
-   nc <- dim(LIST)[2]
-   nr <- dim(LIST)[1]
+   nc <- ncol(LIST)
+   nr <- nrow(LIST)
    if (nc<3) {
       LIST <- cbind(LIST[,1],LIST)
    }
@@ -109,8 +109,9 @@ generate_Metadata_Bruker_fid <- function(RAWDIR, procParams)
    if (nc>3) { SL <- LIST[, c(1:(nc-3)) ]; LIST <- LIST[ , c((nc-2):nc) ]; }
    nc=3
 
-   if (length(levels(LIST[,1]))<nr && length(levels(LIST[,1]))>1 &&
-       length(levels(LIST[,2]))<nr && length(levels(LIST[,2]))>1) {
+   NBF1 <- length(levels(as.factor(LIST[,1])))
+   NBF2 <- length(levels(as.factor(LIST[,2])))
+   if (procParams$EXPNO_MIN && NBF1<nr && NBF1>1 && NBF2<nr && NBF2>1) {
       L <- levels(LIST[,1])
       LIST2 <- NULL
       for (i in 1:length(L)) {
@@ -119,12 +120,14 @@ generate_Metadata_Bruker_fid <- function(RAWDIR, procParams)
       }
       LIST <- LIST2
    }
-   nr <- dim(LIST)[1]
+   nr <- nrow(LIST)
    MS <- as.matrix(LIST)
 
    if( !is.null(SL)) { LIST2 <- cbind(SL[c(1: dim(LIST)[1])], LIST); } else { LIST2 <- LIST; }
-   nc <- dim(LIST2)[2]
-   rawdir <- cbind( sapply(1:nr, function(x){ do.call( paste, c( RAWPATH, as.list(LIST2[x,c(1:(nc-1))]), sep="/")) }), MS[, 2], rep(0,nr) )
+   nc <- ncol(LIST2)
+   rawdir <- cbind( sapply(1:nr, function(x){
+        do.call( paste, c( RAWPATH, as.list(LIST2[x,c(1:(nc-1))]), sep="/"))
+   }), MS[, 2], rep(0,nr) )
 
    if (length(levels(LIST[,1]))==nr) {
       M <-  MS[, c(1,1) ]
@@ -190,8 +193,9 @@ generate_Metadata_Bruker_1r <- function(RAWDIR, procParams)
    }
    nr <- dim(LIST)[1]
 
-   if (length(levels(LIST[,1]))<nr && length(levels(LIST[,1]))>1 &&
-       length(levels(LIST[,2]))<nr && length(levels(LIST[,2]))>1) {
+   NBF1 <- length(levels(as.factor(LIST[,1])))
+   NBF2 <- length(levels(as.factor(LIST[,2])))
+   if (procParams$EXPNO_MIN && NBF1<nr && NBF1>1 && NBF2<nr && NBF2>1) {
       L <- levels(LIST[,1])
       LIST2 <- NULL
       for (i in 1:length(L)) {

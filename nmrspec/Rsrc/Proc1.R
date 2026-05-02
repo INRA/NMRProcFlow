@@ -366,6 +366,13 @@
    outputOptions(output, 'ZipUploaded', suspendWhenHidden=FALSE)
    outputOptions(output, 'ZipUploaded', priority=20)
 
+   output$SampleUploaded <- reactive({
+         Sys.sleep(1)
+         return(  ifelse( is.null(input$samplefile) , 0, 1 ) )
+   })
+   outputOptions(output, 'SampleUploaded', suspendWhenHidden=FALSE)
+   outputOptions(output, 'SampleUploaded', priority=20)
+
    output$fileUploaded <- reactive({
          input$goButton
          if (input$goButton==0) return(0)
@@ -547,6 +554,7 @@
             ERROR$MsgErrLoad <- ''
             closeAlert(session, "ErrAlertLoadId")
             # Launch Rnmr1D package
+            procParams$EXPNO_MIN <<- ifelse(input$all_expno==1, FALSE, TRUE)
             if (submit_job_preProcess()==1) {
                 procJobName <<- 'preprocess'
                 values$jobrun <- 1

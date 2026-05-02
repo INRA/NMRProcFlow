@@ -42,6 +42,10 @@ ui_load_form <- conditionalPanel(condition="output.fileUploaded==0 && output.Ses
 
              fileInput( 'samplefile', 'Samples file (Tabular format)', accept = c( 'text/plain' ) ),
 
+             conditionalPanel(condition = "input.vendor == 'bruker' && output.SampleUploaded==0",
+                 checkboxInput("all_expno", "All experiences", FALSE)
+             ),
+
              conditionalPanel(condition="output.ZipUploaded==1 || output.ZipPreLoaded==1",
                  checkboxInput("advancedUsr", "Advanced User", FALSE),
                  conditionalPanel(condition="input.advancedUsr==1",

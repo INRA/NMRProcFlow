@@ -290,41 +290,46 @@ tryCatch({
         M <- NULL
         N <- nrow(LIST)
         vpmin<-0; vpmax<-0
-        init_counter(ProgressFile, N)
-    
-        # Memory allocation if first row - faster than using rbind
-        NCOL <- ifelse(N>1, length(specList[,1]$int), length(specList$int))
-        M <- matrix(0, nrow = N, ncol = NCOL + 1000)
-    
-        NCOL <- 0
-        for(i in 1:N) {
-            if (N>1) { spec <- specList[,i]; } else { spec <- specList; }
-            P <- spec$ppm>PPM_MIN & spec$ppm<=PPM_MAX
-            V <- spec$int[P]
-            vppm <- spec$ppm[P]
-            if (PPM_MIN<spec$pmin) {
-                nbzeros <- round((spec$pmin - PPM_MIN)/spec$dppm)
-                vpmin <- vpmin + spec$pmin - nbzeros*spec$dppm
-                V <- c( rep(0,nbzeros), V )
-            } else {
-                vpmin <- vpmin + vppm[1]
+
+        if(N==1) {
+            M <- matrix(as.vector(rev(specList$int)), nrow=1, ncol=length(specList$int))
+            vpmin <- spec$pmin; vpmax <- spec$pmax
+        } else {
+            init_counter(ProgressFile, N)
+            # Pre-allocation of memory - faster than with rbind
+            NCOL <- length(specList[,1]$int)
+            M <- matrix(0, nrow = N, ncol = NCOL + 1000)
+            NCOL <- 0
+            for(i in 1:N) {
+               spec <- specList[,i]
+               P <- spec$ppm>PPM_MIN & spec$ppm<=PPM_MAX
+               V <- spec$int[P]
+               vppm <- spec$ppm[P]
+               if (PPM_MIN<spec$pmin) {
+               	   nbzeros <- round((spec$pmin - PPM_MIN)/spec$dppm)
+               	   vpmin <- vpmin + spec$pmin - nbzeros*spec$dppm
+               	   V <- c( rep(0,nbzeros), V )
+               } else {
+               	   vpmin <- vpmin + vppm[1]
+               }
+               if (PPM_MAX>spec$pmax) {
+               	   nbzeros <- round((PPM_MAX - spec$pmax)/spec$dppm)
+               	   vpmax <- vpmax + spec$pmax + nbzeros*spec$dppm
+               	   V <- c( V, rep(0,nbzeros) )
+               } else {
+               	   vpmax <- vpmax + vppm[length(vppm)]
+               }
+               #M <- rbind(M,rev(V))
+               M[i, 1:length(V)] <- rev(V)
+               NCOL <- max(NCOL, length(V))
+               #n <- n + 1
+               inc_counter(ProgressFile, i)
             }
-            if (PPM_MAX>spec$pmax) {
-                nbzeros <- round((PPM_MAX - spec$pmax)/spec$dppm)
-                vpmax <- vpmax + spec$pmax + nbzeros*spec$dppm
-                V <- c( V, rep(0,nbzeros) )
-            } else {
-                vpmax <- vpmax + vppm[length(vppm)]
-            }
-            #M <- rbind(M,rev(V))
-            M[i, 1:length(V)] <- rev(V)
-            NCOL <- max(NCOL, length(V))
-    
-            #n <- n + 1
-            inc_counter(ProgressFile, i)
+            # Resizes M
+            M <- M[, 1:NCOL]
+            vpmin <- vpmin/N;  vpmax <- vpmax/N
+            unlink(ProgressFile)
         }
-        M <- M[, 1:NCOL]
-        unlink(ProgressFile)
     
         #-------------
 
@@ -332,7 +337,7 @@ tryCatch({
     
         specs.pack <- conf$SPEC_PACKED
         if (file.exists(specs.pack)) unlink(specs.pack)
-        writeSpecMatrix(M, (vpmin/N), (vpmax/N), specs.pack)
+        writeSpecMatrix(M, vpmin, vpmax, specs.pack)
     
         setwd(cur_dir)
 
