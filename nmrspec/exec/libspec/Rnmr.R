@@ -915,12 +915,12 @@ Spec1rProcpar <- list (
                 NUMBEROFSCANS=procpar$total_scans$value, DUMMYSCANS=procpar$x_prescans$value, PULSEWIDTH=procpar$x_pulse$value,
                 RELAXDELAY=procpar$relaxation_delay$value, SPINNINGRATE=procpar$spin_set$value, TD=procpar$x_points$value, 
                 SW=procpar$x_sweep$value/Header$Base_Freq[1], SWH=procpar$x_sweep$value, OFFSET=procpar$x_offset$value,
-                SFO1=procpar$irr_freq$value, O1=procpar$x_offset$value*Header$Base_Freq[1], GRPDLY=0 )
+                SFO1=procpar$x_freq$value, O1=procpar$x_offset$value*Header$Base_Freq[1], GRPDLY=0 )
    acq$TD <- length(fid)
 
    # Unit issues
    if (procpar$temp_set$Unit=="dC") acq$TEMP <- acq$TEMP + 273.15
-   if (procpar$irr_freq$value>1000000)  acq$SFO1 <- acq$SFO1/1000000
+   if (procpar$x_freq$value>1000000)  acq$SFO1 <- acq$SFO1/1000000
 
    # Group Delay : Internal or External
    if (Spec1rProcpar$JGD_INNER) {
@@ -1243,6 +1243,10 @@ Spec1rProcpar <- list (
        rawspec
     }
 
+    ### if User Group Delay
+    if (!is.null(param$GRPDLY) && param$GRPDLY>0)
+       spec$acq$GRPDLY <- param$GRPDLY
+
     # Compute the spectrum in freq. domain before zero filling
     spec$fid0 <- .groupDelay_correction(spec, param)
     rawspec <- transform2spec(spec$fid0)
@@ -1446,19 +1450,22 @@ Spec1rProcpar <- list (
    }
 
    # Adjust phc0 if PULSE is of type CP
+   pulse0 <- !is.null(spec$param$KSTART) && !is.null(spec$param$KSTOP)
    pulse1 <- length(grep(spec$param$CPREGEX, toupper(spec$acq$PULSE)))>0
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
    pulse4 <- length(grep("(proton.jxp|single_pulse.jxp)", tolower(spec$acq$PULSE)))>0
    pulse5 <- length(grep("ZGPR", toupper(spec$acq$PULSE)))>0
-   if (! spec$param$TSP && (pulse1 || pulse2 || pulse3 || pulse4 || pulse5)) {
-       if (pulse1 || pulse4) {
-           if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
-           if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
-       }
-       if (pulse2 || pulse3 || pulse5) {
-           if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.18
-           if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.47
+   if (! spec$param$TSP && (pulse0 || pulse1 || pulse2 || pulse3 || pulse4 || pulse5)) {
+       if (!pulse0) {
+           if (pulse1 || pulse4) {
+               if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
+               if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
+           }
+           if (pulse2 || pulse3 || pulse5) {
+               if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.18
+               if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.47
+           }
        }
        fspec <- stats::fft(spec$fid)
        m <- length(fspec); p <- ceiling(m/2)
@@ -1588,59 +1595,62 @@ Spec1rProcpar <- list (
    spec$param$BLPHC <-  0
    L <- .optimExec(spec, V, phc_init, CRITSTEP1, lopt); spec <- L$spec; lopt <- L$lopt
    if (spec$param$OPTSTEP && CRITSTEP1>0) {
-      phc <- c(spec$proc$phc0,spec$proc$phc1)
-      L <- .optimExec(spec, V, phc, CRITSTEP2, lopt); spec <- L$spec; lopt <- L$lopt
+       phc <- c(spec$proc$phc0,spec$proc$phc1)
+       L <- .optimExec(spec, V, phc, CRITSTEP2, lopt); spec <- L$spec; lopt <- L$lopt
    }
 
    # BLPHC>0
    spec$param$BLPHC <- BLPHC
    L <- .optimExec(spec, V, phc_init, CRITSTEP1, lopt); spec <- L$spec; lopt <- L$lopt
    if (spec$param$OPTSTEP && CRITSTEP1>0) {
-      phc <- c(spec$proc$phc0,spec$proc$phc1)
-      L <- .optimExec(spec, V, phc, CRITSTEP2, lopt); spec <- L$spec; lopt <- L$lopt
+       phc <- c(spec$proc$phc0,spec$proc$phc1)
+       L <- .optimExec(spec, V, phc, CRITSTEP2, lopt); spec <- L$spec; lopt <- L$lopt
    }
 
    sumneg <- function(par, y, n1, n2) {
-      Yrot <- C_corr_spec_re(list(re=Re(y),im=Im(y), phc0=par[1], phc1=par[2]))
-      Yre <- Yrot$re
-      a <- (Yre[n2]-Yre[n1])/(n2-n1);  b <- (Yre[n1]*n2-Yre[n2]*n1)/(n2-n1)
-      10000000*sum(sapply(n1:n2, function(k){ Y<-0.5*(a*k) + b; ifelse(Yre[k]<Y, (Y - Yre[k])*(Y - Yre[k]), 0) }))
+       Yrot <- C_corr_spec_re(list(re=Re(y),im=Im(y), phc0=par[1], phc1=par[2]))
+       Yre <- Yrot$re
+       a <- (Yre[n2]-Yre[n1])/(n2-n1);  b <- (Yre[n1]*n2-Yre[n2]*n1)/(n2-n1)
+       10000000*sum(sapply(n1:n2, function(k){ Y<-0.5*(a*k) + b; ifelse(Yre[k]<Y, (Y - Yre[k])*(Y - Yre[k]), 0) }))
    }
 
+   pulse0 <- !is.null(spec$param$KSTART) && !is.null(spec$param$KSTOP)
    pulse1 <- length(grep(spec$param$CPREGEX, toupper(spec$acq$PULSE)))>0
    pulse2 <- length(grep("CPMG", toupper(spec$acq$PULSE)))>0
    pulse3 <- length(grep("NOESY", toupper(spec$acq$PULSE)))>0
    pulse4 <- length(grep("(proton.jxp|single_pulse.jxp)", tolower(spec$acq$PULSE)))>0
    pulse5 <- length(grep("ZGPR", toupper(spec$acq$PULSE)))>0
-   if (pulse1 || pulse2 || pulse3 || pulse4 || pulse5) {
-      if (pulse1 || pulse4) {
-           if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
-           if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
-      }
-      if (pulse2 || pulse3 || pulse5) {
-           if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.18
-           if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.47
-      }
-      fspec <- stats::fft(spec$fid)
-      m <- length(fspec); p <- ceiling(m/2)
-      fspec <- c( fspec[(p+1):m], fspec[1:p] )
-      if ( spec$param$REVPPM ) fspec <- fspec[rev(1:m)]
-      n1 <- round(spec$param$KSTART*length(fspec))
-      n2 <- round(spec$param$KSTOP*length(fspec))
-      phc <- c(spec$proc$phc0, spec$proc$phc1)
-      nloop <- 0
-      while(nloop<3) {
-          best <- stats::optim(par=phc, fn=sumneg, method="Nelder-Mead", y = fspec,  n1=n1, n2=n2, control=list(maxit=200))
-          nloop <- nloop + 1
-          if (pulse4 && abs(best$par[1])<9.425 && abs(best$par[2])<3.14) break
-          if (!pulse4 && abs(best$par[1])<9.425 && abs(best$par[2])<1.571) break
-          phc <- c( runif(1,0,3.14), runif(1,-0.7854,0.7854) )
-      }
-      if (spec$param$DEBUG) .v("\n\t%d: KSTART = %1.2f , KSTOP = %1.2f, nloop = %d", 
-                                0, spec$param$KSTART, spec$param$KSTOP, nloop, logfile=spec$param$LOGFILE)
-      spec$proc$phc0 <- best$par[1]
-      spec$proc$phc1 <- best$par[2]
-      L <- .checkPhc(spec, c(spec$proc$phc0,spec$proc$phc1), 0)
+   if (pulse0 || pulse1 || pulse2 || pulse3 || pulse4 || pulse5) {
+       if (!pulse0) {
+          if (pulse1 || pulse4) {
+               if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.15
+               if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.85
+          }
+          if (pulse2 || pulse3 || pulse5) {
+               if (is.null(spec$param$KSTART)) spec$param$KSTART <- 0.18
+               if (is.null(spec$param$KSTOP))  spec$param$KSTOP  <- 0.47
+          }
+       }
+       fspec <- stats::fft(spec$fid)
+       m <- length(fspec); p <- ceiling(m/2)
+       fspec <- c( fspec[(p+1):m], fspec[1:p] )
+       if ( spec$param$REVPPM ) fspec <- fspec[rev(1:m)]
+       n1 <- round(spec$param$KSTART*length(fspec))
+       n2 <- round(spec$param$KSTOP*length(fspec))
+       phc <- c(spec$proc$phc0, spec$proc$phc1)
+       nloop <- 0
+       while(nloop<3) {
+           best <- stats::optim(par=phc, fn=sumneg, method="Nelder-Mead", y = fspec,  n1=n1, n2=n2, control=list(maxit=200))
+           nloop <- nloop + 1
+           if (pulse4 && abs(best$par[1])<9.425 && abs(best$par[2])<3.14) break
+           if (!pulse4 && abs(best$par[1])<9.425 && abs(best$par[2])<1.571) break
+           phc <- c( runif(1,0,3.14), runif(1,-0.7854,0.7854) )
+       }
+       if (spec$param$DEBUG) .v("\n\t%d: KSTART = %1.2f , KSTOP = %1.2f, nloop = %d", 
+                                 0, spec$param$KSTART, spec$param$KSTOP, nloop, logfile=spec$param$LOGFILE)
+       spec$proc$phc0 <- best$par[1]
+       spec$proc$phc1 <- best$par[2]
+       L <- .checkPhc(spec, c(spec$proc$phc0,spec$proc$phc1), 0)
    }
 
    if (spec$param$DEBUG) .v("\nBest solution: phc = (%3.6f, %3.6f)   ", spec$proc$phc0*180/pi, spec$proc$phc1*180/pi, logfile=spec$param$LOGFILE)
